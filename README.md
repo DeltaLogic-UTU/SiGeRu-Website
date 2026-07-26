@@ -19,7 +19,7 @@ Actualmente funciona como un prototipo web desarrollado con:
 
 El proyecto utiliza datos locales y estructuras PHP para simular el funcionamiento del sistema.
 
-Todavía no utiliza una base de datos MySQL de forma definitiva, pero la estructura está preparada para realizar esa integración posteriormente.
+Todavía no utiliza una base de datos MySQL pero la estructura está preparada para realizar esa integración posteriormente.
 
 ## Estructura del proyecto
 
@@ -136,13 +136,14 @@ Permite trabajar con:
 
 ## Contenedores y circuitos
 
-Cada circuito del prototipo representa un conjunto de 10 contenedores.
+Cada circuito del prototipo representa un conjunto de 10 contenedores, este formato permite representar cómo funcionará a futuro,
+de forma escalable y visual para que sea accesible.
 
 Los contenedores indican cuánto tiempo llevan sin ser recolectados:
 
-- Verde: entre 0 y 2 días.
-- Amarillo: entre 3 y 4 días.
-- Rojo: 5 días o más.
+- Verde: entre 2 días.
+- Amarillo: 4 días.
+- Rojo: 6 días o más.
 
 A partir del estado de sus contenedores se calcula el estado general del circuito.
 
@@ -298,7 +299,7 @@ C:\xampp\htdocs\SiGeRU
 http://localhost/SiGeRU/landing-page/index.html
 ```
 
-Para la versión actual no es obligatorio iniciar MySQL.
+Para la versión actual no es obligatorio iniciar MySQL, se incluye en un repositorio a nivel demostrativo el SQL dump file.
 
 ## Bootstrap
 
@@ -321,9 +322,10 @@ Esto permite simular cambios y sesiones mientras no exista una base de datos def
 - Persistencia real de usuarios.
 - Persistencia de contenedores y circuitos.
 - CAPTCHA real.
-- Integración definitiva entre APIs.
+- Integración definitiva entre APIs y API de Recolección.
 - Reportes y estadísticas.
 - Adaptación del sistema de mapas y geolocalización.
+- Rutas y sus funciones
 
 ## Proyecto académico 2026
 
