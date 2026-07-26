@@ -1,12 +1,14 @@
 # SiGeRU - Sistema de Gestión de Residuos Urbanos
 
-SiGeRU es un proyecto académico orientado a la gestión y seguimiento de residuos urbanos.
-
 El sistema integra herramientas para vecinos, personal operativo y supervisores, permitiendo administrar contenedores, reclamos, incidencias, camiones, cuadrillas, instalaciones y tareas relacionadas con la recolección.
+Las funciones y la estructura visual están establecidas en la maqueta digital del sistema, que organiza de manera adaptable,
+coherente y práctica lo que busca solucionar el sistema en base a las metas del proyecto.
+Se toman de referencia mapas logísticos e información formal  para maquetar el prototipo, planificando todos los componentes que requiere
+el sistema real, además de implementar aspectos de experiencia de usuario propios que permiten que sea más dinámico.
 
 ## Estado del proyecto
 
-Actualmente SiGeRU funciona como un prototipo web desarrollado con:
+Actualmente funciona como un prototipo web desarrollado con:
 
 - HTML5
 - CSS3
@@ -17,7 +19,7 @@ Actualmente SiGeRU funciona como un prototipo web desarrollado con:
 
 El proyecto utiliza datos locales y estructuras PHP para simular el funcionamiento del sistema.
 
-Todavía no utiliza una base de datos MySQL de forma definitiva, pero la estructura está preparada para realizar esa integración posteriormente.
+Todavía no utiliza una base de datos MySQL pero la estructura está preparada para realizar esa integración.
 
 ## Estructura del proyecto
 
@@ -85,7 +87,7 @@ Página pública del sistema.
 
 Incluye:
 
-- información general de SiGeRU;
+- información general;
 - inicio de sesión;
 - solicitud de acceso;
 - recuperación de contraseña;
@@ -134,13 +136,14 @@ Permite trabajar con:
 
 ## Contenedores y circuitos
 
-Cada circuito del prototipo representa un conjunto de 10 contenedores.
+Cada circuito del prototipo representa un conjunto de 10 contenedores, este formato permite representar cómo funcionará a futuro,
+de forma escalable y visual para que sea accesible.
 
 Los contenedores indican cuánto tiempo llevan sin ser recolectados:
 
-- Verde: entre 0 y 2 días.
-- Amarillo: entre 3 y 4 días.
-- Rojo: 5 días o más.
+- Verde: entre 2 días.
+- Amarillo: 4 días.
+- Rojo: 6 días o más.
 
 A partir del estado de sus contenedores se calcula el estado general del circuito.
 
@@ -239,10 +242,6 @@ Responsable de la información operacional:
 - incidencias;
 - personal.
 
-Actualmente las APIs funcionan como prototipo mediante estructuras PHP y datos locales.
-
-La persistencia definitiva se realizará posteriormente mediante MySQL.
-
 ## Cuentas de demostración
 
 Para probar los diferentes perfiles:
@@ -296,15 +295,13 @@ C:\xampp\htdocs\SiGeRU
 http://localhost/SiGeRU/landing-page/index.html
 ```
 
-Para la versión actual no es obligatorio iniciar MySQL.
+Para la versión actual no es obligatorio iniciar MySQL, se incluye en un repositorio a nivel demostrativo el SQL dump file.
 
 ## Bootstrap
 
-El proyecto utiliza Bootstrap 5.3 mediante CDN.
+1. Bootstrap Icons.
 
-También utiliza Bootstrap Icons.
-
-El CSS propio de SiGeRU se carga después de Bootstrap para mantener la identidad visual del sistema.
+2. El CSS propio se carga después de Bootstrap para mantener la identidad visual del sistema.
 
 ## Persistencia local
 
@@ -320,15 +317,13 @@ Esto permite simular cambios y sesiones mientras no exista una base de datos def
 - Integración con MySQL.
 - Persistencia real de usuarios.
 - Persistencia de contenedores y circuitos.
-- Autenticación mediante backend.
 - CAPTCHA real.
-- Integración definitiva entre APIs.
+- Integración definitiva entre APIs y API de Recolección.
 - Reportes y estadísticas.
-- Mejora del sistema de mapas y geolocalización.
+- Adaptación del sistema de mapas y geolocalización.
+- Rutas y sus funciones
 
-## Proyecto académico
-
-SiGeRU fue desarrollado como proyecto académico de UTU.
+## Proyecto académico 2026
 
 Equipo:
 
