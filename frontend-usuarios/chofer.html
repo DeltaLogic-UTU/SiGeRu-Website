@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chofer | SiGeRU</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="assets/style.css" rel="stylesheet">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="navbar navbar-expand-lg py-2 py-lg-3">
+        <div class="navbar-brand logo-link"  aria-label="Ir al inicio de SiGeRU">
+          <img class="brand-logo" src="../resources/logo.png" alt="Logo de SiGeRU">
+        </div>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+          aria-controls="mainNav" aria-expanded="false" aria-label="Abrir navegación">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+          <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+            <li class="nav-item"><a class="nav-link" href="#jornada">Mi jornada</a></li>
+            <li class="nav-item"><a class="nav-link" href="#vehiculo">Mi camión</a></li>
+            <li class="nav-item mt-2 mt-lg-0">
+              <button class="theme-toggle" data-theme-toggle type="button"></button>
+            </li>
+          <li class="nav-item mt-2 mt-lg-0">
+        <a class="nav-link logout-link" data-logout href="../landing-page/login.html">
+         <i class="bi bi-box-arrow-right"></i>
+         <span>Cerrar sesión</span>
+        </a>
+       </li>
+      </ul>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="jornada">
+      <div class="container hero-grid">
+        <div>
+          <span class="tag">Espacio del chofer</span>
+          <h1>Tu recorrido y <span>vehículo asignado</span></h1>
+          <p>
+            Consultá el camión, la ruta y el estado operativo asignados para tu jornada.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#vehiculo">Ver mi camión</a>
+            <a class="btn btn-outline" href="../landing-page/index.html#contacto">Contactar soporte</a>
+          </div>
+        </div>
+
+        <div class="dashboard-preview">
+          <div class="preview-top">
+            <strong>Resumen de jornada</strong>
+            <div class="dots"><span></span><span></span><span></span></div>
+          </div>
+          <div class="feature-board">
+            <div class="feature-row">
+              <div class="feature-icon" aria-hidden="true"><i class="bi bi-truck"></i></div>
+              <div>
+                <strong id="choferCamionResumen">Camión asignado</strong>
+                <p id="choferCamionTexto">Consultá los datos del vehículo de la jornada.</p>
+              </div>
+              <span class="feature-state" id="choferEstadoResumen">Activo</span>
+            </div>
+
+            <div class="feature-row">
+              <div class="feature-icon" aria-hidden="true"><i class="bi bi-signpost-split"></i></div>
+              <div>
+                <strong id="choferRutaResumen">Ruta asignada</strong>
+                <p>Recorrido previsto para el turno actual.</p>
+              </div>
+              <span class="feature-state">Ruta</span>
+            </div>
+
+            <div class="feature-row">
+              <div class="feature-icon" aria-hidden="true"><i class="bi bi-clock"></i></div>
+              <div>
+                <strong id="choferTurnoResumen">Turno operativo</strong>
+                <p>Horario correspondiente a la jornada.</p>
+              </div>
+              <span class="feature-state">Turno</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="vehiculo">
+      <div class="container">
+        <div class="section-title center">
+          <h2>Información operativa</h2>
+          <p>Datos principales que necesitás antes y durante el recorrido.</p>
+        </div>
+
+        <div class="cards three">
+          <article class="card">
+            <div class="card-icon" aria-hidden="true"><i class="bi bi-truck-front"></i></div>
+            <h3>Vehículo</h3>
+            <p id="choferVehiculo">El supervisor asignará un camión a tu jornada.</p>
+          </article>
+
+          <article class="card">
+            <div class="card-icon" aria-hidden="true"><i class="bi bi-map"></i></div>
+            <h3>Ruta</h3>
+            <p id="choferRuta">La ruta asignada aparecerá cuando Gestión la confirme.</p>
+          </article>
+
+          <article class="card">
+            <div class="card-icon" aria-hidden="true"><i class="bi bi-clipboard-check"></i></div>
+            <h3>Estado</h3>
+            <p id="choferEstado">Verificá el estado del vehículo antes de comenzar.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="section-title center">
+          <h2>Tareas del chofer</h2>
+          <p>Acciones básicas vinculadas a la operación del vehículo.</p>
+        </div>
+
+        <div class="cards three">
+          <article class="card">
+            <div class="card-icon">1</div>
+            <h3>Inicio de turno</h3>
+            <p>Confirmar vehículo, ruta asignada y condiciones básicas antes de salir.</p>
+          </article>
+          <article class="card">
+            <div class="card-icon">2</div>
+            <h3>Durante la ruta</h3>
+            <p>Seguir el recorrido asignado y comunicar incidencias relacionadas con el camión.</p>
+          </article>
+          <article class="card">
+            <div class="card-icon">3</div>
+            <h3>Fin de jornada</h3>
+            <p>Registrar el cierre del turno y dejar constancia de observaciones del vehículo.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-grid">
+      <p>SiGeRU · Chofer</p>
+      <div class="footer-links">
+        <a href="../landing-page/index.html#contacto">Contacto</a>
+        <a data-logout href="chofer.html">Salir</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
