@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>
+   Espacio Vecino | SiGeRU
+  </title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+  <link href="assets/style.css" rel="stylesheet"/>
+ </head>
+ <body data-protected-page="vecino">
+  <header class="site-header">
+   <div class="container">
+    <nav class="navbar navbar-expand-lg py-2 py-lg-3">
+     <div aria-label="Ir al inicio de SiGeRU" class="navbar-brand logo-link" >
+      <img alt="Logo de SiGeRU" class="brand-logo" src="../resources/logo.png"/>
+     </div>
+     <button aria-controls="mainNav" aria-expanded="false" aria-label="Abrir navegación" class="navbar-toggler" data-bs-target="#mainNav" data-bs-toggle="collapse" type="button">
+      <span class="navbar-toggler-icon">
+      </span>
+     </button>
+     <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+       <li class="nav-item">
+        <a class="nav-link" href="vecino.html">
+         Inicio
+        </a>
+       </li>
+       <li class="nav-item">
+        <a class="nav-link" href="reporte-vecino.html">
+         Nuevo reporte
+        </a>
+       </li>
+       <li class="nav-item">
+        <a class="nav-link profile-nav-link" href="perfil.html" aria-label="Editar mi usuario" title="Mi usuario">
+         <i class="bi bi-person-circle"></i><span class="visually-hidden">Mi usuario</span>
+        </a>
+       </li>
+       <li class="nav-item mt-2 mt-lg-0">
+        <button class="theme-toggle" data-theme-toggle="" type="button">
+        </button>
+       </li>
+      <li class="nav-item mt-2 mt-lg-0">
+        <a class="nav-link logout-link" data-logout href="../landing-page/login.html">
+         <i class="bi bi-box-arrow-right"></i>
+         <span>Cerrar sesión</span>
+        </a>
+       </li>
+      </ul>
+     </div>
+    </nav>
+   </div>
+  </header>
+  <main>
+   <section class="hero">
+    <div class="container hero-grid">
+     <div>
+      <span class="tag">
+       Espacio del vecino
+      </span>
+      <h1>
+       Reportes de tu
+       <span>
+        zona
+       </span>
+      </h1>
+      <p>
+       Informá problemas urbanos y consultá el avance de los avisos
+            que ya enviaste.
+      </p>
+      <div class="hero-actions">
+       <a class="btn btn-primary" href="reporte-vecino.html">
+        Nuevo reporte
+       </a>
+       <a class="btn btn-outline" href="#seguimiento">
+        Ver seguimiento
+       </a>
+      </div>
+     </div>
+     <div class="dashboard-preview">
+      <div class="preview-top">
+       <strong>
+        Resumen de actividad
+       </strong>
+       <div class="dots">
+        <span>
+        </span>
+        <span>
+        </span>
+        <span>
+        </span>
+       </div>
+      </div>
+      <div class="feature-board">
+       <div class="feature-row">
+        <div aria-hidden="true" class="feature-icon">
+         <i aria-hidden="true" class="bi bi-circle-fill">
+         </i>
+        </div>
+        <div>
+         <strong>
+          1 aviso pendiente
+         </strong>
+         <p>
+          Contenedor desbordado informado recientemente.
+         </p>
+        </div>
+        <span class="feature-state">
+         Pendiente
+        </span>
+       </div>
+       <div class="feature-row">
+        <div aria-hidden="true" class="feature-icon">
+         <i aria-hidden="true" class="bi bi-circle-fill">
+         </i>
+        </div>
+        <div>
+         <strong>
+          1 aviso en revisión
+         </strong>
+         <p>
+          Contenedor dañado derivado para evaluación.
+         </p>
+        </div>
+        <span class="feature-state">
+         Revisión
+        </span>
+       </div>
+       <div class="feature-row">
+        <div aria-hidden="true" class="feature-icon">
+         <i aria-hidden="true" class="bi bi-circle-fill">
+         </i>
+        </div>
+        <div>
+         <strong>
+          2 avisos atendidos
+         </strong>
+         <p>
+          Situaciones resueltas durante el último período.
+         </p>
+        </div>
+        <span class="feature-state">
+         Atendido
+        </span>
+       </div>
+      </div>
+     </div>
+    </div>
+   </section>
+   <section id="seguimiento">
+    <div class="container">
+     <div class="section-title center">
+      <h2>
+       Seguimiento de avisos
+      </h2>
+      <p>
+       Cada reporte presenta un estado sencillo para conocer su avance.
+      </p>
+     </div>
+     <div class="cards three">
+      <article class="card">
+       <div aria-hidden="true" class="card-icon">
+        <i aria-hidden="true" class="bi bi-circle-fill">
+        </i>
+       </div>
+       <h3>
+        Pendiente
+       </h3>
+       <p>
+        El reporte fue recibido y espera revisión.
+       </p>
+      </article>
+      <article class="card">
+       <div aria-hidden="true" class="card-icon">
+        <i aria-hidden="true" class="bi bi-circle-fill">
+        </i>
+       </div>
+       <h3>
+        En revisión
+       </h3>
+       <p>
+        La situación está siendo evaluada o asignada.
+       </p>
+      </article>
+      <article class="card">
+       <div aria-hidden="true" class="card-icon">
+        <i aria-hidden="true" class="bi bi-circle-fill">
+        </i>
+       </div>
+       <h3>
+        Atendido
+       </h3>
+       <p>
+        La tarea vinculada al aviso fue completada.
+       </p>
+      </article>
+     </div>
+    </div>
+   </section>
+  </main>
+  <footer>
+   <div class="container footer-grid">
+    <p>
+     SiGeRU · Vecino registrado
+    </p>
+    <div class="footer-links">
+     <a href="reporte-vecino.html">
+      Nuevo reporte
+     </a>
+     <a href="../landing-page/index.html#contacto">
+      Contacto
+     </a>
+     <a data-logout="" href="vecino.html">
+      Salir
+     </a>
+    </div>
+   </div>
+  </footer>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+  </script>
+  <script src="assets/app.js">
+  </script>
+ </body>
+</html>
+
