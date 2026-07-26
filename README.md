@@ -1,12 +1,14 @@
 # SiGeRU - Sistema de Gestión de Residuos Urbanos
 
-SiGeRU es un proyecto académico orientado a la gestión y seguimiento de residuos urbanos.
-
 El sistema integra herramientas para vecinos, personal operativo y supervisores, permitiendo administrar contenedores, reclamos, incidencias, camiones, cuadrillas, instalaciones y tareas relacionadas con la recolección.
+Las funciones y la estructura visual están establecidas en la maqueta digital del sistema, que organiza de manera adaptable,
+coherente y práctica lo que busca solucionar el sistema en base a las metas del proyecto.
+Se toman de referencia mapas logísticos e información formal  para maquetar el prototipo, planificando todos los componentes que requiere
+el sistema real, además de implementar aspectos de experiencia de usuario propios que permiten que sea más dinámico.
 
 ## Estado del proyecto
 
-Actualmente SiGeRU funciona como un prototipo web desarrollado con:
+Actualmente funciona como un prototipo web desarrollado con:
 
 - HTML5
 - CSS3
@@ -85,7 +87,7 @@ Página pública del sistema.
 
 Incluye:
 
-- información general de SiGeRU;
+- información general;
 - inicio de sesión;
 - solicitud de acceso;
 - recuperación de contraseña;
@@ -300,11 +302,9 @@ Para la versión actual no es obligatorio iniciar MySQL.
 
 ## Bootstrap
 
-El proyecto utiliza Bootstrap 5.3 mediante CDN.
+1. Bootstrap Icons.
 
-También utiliza Bootstrap Icons.
-
-El CSS propio de SiGeRU se carga después de Bootstrap para mantener la identidad visual del sistema.
+2. El CSS propio se carga después de Bootstrap para mantener la identidad visual del sistema.
 
 ## Persistencia local
 
@@ -320,15 +320,12 @@ Esto permite simular cambios y sesiones mientras no exista una base de datos def
 - Integración con MySQL.
 - Persistencia real de usuarios.
 - Persistencia de contenedores y circuitos.
-- Autenticación mediante backend.
 - CAPTCHA real.
 - Integración definitiva entre APIs.
 - Reportes y estadísticas.
-- Mejora del sistema de mapas y geolocalización.
+- Adaptación del sistema de mapas y geolocalización.
 
-## Proyecto académico
-
-SiGeRU fue desarrollado como proyecto académico de UTU.
+## Proyecto académico 2026
 
 Equipo:
 
