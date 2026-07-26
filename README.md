@@ -19,7 +19,7 @@ Actualmente funciona como un prototipo web desarrollado con:
 
 El proyecto utiliza datos locales y estructuras PHP para simular el funcionamiento del sistema.
 
-Todavía no utiliza una base de datos MySQL pero la estructura está preparada para realizar esa integración posteriormente.
+Todavía no utiliza una base de datos MySQL pero la estructura está preparada para realizar esa integración.
 
 ## Estructura del proyecto
 
@@ -241,10 +241,6 @@ Responsable de la información operacional:
 - reclamos;
 - incidencias;
 - personal.
-
-Actualmente las APIs funcionan como prototipo mediante estructuras PHP y datos locales.
-
-La persistencia definitiva se realizará posteriormente mediante MySQL.
 
 ## Cuentas de demostración
 
