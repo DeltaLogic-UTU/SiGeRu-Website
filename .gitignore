@@ -1,0 +1,50 @@
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores / IDE
+.vscode/
+.idea/
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Dependencias
+node_modules/
+vendor/
+
+# Logs
+*.log
+logs/
+
+# Temporales y caché
+tmp/
+temp/
+.cache/
+*.tmp
+*.temp
+
+# Backups
+*.bak
+*.backup
+*.old
+*~
+
+# Archivos comprimidos
+*.zip
+*.rar
+*.7z
+
+# Build y cobertura
+build/
+dist/
+coverage/
+
+# PHP
+.phpunit.result.cache
+
+# Configuración local
+*.local
