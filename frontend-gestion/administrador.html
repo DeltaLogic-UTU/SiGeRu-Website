@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>
+   Gestión | SiGeRU
+  </title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+  <link href="assets/style.css" rel="stylesheet"/>
+ </head>
+ <body>
+  <header class="site-header">
+   <nav class="navbar navbar-expand-xl">
+    <div class="container-fluid px-3">
+     <a aria-label="Inicio de Gestión SiGeRU" class="navbar-brand logo-link" href="administrador.html">
+      <img alt="Logo de SiGeRU" class="brand-logo" src="../resources/logo.png"/>
+     </a>
+     <button aria-controls="gestionNav" aria-expanded="false" aria-label="Abrir navegación" class="navbar-toggler" data-bs-target="#gestionNav" data-bs-toggle="collapse" type="button">
+      <span class="navbar-toggler-icon">
+      </span>
+     </button>
+     <div class="collapse navbar-collapse" id="gestionNav">
+      <ul class="navbar-nav ms-auto align-items-xl-center">
+       <li class="nav-item">
+        <button class="nav-link active" data-map-focus="" type="button">
+         <i class="bi bi-map">
+         </i>
+         Mapa
+        </button>
+       </li>
+       <li class="nav-item"><a class="nav-link" href="incidencias.html"><i class="bi bi-bell"></i> Incidencias</a></li>
+       <li class="nav-item"><a class="nav-link" href="reclamos.html"><i class="bi bi-chat-left-text"></i> Reclamos</a></li>
+       <li class="nav-item">
+        <button class="nav-link" type="button">
+         <i class="bi bi-graph-up-arrow">
+         </i>
+         Estadísticas
+        </button>
+       </li>
+       <li class="nav-item">
+        <a class="nav-link" href="camiones.html">
+         <i class="bi bi-truck">
+         </i>
+         Camiones
+        </a>
+       </li>
+       <li class="nav-item"><a class="nav-link" href="cuadrillas.html"><i class="bi bi-people-fill"></i> Cuadrillas</a></li>
+       <li class="nav-item">
+        <button class="nav-link" type="button">
+         <i class="bi bi-signpost-split">
+         </i>
+         Rutas
+        </button>
+       </li>
+       <li class="nav-item"><a class="nav-link" href="personal.html"><i class="bi bi-person"></i> Personal</a></li>
+       <li class="nav-item">
+        <a class="nav-link" href="contenedores.html">
+         <i class="bi bi-trash3">
+         </i>
+         Contenedores
+        </a>
+       </li>
+       <li class="nav-item"><a class="nav-link" href="instalaciones.html"><i class="bi bi-buildings"></i> Instalaciones</a></li>
+       <li class="nav-item"><button class="nav-link" data-open-requests type="button"><i class="bi bi-person-check"></i> Solicitudes</button></li>
+       <li class="nav-item ms-xl-2">
+        <a class="nav-link profile-nav-link" href="perfil.html" aria-label="Editar mi usuario" title="Mi usuario">
+         <i class="bi bi-person-circle"></i><span class="visually-hidden">Mi usuario</span>
+        </a>
+       </li>
+       <li class="nav-item ms-xl-2 mt-2 mt-xl-0">
+        <button aria-label="Cambiar tema" class="theme-toggle" data-theme-toggle="" type="button">
+        </button>
+       </li>
+       <li class="nav-item mt-2 mt-xl-0 logout-item">
+        <a class="nav-link logout-link" data-logout href="../landing-page/login.html"><i class="bi bi-box-arrow-right"></i><span>Cerrar sesión</span></a>
+       </li>
+      </ul>
+     </div>
+    </div>
+   </nav>
+  </header>
+  <main>
+   <section aria-label="Resumen del turno" class="status-bar">
+    <div class="container-fluid px-3">
+     <div class="status-grid">
+      <label>
+       Día
+       <input class="form-control form-control-sm" type="date" value="2026-07-24"/>
+      </label>
+      <label>
+       Hora
+       <input class="form-control form-control-sm" type="time" value="19:08"/>
+      </label>
+      <label>
+       Turno
+       <select class="form-select form-select-sm">
+        <option>
+         Nocturno
+        </option>
+        <option>
+         Matutino
+        </option>
+        <option>
+         Vespertino
+        </option>
+       </select>
+      </label>
+      <div class="status-item">
+       <span>
+        Contenedores levantados
+       </span>
+       <strong>
+        1234
+       </strong>
+      </div>
+      <div class="status-item">
+       <span>
+        Reclamos nuevos
+       </span>
+       <strong>
+        20
+       </strong>
+      </div>
+      <div class="status-item">
+       <span>
+        Reclamos resueltos
+       </span>
+       <strong>
+        32
+       </strong>
+      </div>
+     </div>
+    </div>
+   </section>
+   <section class="operation-layout container-fluid px-3 pb-3" id="mapa">
+    <aside class="vehicle-panel">
+     <div aria-label="Cambiar panel operativo" class="panel-switcher">
+      <button aria-label="Ver camiones" class="panel-switch-btn active" data-panel-view="camiones" title="Camiones" type="button">
+       <i class="bi bi-truck">
+       </i>
+      </button>
+      <button aria-label="Ver cuadrillas" class="panel-switch-btn" data-panel-view="cuadrillas" title="Cuadrillas" type="button">
+       <i class="bi bi-people-fill">
+       </i>
+      </button>
+     </div>
+     <div class="panel-title" id="sidePanelTitle">
+      Camiones en turno
+     </div>
+     <div id="vehicleList">
+      <button class="vehicle-item active" data-capacity="8.000 kg" data-driver="Albert Einstein" data-km="65,00 km" data-location="CH_102" data-circuit="CH_102" data-status="Recolectando" data-vehicle="SBK-3265" data-weight="3.502,56 kg" type="button">
+       <strong>
+        SBK-3265
+       </strong>
+       <span>
+        Chofer: Albert Einstein
+       </span>
+       <small>
+        Recolectando · CH_102
+       </small>
+      </button>
+      <button class="vehicle-item" data-capacity="7.000 kg" data-driver="Leonardo da Vinci" data-km="76,40 km" data-location="C_102" data-circuit="C_102" data-status="En circuito" data-vehicle="SAE-5268" data-weight="2.100,10 kg" type="button">
+       <strong>
+        SAE-5268
+       </strong>
+       <span>
+        Chofer: Leonardo da Vinci
+       </span>
+       <small>
+        En circuito · C_102
+       </small>
+      </button>
+      <button class="vehicle-item" data-capacity="8.000 kg" data-driver="Frida Kahlo" data-km="0 km" data-location="CH_114" data-circuit="" data-status="En base" data-vehicle="SCE-1235" data-weight="0 kg" type="button">
+       <strong>
+        SCE-1235
+       </strong>
+       <span>
+        Chofer: Frida Kahlo
+       </span>
+       <small>
+        En base · CH_114
+       </small>
+      </button>
+      <button class="vehicle-item" data-capacity="8.000 kg" data-driver="Julio César" data-km="128,10 km" data-location="CH_102" data-circuit="CH_102" data-status="Dirigiéndose a vertedero" data-vehicle="SDT-5632" data-weight="7.250 kg" type="button">
+       <strong>
+        SDT-5632
+       </strong>
+       <span>
+        Chofer: Julio César
+       </span>
+       <small>
+        Dirigiéndose a vertedero
+       </small>
+      </button>
+     </div>
+     <div class="d-none" id="crewList">
+      <button class="vehicle-item crew-item" data-chief="Diego Forlán" data-circuits="B_01|Media|Completado|19:10;B_02|Media|Pendiente|--;B_03|Alta|Pendiente|--;B_04|Baja|Pendiente|--" data-crew="B-02" data-end="00:00:00" data-location="B_01" data-members="Edinson Cavani;Federico Valverde;Valeria Ripoll;Victoria Rodríguez" data-start="18:00:00" data-status="Limpiando B_01" data-turn="Nocturno" type="button">
+       <strong>
+        B-02
+       </strong>
+       <span>
+        Jefe: Diego Forlán
+       </span>
+       <small>
+        Limpiando B_01
+       </small>
+      </button>
+      <button class="vehicle-item crew-item" data-chief="Luis Suárez" data-circuits="B_03|Media|Completado|18:55;B_04|Media|Completado|19:20;B_05|Baja|Pendiente|--" data-crew="B-03" data-end="00:00:00" data-location="B_03" data-members="Rodrigo Bentancur;José María Giménez;Sergio Rochet;Nicolás de la Cruz" data-start="17:45:00" data-status="Volviendo a intendencia" data-turn="Nocturno" type="button">
+       <strong>
+        B-03
+       </strong>
+       <span>
+        Jefe: Luis Suárez
+       </span>
+       <small>
+        Volviendo a intendencia
+       </small>
+      </button>
+      <button class="vehicle-item crew-item" data-chief="Juana de Ibarbourou" data-circuits="CH_114|Media|Completado|18:40;CH_115|Media|Completado|19:05;CH_116|Baja|Pendiente|--" data-crew="CH_03" data-end="00:00:00" data-location="CH_114" data-members="Delmira Agustini;Idea Vilariño;Mario Benedetti;Amanda Berenguer" data-start="18:00:00" data-status="En base" data-turn="Nocturno" type="button">
+       <strong>
+        CH_03
+       </strong>
+       <span>
+        Jefe: Juana de Ibarbourou
+       </span>
+       <small>
+        En base · CH_114
+       </small>
+      </button>
+      <button class="vehicle-item crew-item" data-chief="China Zorrilla" data-circuits="CH_108|Media|Completado|18:50;CH_109|Media|En curso|--;CH_110|Alta|Pendiente|--" data-crew="CH_01" data-end="00:00:00" data-location="CH_109" data-members="Estela Medina;Antonio Larreta;Dahd Sfeir;Walter Reyno" data-start="18:10:00" data-status="Limpiando CH_109" data-turn="Nocturno" type="button">
+       <strong>
+        CH_01
+       </strong>
+       <span>
+        Jefe: China Zorrilla
+       </span>
+       <small>
+        Limpiando CH_109
+       </small>
+      </button>
+      <button class="vehicle-item crew-item active" data-chief="Natalia Oreiro" data-circuits="CH_105|Media|Completado|19:45;CH_104|Alta|No completado|--;CH_103|Baja|Pendiente|--;CH_102|Media|Pendiente|--;CH_101|Alta|Pendiente|--" data-crew="CH_02" data-end="00:00:00" data-location="CH_102" data-members="Edinson Cavani;Federico Valverde;Valeria Ripoll;Victoria Rodríguez" data-start="18:00:00" data-status="Esperando circuito" data-turn="Nocturno" type="button">
+       <strong>
+        CH_02
+       </strong>
+       <span>
+        Jefe: Natalia Oreiro
+       </span>
+       <small>
+        Esperando circuito
+       </small>
+      </button>
+     </div>
+    </aside>
+    <div class="map-panel">
+     <img alt="Mapa operativo de referencia de SiGeRU" class="gestion-map-img" src="../resources/mapa-gestion.png"/>
+     <div aria-label="Leyenda del mapa" class="map-legend">
+      <span>
+       <i class="legend-dot ok">
+       </i>
+       2 días
+      </span>
+      <span>
+       <i class="legend-dot warning">
+       </i>
+       4 días
+      </span>
+      <span>
+       <i class="legend-dot danger">
+       </i>
+       6 o más días
+      </span>
+      <span>
+       <i class="legend-dot incident">
+       </i>
+       Incidencias
+      </span>
+      <span>
+       <i class="legend-dot claim">
+       </i>
+       Reclamos
+      </span>
+     </div>
+    </div>
+    <section aria-label="Detalle del camión seleccionado" class="vehicle-detail" id="vehicleDetail">
+     <div class="detail-grid">
+      <div class="detail-group">
+       <label>
+        Camión
+        <input class="form-control form-control-sm" id="detailVehicle" readonly="" value="SBK-3265"/>
+       </label>
+       <label>
+        Chofer asignado
+        <input class="form-control form-control-sm" id="detailDriver" readonly="" value="Albert Einstein"/>
+       </label>
+       <label>
+        Se encuentra
+        <input class="form-control form-control-sm" id="detailStatus" readonly="" value="Recolectando"/>
+       </label>
+       <label>
+        Ubicación
+        <input class="form-control form-control-sm" id="detailLocation" readonly="" value="CH_102"/>
+       </label>
+       <label>
+        Turno
+        <input class="form-control form-control-sm" readonly="" value="Nocturno"/>
+       </label>
+      </div>
+      <div class="detail-group">
+       <label>
+        Circuito asignado
+        <input class="form-control form-control-sm" id="detailCircuit" readonly="" value="CH_102"/>
+       </label>
+       <label>
+        Cantidad de contenedores
+        <input class="form-control form-control-sm" readonly="" value="62"/>
+       </label>
+       <label>
+        Contenedores recolectados
+        <input class="form-control form-control-sm" readonly="" value="25"/>
+       </label>
+       <label>
+        Contenedores faltantes
+        <input class="form-control form-control-sm" readonly="" value="37"/>
+       </label>
+       <label>
+        Hora inicio turno
+        <input class="form-control form-control-sm" readonly="" value="18:00:00"/>
+       </label>
+      </div>
+      <div class="detail-group">
+       <label>
+        Peso recolectado
+        <input class="form-control form-control-sm" id="detailWeight" readonly="" value="3.502,56 kg"/>
+       </label>
+       <label>
+        Capacidad del camión
+        <input class="form-control form-control-sm" id="detailCapacity" readonly="" value="8.000 kg"/>
+       </label>
+       <label>
+        Total kilómetros recorridos
+        <input class="form-control form-control-sm" id="detailKm" readonly="" value="65,00 km"/>
+       </label>
+       <label>
+        Hora final turno
+        <input class="form-control form-control-sm" readonly="" value="00:00:00"/>
+       </label>
+      </div>
+      <div class="detail-group companions">
+       <span class="detail-label">
+        Lista de acompañantes
+       </span>
+       <ul>
+        <li>
+         Max Planck
+        </li>
+        <li>
+         Michael Besso
+        </li>
+        <li>
+         Leo Szilard
+        </li>
+       </ul>
+      </div>
+      <div class="detail-actions">
+       <button class="btn btn-primary btn-sm" data-truck-action="crear_ruta" type="button">
+        Crear ruta nueva
+       </button>
+       <button class="btn btn-outline btn-sm" data-truck-action="editar_ruta" type="button">
+        Editar ruta
+       </button>
+       <button class="btn btn-outline btn-sm" data-truck-action="eliminar_ruta" type="button">
+        Eliminar ruta
+       </button>
+      </div>
+     </div>
+    </section>
+    <section aria-label="Detalle de la cuadrilla seleccionada" class="vehicle-detail d-none" id="crewDetail">
+     <div class="crew-detail-grid">
+      <div class="detail-group">
+       <label>
+        Cuadrilla
+        <input class="form-control form-control-sm" id="crewCode" readonly="" value="CH_02"/>
+       </label>
+       <label>
+        Jefe asignado
+        <input class="form-control form-control-sm" id="crewChief" readonly="" value="Natalia Oreiro"/>
+       </label>
+       <label>
+        Ubicación
+        <input class="form-control form-control-sm" id="crewLocation" readonly="" value="CH_102"/>
+       </label>
+       <label>
+        Estado
+        <input class="form-control form-control-sm" id="crewStatus" readonly="" value="Esperando circuito"/>
+       </label>
+       <label>
+        Turno
+        <input class="form-control form-control-sm" id="crewTurn" readonly="" value="Nocturno"/>
+       </label>
+       <div class="time-row">
+        <label>
+         Hora inicio
+         <input class="form-control form-control-sm" id="crewStart" readonly="" value="18:00:00"/>
+        </label>
+        <label>
+         Hora final
+         <input class="form-control form-control-sm" id="crewEnd" readonly="" value="00:00:00"/>
+        </label>
+       </div>
+      </div>
+      <div class="detail-group">
+       <span class="detail-label">
+        Circuitos asignados
+       </span>
+       <div class="info-list" id="crewCircuits">
+       </div>
+      </div>
+      <div class="detail-group">
+       <span class="detail-label">
+        Integrantes de cuadrilla
+       </span>
+       <div class="info-list" id="crewMembers">
+       </div>
+      </div>
+      <div class="detail-actions crew-actions">
+       <button class="btn btn-primary btn-sm" data-crew-action="asignar_circuito" type="button">
+        Asignar circuito
+       </button>
+       <button class="btn btn-outline btn-sm" data-crew-action="editar_circuito" type="button">
+        Editar circuito
+       </button>
+       <button class="btn btn-outline btn-sm" data-crew-action="asignar_reclamo" type="button">
+        Asignar reclamo
+       </button>
+      </div>
+     </div>
+    </section>
+   </section>
+  </main>
+
+  <div aria-hidden="true" aria-labelledby="operacionModalTitulo" class="modal fade" id="operacionModal" tabindex="-1">
+   <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content admin-modal">
+     <div class="modal-header">
+      <div>
+       <span class="modal-kicker" id="operacionModalKicker">Gestión</span>
+       <h2 class="modal-title fs-5" id="operacionModalTitulo">Operación</h2>
+      </div>
+      <button aria-label="Cerrar" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+     </div>
+     <form id="operacionForm">
+      <div class="modal-body" id="operacionModalBody"></div>
+      <div class="modal-footer">
+       <button class="btn btn-outline" data-bs-dismiss="modal" type="button">Cancelar</button>
+       <button class="btn btn-primary" id="operacionSubmit" type="submit">Guardar</button>
+      </div>
+     </form>
+    </div>
+   </div>
+  </div>
+
+
+  <div class="modal fade" id="solicitudesModal" tabindex="-1" aria-labelledby="solicitudesModalTitulo" aria-hidden="true">
+   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content admin-modal">
+     <div class="modal-header">
+      <div>
+       <span class="modal-kicker">Gestión de accesos</span>
+       <h2 class="modal-title fs-5" id="solicitudesModalTitulo">Solicitudes de acceso</h2>
+      </div>
+      <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="Cerrar"></button>
+     </div>
+     <div class="modal-body">
+          <div class="request-functions">
+            <div><i class="bi bi-check-circle"></i><span><strong>Aprobar</strong> habilita el acceso y registra al trabajador cuando corresponde.</span></div>
+            <div><i class="bi bi-x-circle"></i><span><strong>Rechazar</strong> cierra la solicitud sin crear una cuenta.</span></div>
+          </div>
+                <div class="table-responsive">
+       <table class="table truck-table align-middle mb-0">
+        <thead>
+         <tr>
+          <th>Persona</th><th>Perfil</th><th>Documento</th><th>Correo</th><th>Fecha</th><th>Acciones</th>
+         </tr>
+        </thead>
+        <tbody id="solicitudesTableBody"></tbody>
+       </table>
+      </div>
+      <p class="text-muted-custom mt-3 mb-0" id="solicitudesEstado"></p>
+     </div>
+    </div>
+   </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+  </script>
+  <script src="assets/base.js"></script>
+  <script src="assets/circuitos-estado.js"></script>
+<script src="assets/app.js"></script>
+   <script src="assets/solicitudes.js"></script>
+</body>
+</html>
