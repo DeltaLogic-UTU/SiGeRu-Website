@@ -1,385 +1,973 @@
+const API_USUARIOS = 'http://127.0.0.1:8000';
+
 const root = document.documentElement;
-const savedTheme = localStorage.getItem('sigeru-theme');
-const preferredTheme = window.matchMedia('(prefers-color-scheme: light)').matches
+
+const preferredTheme = window.matchMedia(
+  '(prefers-color-scheme: light)'
+).matches
   ? 'light'
   : 'dark';
 
-root.dataset.theme = savedTheme || preferredTheme;
+root.dataset.theme = preferredTheme;
+
 
 function updateThemeButtons() {
-  document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
-    const isLight = root.dataset.theme === 'light';
-    button.innerHTML = `<i class="bi ${isLight ? 'bi-moon' : 'bi-sun'}" aria-hidden="true"></i><span>${isLight ? 'Oscuro' : 'Claro'}</span>`;
-    button.setAttribute('aria-label', isLight ? 'Activar modo oscuro' : 'Activar modo claro');
-  });
+  document
+    .querySelectorAll('[data-theme-toggle]')
+    .forEach((button) => {
+      const isLight =
+        root.dataset.theme === 'light';
+
+      button.innerHTML = `
+        <i
+          class="bi ${isLight ? 'bi-moon' : 'bi-sun'}"
+          aria-hidden="true"
+        ></i>
+        <span>
+          ${isLight ? 'Oscuro' : 'Claro'}
+        </span>
+      `;
+
+      button.setAttribute(
+        'aria-label',
+        isLight
+          ? 'Activar modo oscuro'
+          : 'Activar modo claro'
+      );
+    });
 }
+
 
 updateThemeButtons();
 
-document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
-  button.addEventListener('click', () => {
-    root.dataset.theme = root.dataset.theme === 'light' ? 'dark' : 'light';
-    localStorage.setItem('sigeru-theme', root.dataset.theme);
-    updateThemeButtons();
+
+document
+  .querySelectorAll('[data-theme-toggle]')
+  .forEach((button) => {
+    button.addEventListener(
+      'click',
+      () => {
+        root.dataset.theme =
+          root.dataset.theme === 'light'
+            ? 'dark'
+            : 'light';
+
+        updateThemeButtons();
+      }
+    );
   });
-});
 
-function showMessage(element, text, error = false) {
-  if (!element) return;
 
-  const content = String(text || '').trim();
-  element.textContent = content;
-  element.hidden = content === '';
-  element.style.display = content ? 'block' : 'none';
-  element.classList.toggle('error', error);
-}
+function showMessage(
+  element,
+  text,
+  error = false
+) {
+  if (!element) {
+    return;
+  }
 
-function captchaCompleted(form) {
-  const local = form.querySelector('[name="captchaLocal"]');
+  const content =
+    String(text || '').trim();
 
-  if (local) return local.checked;
+  element.textContent =
+    content;
 
-  const google = form.querySelector('.g-recaptcha');
+  element.hidden =
+    content === '';
 
-  return (
-    !google ||
-    (typeof grecaptcha !== 'undefined' &&
-      grecaptcha.getResponse().length > 0)
+  element.style.display =
+    content
+      ? 'block'
+      : 'none';
+
+  element.classList.toggle(
+    'error',
+    error
   );
 }
 
-function redirectByRole(role) {
-  const rol = String(role).toLowerCase();
 
-  const pages = {
-    vecino: '../frontend-usuarios/vecino.html',
-    administrador: '../frontend-gestion/administrador.html',
-    cuadrilla: '../frontend-usuarios/cuadrilla.html',
-    operario: '../frontend-usuarios/operario.html',
-    chofer: '../frontend-usuarios/chofer.html'
+function captchaCompleted(form) {
+  const local =
+    form.querySelector(
+      '[name="captchaLocal"]'
+    );
+
+  if (local) {
+    return local.checked;
+  }
+
+  const google =
+    form.querySelector(
+      '.g-recaptcha'
+    );
+
+  return (
+    !google ||
+    (
+      typeof grecaptcha !==
+        'undefined' &&
+      grecaptcha
+        .getResponse()
+        .length > 0
+    )
+  );
+}
+
+
+async function getCsrfToken() {
+  const response =
+    await fetch(
+      `${API_USUARIOS}/csrf-token`,
+      {
+        method: 'GET',
+
+        credentials:
+          'include',
+
+        headers: {
+          Accept:
+            'application/json'
+        }
+      }
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      'No se pudo obtener el token de seguridad.'
+    );
+  }
+
+  const result =
+    await response.json();
+
+  if (!result.token) {
+    throw new Error(
+      'No se pudo obtener el token de seguridad.'
+    );
+  }
+
+  return result.token;
+}
+
+
+async function apiRequest(
+  path,
+  method = 'GET',
+  body = null
+) {
+  const headers = {
+    Accept:
+      'application/json'
   };
 
-  if (!pages[rol]) return false;
+  if (body !== null) {
+    headers['Content-Type'] =
+      'application/json';
+  }
 
-  sessionStorage.setItem('sigeruPerfil', rol);
-  sessionStorage.setItem('sigeruAutenticado', 'true');
-  window.location.href = pages[rol];
+  if (
+    method === 'POST' ||
+    method === 'PUT' ||
+    method === 'PATCH' ||
+    method === 'DELETE'
+  ) {
+    headers['X-CSRF-TOKEN'] =
+      await getCsrfToken();
+  }
+
+  const options = {
+    method,
+    credentials:
+      'include',
+    headers
+  };
+
+  if (body !== null) {
+    options.body =
+      JSON.stringify(body);
+  }
+
+  const response =
+    await fetch(
+      `${API_USUARIOS}${path}`,
+      options
+    );
+
+  let result;
+
+  try {
+    result =
+      await response.json();
+  } catch {
+    result = {
+      success: false,
+      message:
+        'La API devolvió una respuesta inválida.'
+    };
+  }
+
+  return {
+    response,
+    result
+  };
+}
+
+
+function getApiError(
+  result,
+  fallback
+) {
+  if (
+    result?.errors &&
+    typeof result.errors ===
+      'object'
+  ) {
+    const errors =
+      Object.values(
+        result.errors
+      )
+        .flat()
+        .filter(
+          value =>
+            typeof value ===
+            'string'
+        );
+
+    if (errors.length) {
+      return errors[0];
+    }
+  }
+
+  return (
+    result?.message ||
+    fallback
+  );
+}
+
+
+function redirectByRole(role) {
+  const rol =
+    String(role || '')
+      .trim()
+      .toLowerCase();
+
+  const pages = {
+    administrador:
+      '../frontend-gestion/administrador.html',
+
+    supervisor:
+      '../frontend-gestion/administrador.html',
+
+    vecino:
+      '../frontend-usuarios/vecino.html',
+
+    cuadrilla:
+      '../frontend-usuarios/cuadrilla.html',
+
+    operario:
+      '../frontend-usuarios/operario.html',
+
+    chofer:
+      '../frontend-usuarios/chofer.html'
+  };
+
+  if (!pages[rol]) {
+    return false;
+  }
+
+  window.location.href =
+    pages[rol];
 
   return true;
 }
 
-function localLogin(user, password) {
-  const email = String(user).trim().toLowerCase();
-
-  const profileKeys = [
-    'sigeru-perfil-administrador',
-    'sigeru-perfil-vecino'
-  ];
-
-  for (const key of profileKeys) {
-    try {
-      const profile = JSON.parse(localStorage.getItem(key) || 'null');
-      if (
-        profile &&
-        String(profile.email || '').toLowerCase() === email &&
-        profile.password === password
-      ) {
-        sessionStorage.setItem('sigeruNombre', `${profile.nombre || ''} ${profile.apellido || ''}`.trim());
-        sessionStorage.setItem('sigeruEmail', profile.email);
-        redirectByRole(profile.rol);
-        return true;
-      }
-    } catch (_) {
-      // Si un perfil local está dañado, se ignora y se continúa.
-    }
-  }
-
-  const users = {
-    'vecino@sigeru.uy': { password: 'Sigeru123', role: 'vecino', name: 'Vecino SiGeRU' },
-    'cuadrilla@sigeru.uy': { password: 'Sigeru123', role: 'cuadrilla', name: 'Cuadrilla SiGeRU' },
-    'operario@sigeru.uy': { password: 'Sigeru123', role: 'operario', name: 'Operario SiGeRU' },
-    'chofer@sigeru.uy': { password: 'Sigeru123', role: 'chofer', name: 'Chofer SiGeRU' },
-    'admin@sigeru.uy': { password: 'Sigeru123', role: 'administrador', name: 'Administrador SiGeRU' }
-  };
-
-  const account = users[email];
-
-  if (account && account.password === password) {
-    sessionStorage.setItem('sigeruNombre', account.name);
-    sessionStorage.setItem('sigeruEmail', email);
-    redirectByRole(account.role);
-    return true;
-  }
-
-  try {
-    const localUsers = JSON.parse(localStorage.getItem('sigeru-usuarios-local') || '[]');
-    const localAccount = localUsers.find((item) =>
-      String(item.email).toLowerCase() === email &&
-      item.estado === 'activo'
-    );
-
-    if (localAccount && localAccount.password === password) {
-      sessionStorage.setItem(
-        'sigeruNombre',
-        `${localAccount.nombre || ''} ${localAccount.apellido || ''}`.trim()
-      );
-      sessionStorage.setItem('sigeruEmail', localAccount.email);
-      redirectByRole(localAccount.rol);
-      return true;
-    }
-  } catch (_) {
-    return false;
-  }
-
-  return false;
-}
-
-const loginForm = document.getElementById('loginForm');
+const loginForm =
+  document.getElementById(
+    'loginForm'
+  );
 
 if (loginForm) {
-  loginForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
+  loginForm.addEventListener(
+    'submit',
+    async (event) => {
+      event.preventDefault();
 
-    const message = document.getElementById('loginMensaje');
+      const message =
+        document.getElementById(
+          'loginMensaje'
+        );
 
-    if (!captchaCompleted(loginForm)) {
-      showMessage(
-        message,
-        'Confirmá el reCAPTCHA antes de ingresar.',
-        true
-      );
-      return;
-    }
+      if (
+        !captchaCompleted(
+          loginForm
+        )
+      ) {
+        showMessage(
+          message,
+          'Confirmá el reCAPTCHA antes de ingresar.',
+          true
+        );
 
-    const data = Object.fromEntries(
-      new FormData(loginForm).entries()
-    );
-
-    data.accion = 'login';
-
-    try {
-      const response = await fetch(
-        '../api-usuarios/validations.php',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(data)
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        const localSuccess = localLogin(data.usuario, data.password);
-        if (!localSuccess) showMessage(message, result.message, true);
         return;
       }
 
-      sessionStorage.setItem('sigeruEmail', result.data?.email || String(data.usuario).trim().toLowerCase());
+      const data =
+        Object.fromEntries(
+          new FormData(
+            loginForm
+          ).entries()
+        );
 
-      if (result.data?.nombre) {
-        sessionStorage.setItem('sigeruNombre', result.data.nombre);
-      }
+      try {
+        const {
+          response,
+          result
+        } =
+          await apiRequest(
+            '/api/login',
+            'POST',
+            {
+              usuario:
+                data.usuario,
 
-      if (!redirectByRole(result.rol)) {
-        showMessage(message, 'Rol no válido.', true);
-      }
-    } catch (error) {
-      const success = localLogin(data.usuario, data.password);
+              password:
+                data.password
+            }
+          );
 
-      if (!success) {
+        if (
+          !response.ok ||
+          !result.success
+        ) {
+          showMessage(
+            message,
+            getApiError(
+              result,
+              'Usuario o contraseña incorrectos.'
+            ),
+            true
+          );
+
+          return;
+        }
+
+        if (
+          !redirectByRole(
+            result.rol
+          )
+        ) {
+          showMessage(
+            message,
+            'El usuario no tiene una interfaz asignada.',
+            true
+          );
+        }
+
+      } catch (error) {
+        console.error(
+          error
+        );
+
         showMessage(
           message,
-          'Usuario o contraseña incorrectos.',
+          'No se pudo conectar con la API de usuarios.',
           true
         );
       }
     }
-  });
+  );
 }
 
-const registroForm = document.getElementById('registroForm');
+const registroForm =
+  document.getElementById(
+    'registroForm'
+  );
 
 if (registroForm) {
-  registroForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
+  registroForm.addEventListener(
+    'submit',
+    async (event) => {
+      event.preventDefault();
 
-    const message = document.getElementById('registroMensaje');
+      const message =
+        document.getElementById(
+          'registroMensaje'
+        );
 
-    const data = Object.fromEntries(
-      new FormData(registroForm).entries()
-    );
+      const data =
+        Object.fromEntries(
+          new FormData(
+            registroForm
+          ).entries()
+        );
 
-    data.accion = 'registro';
+      try {
+        const {
+          response,
+          result
+        } =
+          await apiRequest(
+            '/api/registro',
+            'POST',
+            data
+          );
 
-    try {
-      const response = await fetch(
-        '../api-usuarios/validations.php',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(data)
+        if (
+          !response.ok ||
+          !result.success
+        ) {
+          showMessage(
+            message,
+            getApiError(
+              result,
+              'No se pudo registrar la solicitud.'
+            ),
+            true
+          );
+
+          return;
         }
-      );
 
-      const result = await response.json();
+        showMessage(
+          message,
+          result.message ||
+            'Solicitud registrada correctamente.'
+        );
 
-      if (!response.ok || !result.success) {
-        showMessage(message, result.message, true);
-        return;
+        registroForm.reset();
+
+        updateLicenseField();
+
+      } catch (error) {
+        console.error(
+          error
+        );
+
+        showMessage(
+          message,
+          'No se pudo conectar con la API de usuarios.',
+          true
+        );
       }
-
-      const solicitudes = JSON.parse(localStorage.getItem('sigeru-solicitudes-local') || '[]');
-      solicitudes.push({
-        id: result.data?.id_solicitud || Date.now(),
-        ...data,
-        estado: 'pendiente',
-        fecha_solicitud: result.data?.fecha_solicitud || new Date().toISOString()
-      });
-      localStorage.setItem('sigeru-solicitudes-local', JSON.stringify(solicitudes));
-      showMessage(message, result.message);
-    } catch (error) {
-      const solicitudes = JSON.parse(localStorage.getItem('sigeru-solicitudes-local') || '[]');
-      solicitudes.push({
-        id: Date.now(),
-        ...data,
-        estado: 'pendiente',
-        fecha_solicitud: new Date().toISOString()
-      });
-      localStorage.setItem('sigeru-solicitudes-local', JSON.stringify(solicitudes));
-      showMessage(message, 'Solicitud registrada correctamente.');
     }
-
-    registroForm.reset();
-    document.getElementById('licenciaField')?.classList.add('d-none');
-  });
+  );
 }
 
 const recuperacionForm =
-  document.getElementById('recuperacionForm');
+  document.getElementById(
+    'recuperacionForm'
+  );
 
 if (recuperacionForm) {
-  recuperacionForm.addEventListener('submit', (event) => {
-    event.preventDefault();
+  recuperacionForm.addEventListener(
+    'submit',
+    async (event) => {
+      event.preventDefault();
 
-    const message = document.getElementById(
-      'recuperacionMensaje'
-    );
+      const message =
+        document.getElementById(
+          'recuperacionMensaje'
+        );
 
-    if (!captchaCompleted(recuperacionForm)) {
+      if (
+        !captchaCompleted(
+          recuperacionForm
+        )
+      ) {
+        showMessage(
+          message,
+          'Confirmá la verificación de seguridad para continuar.',
+          true
+        );
+
+        return;
+      }
+
+      const data =
+        Object.fromEntries(
+          new FormData(
+            recuperacionForm
+          ).entries()
+        );
+
+      const email =
+        String(
+          data.email || ''
+        )
+          .trim()
+          .toLowerCase();
+
+      if (!email) {
+        showMessage(
+          message,
+          'Ingresá tu correo electrónico.',
+          true
+        );
+
+        return;
+      }
+
       showMessage(
         message,
-        'Confirmá el reCAPTCHA para continuar.',
-        true
+        'Procesando solicitud...'
       );
-      return;
-    }
 
+      try {
+        const {
+          response,
+          result
+        } =
+          await apiRequest(
+            '/api/recuperar-password',
+            'POST',
+            {
+              email
+            }
+          );
+
+        if (
+          !response.ok ||
+          !result.success
+        ) {
+          showMessage(
+            message,
+            getApiError(
+              result,
+              'No se pudo solicitar la recuperación de contraseña.'
+            ),
+            true
+          );
+
+          return;
+        }
+
+        showMessage(
+          message,
+          result.message ||
+            'Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.'
+        );
+
+        recuperacionForm.reset();
+
+      } catch (error) {
+        console.error(
+          error
+        );
+
+        showMessage(
+          message,
+          'No se pudo conectar con la API de usuarios.',
+          true
+        );
+      }
+    }
+  );
+}
+
+const restablecerForm =
+  document.getElementById(
+    'restablecerForm'
+  );
+
+if (restablecerForm) {
+  const message =
+    document.getElementById(
+      'restablecerMensaje'
+    );
+
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const token =
+    params.get('token');
+
+  const submitButton =
+    restablecerForm.querySelector(
+      'button[type="submit"]'
+    );
+
+  if (!token) {
     showMessage(
       message,
-      'Si el correo está registrado, recibirás instrucciones.'
+      'El enlace de recuperación no es válido.',
+      true
     );
 
-    recuperacionForm.reset();
-  });
+    if (submitButton) {
+      submitButton.disabled =
+        true;
+    }
+  }
+
+  restablecerForm.addEventListener(
+    'submit',
+    async (event) => {
+      event.preventDefault();
+
+      if (!token) {
+        return;
+      }
+
+      const data =
+        Object.fromEntries(
+          new FormData(
+            restablecerForm
+          ).entries()
+        );
+
+      const password =
+        String(
+          data.password || ''
+        );
+
+      const confirmation =
+        String(
+          data.password_confirmation ||
+          ''
+        );
+
+      if (
+        password.length < 8
+      ) {
+        showMessage(
+          message,
+          'La contraseña debe tener al menos 8 caracteres.',
+          true
+        );
+
+        return;
+      }
+
+      if (
+        password !==
+        confirmation
+      ) {
+        showMessage(
+          message,
+          'Las contraseñas no coinciden.',
+          true
+        );
+
+        return;
+      }
+
+      showMessage(
+        message,
+        'Actualizando contraseña...'
+      );
+
+      try {
+        const {
+          response,
+          result
+        } =
+          await apiRequest(
+            '/api/restablecer-password',
+            'POST',
+            {
+              token,
+
+              password,
+
+              password_confirmation:
+                confirmation
+            }
+          );
+
+        if (
+          !response.ok ||
+          !result.success
+        ) {
+          showMessage(
+            message,
+            getApiError(
+              result,
+              'No se pudo actualizar la contraseña.'
+            ),
+            true
+          );
+
+          return;
+        }
+
+        showMessage(
+          message,
+          result.message ||
+            'La contraseña fue actualizada correctamente.'
+        );
+
+        restablecerForm.reset();
+
+        if (submitButton) {
+          submitButton.disabled =
+            true;
+        }
+
+        setTimeout(
+          () => {
+            window.location.href =
+              'login.html';
+          },
+          1800
+        );
+
+      } catch (error) {
+        console.error(
+          error
+        );
+
+        showMessage(
+          message,
+          'No se pudo conectar con la API de usuarios.',
+          true
+        );
+      }
+    }
+  );
 }
 
-const reporteForm = document.getElementById('reporteForm');
+const reporteForm =
+  document.getElementById(
+    'reporteForm'
+  );
 
 if (reporteForm) {
-  reporteForm.addEventListener('submit', (event) => {
-    event.preventDefault();
+  reporteForm.addEventListener(
+    'submit',
+    (event) => {
+      event.preventDefault();
 
-    showMessage(
-      document.getElementById('reporteMensaje'),
-      'Reporte enviado y pendiente de revisión.'
-    );
+      showMessage(
+        document.getElementById(
+          'reporteMensaje'
+        ),
+        'Reporte enviado y pendiente de revisión.'
+      );
 
-    reporteForm.reset();
-  });
+      reporteForm.reset();
+    }
+  );
 }
 
-const contactoForm = document.getElementById('contactoForm');
+const contactoForm =
+  document.getElementById(
+    'contactoForm'
+  );
 
 if (contactoForm) {
-  contactoForm.addEventListener('submit', (event) => {
-    event.preventDefault();
+  contactoForm.addEventListener(
+    'submit',
+    (event) => {
+      event.preventDefault();
 
-    showMessage(
-      document.getElementById('contactoMensaje'),
-      'Consulta preparada correctamente.'
-    );
+      showMessage(
+        document.getElementById(
+          'contactoMensaje'
+        ),
+        'Consulta preparada correctamente.'
+      );
 
-    contactoForm.reset();
-  });
+      contactoForm.reset();
+    }
+  );
 }
 
-const protectedReport = document.querySelector(
-  '[data-protected-report]'
-);
+const protectedReport =
+  document.querySelector(
+    '[data-protected-report]'
+  );
 
 if (protectedReport) {
-  const params = new URLSearchParams(window.location.search);
+  const allowed =
+    document.getElementById(
+      'reportePermitido'
+    );
 
-  const profile =
-    sessionStorage.getItem('sigeruPerfil') ||
-    params.get('perfil');
+  const blocked =
+    document.getElementById(
+      'reporteBloqueado'
+    );
 
-  const allowed = document.getElementById('reportePermitido');
-  const blocked = document.getElementById('reporteBloqueado');
-  const isNeighbor = profile === 'vecino';
+  apiRequest(
+    '/api/session'
+  )
+    .then(
+      ({
+        response,
+        result
+      }) => {
+        const permitted =
+          response.ok &&
+          result.success &&
+          result.usuario?.rol ===
+            'vecino';
 
-  if (allowed && blocked) {
-    allowed.style.display = isNeighbor ? 'block' : 'none';
-    blocked.style.display = isNeighbor ? 'none' : 'block';
+        if (
+          allowed &&
+          blocked
+        ) {
+          allowed.style.display =
+            permitted
+              ? 'block'
+              : 'none';
+
+          blocked.style.display =
+            permitted
+              ? 'none'
+              : 'block';
+        }
+      }
+    )
+    .catch(() => {
+      if (
+        allowed &&
+        blocked
+      ) {
+        allowed.style.display =
+          'none';
+
+        blocked.style.display =
+          'block';
+      }
+    });
+}
+
+document
+  .querySelectorAll(
+    '[data-logout]'
+  )
+  .forEach((link) => {
+    link.addEventListener(
+      'click',
+      async (event) => {
+        event.preventDefault();
+
+        const destination =
+          link.getAttribute(
+            'href'
+          ) ||
+          '../landing-page/index.html';
+
+        try {
+          await apiRequest(
+            '/api/logout',
+            'POST'
+          );
+
+        } finally {
+          window.location.href =
+            destination;
+        }
+      }
+    );
+  });
+
+document
+  .querySelectorAll(
+    '[data-password-toggle]'
+  )
+  .forEach((button) => {
+    button.addEventListener(
+      'click',
+      () => {
+        const input =
+          document.getElementById(
+            button.dataset
+              .passwordToggle
+          );
+
+        const icon =
+          button.querySelector(
+            'i'
+          );
+
+        if (!input) {
+          return;
+        }
+
+        const showing =
+          input.type ===
+          'text';
+
+        input.type =
+          showing
+            ? 'password'
+            : 'text';
+
+        button.setAttribute(
+          'aria-label',
+          showing
+            ? 'Mostrar contraseña'
+            : 'Ocultar contraseña'
+        );
+
+        if (icon) {
+          icon.classList.toggle(
+            'bi-eye',
+            showing
+          );
+
+          icon.classList.toggle(
+            'bi-eye-slash',
+            !showing
+          );
+        }
+      }
+    );
+  });
+
+const perfilSolicitud =
+  document.getElementById(
+    'perfilSolicitud'
+  );
+
+const licenciaField =
+  document.getElementById(
+    'licenciaField'
+  );
+
+const licenciaInput =
+  document.getElementById(
+    'licenciaInput'
+  );
+
+
+function updateLicenseField() {
+  if (
+    !perfilSolicitud ||
+    !licenciaField ||
+    !licenciaInput
+  ) {
+    return;
+  }
+
+  const isDriver =
+    perfilSolicitud.value ===
+    'chofer';
+
+  licenciaField.classList.toggle(
+    'd-none',
+    !isDriver
+  );
+
+  licenciaInput.required =
+    isDriver;
+
+  if (!isDriver) {
+    licenciaInput.value =
+      '';
   }
 }
 
-document.querySelectorAll('[data-logout]').forEach((link) => {
-  link.addEventListener('click', () => {
-    sessionStorage.removeItem('sigeruPerfil');
-    sessionStorage.removeItem('sigeruAutenticado');
-    sessionStorage.removeItem('sigeruNombre');
-    sessionStorage.removeItem('sigeruEmail');
-  });
-});
 
-// Mostrar u ocultar contraseña sin modificar el envío del formulario.
-document.querySelectorAll('[data-password-toggle]').forEach((button) => {
-  button.addEventListener('click', () => {
-    const input = document.getElementById(button.dataset.passwordToggle);
-    const icon = button.querySelector('i');
-
-    if (!input) return;
-
-    const showing = input.type === 'text';
-    input.type = showing ? 'password' : 'text';
-    button.setAttribute('aria-label', showing ? 'Mostrar contraseña' : 'Ocultar contraseña');
-
-    if (icon) {
-      icon.classList.toggle('bi-eye', showing);
-      icon.classList.toggle('bi-eye-slash', !showing);
-    }
-  });
-});
+perfilSolicitud?.addEventListener(
+  'change',
+  updateLicenseField
+);
 
 
-
-const perfilSolicitud = document.getElementById('perfilSolicitud');
-const licenciaField = document.getElementById('licenciaField');
-const licenciaInput = document.getElementById('licenciaInput');
-
-function updateLicenseField() {
-  if (!perfilSolicitud || !licenciaField || !licenciaInput) return;
-  const isDriver = perfilSolicitud.value === 'chofer';
-  licenciaField.classList.toggle('d-none', !isDriver);
-  licenciaInput.required = isDriver;
-  if (!isDriver) licenciaInput.value = '';
-}
-
-perfilSolicitud?.addEventListener('change', updateLicenseField);
 updateLicenseField();

@@ -1,384 +1,1790 @@
-const defaultTrucks = [
-  {
-    id: 1, matricula: 'SBK-3265', imagen: '../resources/Camion1.png', fotoPosicion: 'center', fotoAjuste: 'cover',
-    tipo: 'Mixto', marca: 'Scania', modelo: 'P250', chasis: 'CH-SBK-3265-001',
-    chofer: 'Albert Einstein', acompanante: 'B-02', estado: 'Recolectando', gps: 'CH_102',
-    ruta: 'R_B_105', turno: 'Nocturno', kmTotal: 134567, kmTurno: 65,
-    ultimaCarga: '2026-07-23', tiempoActivo: '06:34', activo: true,
-    capacidad: 8000, peso: 3502.56, asignados: 62, recolectados: 25,
-    historial: [
-      { id: 1, fecha: '18/07/2026', tipo: 'Mantenimiento', detalle: 'Cambio preventivo de filtros y revisión general.', kilometraje: 134210, estado: 'Resuelta' },
-      { id: 2, fecha: '12/07/2026', tipo: 'Mecánica', detalle: 'Revisión del sistema de frenos.', kilometraje: 133780, estado: 'Resuelta' },
-      { id: 3, fecha: '05/07/2026', tipo: 'Tránsito', detalle: 'Demora operativa registrada durante el recorrido.', kilometraje: 133115, estado: 'Resuelta' }
-    ]
+const API_GESTION = 'http://127.0.0.1:8001';
+
+const $ = id => document.getElementById(id);
+
+const TRUCK_VISUALS = {
+  'SBK-3265': {
+    imagen: '../resources/Camion1.png',
+    fotoPosicion: 'center',
+    fotoAjuste: 'cover'
   },
-  {
-    id: 2, matricula: 'SAE-5268', imagen: '../resources/Camion2.png', fotoPosicion: 'center', fotoAjuste: 'cover',
-    tipo: 'Reciclaje', marca: 'Iveco', modelo: 'Eurocargo', chasis: 'CH-SAE-5268-002',
-    chofer: 'Leonardo da Vinci', acompanante: null, estado: 'En circuito', gps: 'C_102',
-    ruta: 'R_C_102', turno: 'Nocturno', kmTotal: 98320, kmTurno: 76.4,
-    ultimaCarga: '2026-07-23', tiempoActivo: '05:48', activo: true,
-    capacidad: 7000, peso: 2100.10, asignados: 48, recolectados: 31,
-    historial: [
-      { id: 4, fecha: '24/07/2026', tipo: 'Mantenimiento', detalle: 'Revisión preventiva solicitada.', kilometraje: 98320, estado: 'Abierta' }
-    ]
+  'SAE-5268': {
+    imagen: '../resources/Camion2.png',
+    fotoPosicion: 'center',
+    fotoAjuste: 'cover'
   },
-  {
-    id: 3, matricula: 'SCE-1235', imagen: '../resources/Camion3.png', fotoPosicion: 'left center', fotoAjuste: 'contain',
-    tipo: 'Mixto', marca: 'Volkswagen', modelo: 'Constellation', chasis: 'CH-SCE-1235-003',
-    chofer: 'Frida Kahlo', acompanante: null, estado: 'En base', gps: 'CH_114',
-    ruta: 'Sin asignar', turno: 'Nocturno', kmTotal: 110845, kmTurno: 0,
-    ultimaCarga: '2026-07-22', tiempoActivo: '00:00', activo: true,
-    capacidad: 8000, peso: 0, asignados: 0, recolectados: 0,
-    historial: [
-      { id: 5, fecha: '24/07/2026', tipo: 'Mecánica', detalle: 'Falla detectada en el sistema hidráulico. El camión permanece en base para revisión.', kilometraje: 110845, estado: 'Abierta' }
-    ]
+  'SCE-1235': {
+    imagen: '../resources/Camion3.png',
+    fotoPosicion: 'left center',
+    fotoAjuste: 'contain'
   },
-  {
-    id: 4, matricula: 'SDT-5632', imagen: '../resources/Camion4.png', fotoPosicion: 'center', fotoAjuste: 'cover',
-    tipo: 'General', marca: 'Scania', modelo: 'P280', chasis: 'CH-SDT-5632-004',
-    chofer: 'Julio César', acompanante: 'CH_03', estado: 'Dirigiéndose a vertedero', gps: 'CH_102',
-    ruta: 'R_D_104', turno: 'Nocturno', kmTotal: 145230, kmTurno: 128.1,
-    ultimaCarga: '2026-07-23', tiempoActivo: '06:12', activo: true,
-    capacidad: 8000, peso: 7250, asignados: 58, recolectados: 58,
-    historial: []
+  'SDT-5632': {
+    imagen: '../resources/Camion4.png',
+    fotoPosicion: 'center',
+    fotoAjuste: 'cover'
   }
-];
+};
 
-const STORAGE_KEY = 'sigeru-camiones-v2';
+const DEFAULT_TRUCK_VISUAL = {
+  imagen: '../resources/Camion1.png',
+  fotoPosicion: 'center',
+  fotoAjuste: 'cover'
+};
 
-function loadTrucks() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return Array.isArray(saved) && saved.length ? saved : structuredClone(defaultTrucks);
-  } catch (_) {
-    return structuredClone(defaultTrucks);
-  }
-}
+let trucks = [];
 
-function saveTrucks() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(trucks));
-}
+let catalogos = {
+  tipos: [
+    'general',
+    'reciclaje',
+    'mixto'
+  ],
+  estados: [
+    'En base',
+    'En taller',
+    'Disponible',
+    'Recolectando',
+    'En circuito',
+    'Dirigiéndose a vertedero'
+  ],
+  turnos: [
+    'Diurno',
+    'Nocturno'
+  ],
+  choferes: [],
+  cuadrillas: []
+};
 
-let trucks = loadTrucks();
+let selectedTruckId = null;
+let selectedTruck = null;
+let truckHistory = [];
 
-trucks = trucks.map((truck) => {
-  if (truck.matricula === 'SCE-1235') {
-    return { ...truck, acompanante: truck.acompanante || null, imagen: '../resources/Camion3.png', fotoPosicion: 'left center', fotoAjuste: 'contain' };
-  }
-  return {
-    ...truck,
-    acompanante: truck.acompanante || null,
-    fotoPosicion: truck.fotoPosicion || 'center',
-    fotoAjuste: truck.fotoAjuste || 'cover'
-  };
-});
+let csrfToken = '';
 
-const $ = (id) => document.getElementById(id);
+let truckBusy = false;
+let driverBusy = false;
+let companionBusy = false;
+
 const tableBody = $('truckTableBody');
 const detailPanel = $('truckDetailPanel');
 const historyPanel = $('truckHistoryPanel');
+
 const title = $('detalleCamionTitulo');
 const truckPhoto = $('truckPhoto');
-const truckMapCard = document.querySelector('.truck-map-card');
+
+const truckMapCard =
+  document.querySelector('.truck-map-card');
+
 const status = $('truckStatus');
 const mapDriver = $('truckMapDriver');
-const assignDriverBtn = $('assignDriverBtn');
-const assignCompanionBtn = $('assignCompanionBtn');
-const driverModalTitle = $('asignarChoferTitulo');
-const saveDriverBtn = $('guardarChoferBtn');
-const dataGrid = $('truckDataGrid');
-const operationGrid = $('truckOperationGrid');
-const historyBody = $('truckHistoryBody');
-const incidentCard = $('incidentCard');
-const removeSelect = $('quitarCamionSelect');
 
-const incidentModal = new bootstrap.Modal($('incidenciaModal'));
-const driverModal = new bootstrap.Modal($('asignarChoferModal'));
-const companionModal = new bootstrap.Modal($('asignarAcompananteModal'));
-const addModal = bootstrap.Modal.getOrCreateInstance($('agregarCamionModal'));
-const removeModal = bootstrap.Modal.getOrCreateInstance($('quitarCamionModal'));
+const assignDriverBtn =
+  $('assignDriverBtn');
 
-let selectedTruckId = null;
+const assignCompanionBtn =
+  $('assignCompanionBtn');
 
-const formatKm = (value) => `${Number(value).toLocaleString('es-UY')} km`;
-const formatKg = (value) => `${Number(value).toLocaleString('es-UY', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} kg`;
-const formatDate = (value) => value ? value.split('-').reverse().join('/') : '—';
+const driverModalTitle =
+  $('asignarChoferTitulo');
+
+const saveDriverBtn =
+  $('guardarChoferBtn');
+
+const dataGrid =
+  $('truckDataGrid');
+
+const operationGrid =
+  $('truckOperationGrid');
+
+const historyBody =
+  $('truckHistoryBody');
+
+const incidentCard =
+  $('incidentCard');
+
+const removeSelect =
+  $('quitarCamionSelect');
+
+const addForm =
+  $('agregarCamionForm');
+
+const removeForm =
+  $('quitarCamionForm');
+
+const driverForm =
+  $('asignarChoferForm');
+
+const companionForm =
+  $('asignarAcompananteForm');
+
+const incidentModal =
+  bootstrap.Modal.getOrCreateInstance(
+    $('incidenciaModal')
+  );
+
+const driverModal =
+  bootstrap.Modal.getOrCreateInstance(
+    $('asignarChoferModal')
+  );
+
+const companionModal =
+  bootstrap.Modal.getOrCreateInstance(
+    $('asignarAcompananteModal')
+  );
+
+const addModal =
+  bootstrap.Modal.getOrCreateInstance(
+    $('agregarCamionModal')
+  );
+
+const removeModal =
+  bootstrap.Modal.getOrCreateInstance(
+    $('quitarCamionModal')
+  );
+
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(
+    /[&<>"']/g,
+    character => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    })[character]
+  );
+}
+
+
+function validId(value) {
+  const id = Number(value);
+
+  if (
+    !Number.isSafeInteger(id) ||
+    id < 1
+  ) {
+    throw new Error(
+      'El identificador no es válido.'
+    );
+  }
+
+  return id;
+}
+
+
+function showMessage(
+  element,
+  text = ''
+) {
+  if (!element) return;
+
+  element.textContent = text;
+
+  element.style.display =
+    text ? 'block' : 'none';
+}
+
+
+function responseError(
+  data,
+  statusCode
+) {
+  const errors =
+    data?.errors &&
+    typeof data.errors === 'object'
+      ? Object.values(data.errors)
+          .flat()
+          .filter(
+            error =>
+              typeof error === 'string'
+          )
+      : [];
+
+  if (errors.length) {
+    return errors.join('\n');
+  }
+
+  if (data?.message) {
+    return data.message;
+  }
+
+  if (statusCode === 401) {
+    return 'Tu sesión finalizó.';
+  }
+
+  if (statusCode === 403) {
+    return 'No tienes permiso para realizar esta acción.';
+  }
+
+  if (statusCode === 419) {
+    return 'La sesión expiró. Recarga la página.';
+  }
+
+  return (
+    `No se pudo completar la solicitud ` +
+    `(HTTP ${statusCode}).`
+  );
+}
+
+
+async function getCsrfToken(
+  force = false
+) {
+  if (force) {
+    csrfToken = '';
+  }
+
+  if (csrfToken) {
+    return csrfToken;
+  }
+
+  let response;
+
+  try {
+    response = await fetch(
+      `${API_GESTION}/csrf-token`,
+      {
+        headers: {
+          Accept: 'application/json'
+        },
+        credentials: 'include'
+      }
+    );
+  } catch {
+    throw new Error(
+      'No se pudo conectar con Laravel.'
+    );
+  }
+
+  let data;
+
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error(
+      'Laravel no devolvió una respuesta válida.'
+    );
+  }
+
+  if (
+    !response.ok ||
+    !data.token
+  ) {
+    throw new Error(
+      'No se pudo obtener el token CSRF.'
+    );
+  }
+
+  csrfToken = data.token;
+
+  return csrfToken;
+}
+
+
+async function requestJson(
+  url,
+  {
+    method = 'GET',
+    body
+  } = {},
+  retry = true
+) {
+  const headers = {
+    Accept: 'application/json'
+  };
+
+  if (method !== 'GET') {
+    headers['X-CSRF-TOKEN'] =
+      await getCsrfToken();
+  }
+
+  if (body !== undefined) {
+    headers['Content-Type'] =
+      'application/json';
+  }
+
+  let response;
+
+  try {
+    response = await fetch(
+      url,
+      {
+        method,
+        headers,
+        credentials: 'include',
+        ...(body !== undefined
+          ? {
+              body:
+                JSON.stringify(body)
+            }
+          : {})
+      }
+    );
+  } catch {
+    throw new Error(
+      'No se pudo conectar con Laravel.'
+    );
+  }
+
+  if (
+    response.status === 419 &&
+    method !== 'GET' &&
+    retry
+  ) {
+    await getCsrfToken(true);
+
+    return requestJson(
+      url,
+      {
+        method,
+        body
+      },
+      false
+    );
+  }
+
+  let data;
+
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error(
+      'Laravel no devolvió una respuesta válida.'
+    );
+  }
+
+  if (
+    !response.ok ||
+    data?.success === false
+  ) {
+    throw new Error(
+      responseError(
+        data,
+        response.status
+      )
+    );
+  }
+
+  return data;
+}
+
+
+function listData(
+  result,
+  idField
+) {
+  if (!Array.isArray(result.data)) {
+    throw new Error(
+      'Laravel no devolvió una lista válida.'
+    );
+  }
+
+  return result.data.map(item => ({
+    ...item,
+
+    [idField]:
+      validId(item[idField])
+  }));
+}
+
+
+function formatKm(value) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ''
+  ) {
+    return '—';
+  }
+
+  return (
+    `${Number(value).toLocaleString(
+      'es-UY'
+    )} km`
+  );
+}
+
+
+function formatKg(value) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ''
+  ) {
+    return '—';
+  }
+
+  return (
+    `${Number(value).toLocaleString(
+      'es-UY',
+      {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      }
+    )} kg`
+  );
+}
+
+
+function formatDate(value) {
+  if (!value) {
+    return '—';
+  }
+
+  const date =
+    String(value).match(
+      /^(\d{4})-(\d{2})-(\d{2})/
+    );
+
+  return date
+    ? `${date[3]}/${date[2]}/${date[1]}`
+    : String(value);
+}
+
+
+function formatTime(value) {
+  if (!value) {
+    return '00:00';
+  }
+
+  const parts =
+    String(value).split(':');
+
+  return parts.length >= 2
+    ? `${parts[0]}:${parts[1]}`
+    : String(value);
+}
+
+
+function formatType(value) {
+  if (!value) {
+    return '—';
+  }
+
+  const text =
+    String(value).trim();
+
+  return (
+    text.charAt(0).toUpperCase() +
+    text.slice(1)
+  );
+}
+
+
+function field(
+  label,
+  value
+) {
+  return `
+    <div class="truck-field">
+      <span>
+        ${escapeHtml(label)}
+      </span>
+
+      <strong>
+        ${escapeHtml(value ?? '—')}
+      </strong>
+    </div>
+  `;
+}
+
+
+function truckVisual(truck) {
+  return (
+    TRUCK_VISUALS[truck.matricula] ||
+    DEFAULT_TRUCK_VISUAL
+  );
+}
+
 
 function syncTruckVisualHeight() {
-  if (!truckPhoto || !truckMapCard) return;
-
-  if (window.innerWidth <= 991.98) {
-    truckMapCard.style.height = '';
+  if (
+    !truckPhoto ||
+    !truckMapCard
+  ) {
     return;
   }
 
-  const height = truckPhoto.getBoundingClientRect().height;
-  if (height > 0) truckMapCard.style.height = `${Math.round(height)}px`;
+  if (
+    window.innerWidth <= 991.98
+  ) {
+    truckMapCard.style.height = '';
+
+    return;
+  }
+
+  const height =
+    truckPhoto
+      .getBoundingClientRect()
+      .height;
+
+  if (height > 0) {
+    truckMapCard.style.height =
+      `${Math.round(height)}px`;
+  }
 }
 
-function field(label, value) {
-  return `<div class="truck-field"><span>${label}</span><strong>${value ?? '—'}</strong></div>`;
+
+function setTruckPhoto(truck) {
+  if (!truckPhoto) return;
+
+  const visual =
+    truckVisual(truck);
+
+  truckPhoto.onload =
+    syncTruckVisualHeight;
+
+  truckPhoto.src =
+    visual.imagen;
+
+  truckPhoto.style.objectPosition =
+    visual.fotoPosicion;
+
+  truckPhoto.style.objectFit =
+    visual.fotoAjuste;
+
+  truckPhoto.alt =
+    `Camión ${truck.marca} ${truck.modelo} - ${truck.matricula}`;
+
+  if (truckPhoto.complete) {
+    requestAnimationFrame(
+      syncTruckVisualHeight
+    );
+  }
 }
+
+
+function fillSimpleSelect(
+  select,
+  values,
+  emptyLabel = 'Seleccionar'
+) {
+  if (!select) return;
+
+  select.innerHTML = `
+    <option value="">
+      ${escapeHtml(emptyLabel)}
+    </option>
+  ` +
+  values.map(value => `
+    <option value="${escapeHtml(value)}">
+      ${escapeHtml(
+        formatType(value)
+      )}
+    </option>
+  `).join('');
+}
+
+
+function fillDriverSelect(
+  select,
+  selected = ''
+) {
+  if (!select) return;
+
+  select.innerHTML = `
+    <option value="">
+      Sin asignar
+    </option>
+  ` +
+  catalogos.choferes
+    .map(driver => {
+      const name = [
+        driver.nombre,
+        driver.apellido
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+      const license =
+        driver.licencia
+          ? ` · ${driver.licencia}`
+          : '';
+
+      return `
+        <option
+          value="${driver.id_usuario}"
+        >
+          ${escapeHtml(
+            name + license
+          )}
+        </option>
+      `;
+    })
+    .join('');
+
+  select.value =
+    selected !== null &&
+    selected !== undefined
+      ? String(selected)
+      : '';
+}
+
+
+function crewLabel(crew) {
+  const responsable = [
+    crew.responsable_nombre,
+    crew.responsable_apellido
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  if (responsable) {
+    return (
+      `${crew.id_cuadrilla} · ` +
+      responsable
+    );
+  }
+
+  const details = [
+    crew.turno,
+    crew.estado
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return details
+    ? `${crew.id_cuadrilla} · ${details}`
+    : String(crew.id_cuadrilla);
+}
+
+
+function fillCrewSelect(
+  select,
+  selected = ''
+) {
+  if (!select) return;
+
+  select.innerHTML = `
+    <option value="">
+      Sin asignar
+    </option>
+  ` +
+  catalogos.cuadrillas
+    .map(crew => `
+      <option
+        value="${escapeHtml(
+          crew.id_cuadrilla
+        )}"
+      >
+        ${escapeHtml(
+          crewLabel(crew)
+        )}
+      </option>
+    `)
+    .join('');
+
+  select.value =
+    selected ?? '';
+}
+
+
+function fillCatalogControls() {
+  fillSimpleSelect(
+    addForm?.elements.tipo,
+    catalogos.tipos
+  );
+
+  fillSimpleSelect(
+    addForm?.elements.estado,
+    catalogos.estados
+  );
+
+  fillSimpleSelect(
+    addForm?.elements.turno,
+    catalogos.turnos,
+    'Sin turno'
+  );
+
+  fillDriverSelect(
+    addForm?.elements.id_chofer
+  );
+
+  fillDriverSelect(
+    $('asignarChoferNombre')
+  );
+
+  fillCrewSelect(
+    $('asignarAcompananteCuadrilla')
+  );
+}
+
+
+async function loadCatalogs() {
+  const result =
+    await requestJson(
+      `${API_GESTION}/api/camiones/catalogos`
+    );
+
+  catalogos = {
+    tipos:
+      Array.isArray(
+        result.data?.tipos
+      )
+        ? result.data.tipos
+        : catalogos.tipos,
+
+    estados:
+      Array.isArray(
+        result.data?.estados
+      )
+        ? result.data.estados
+        : catalogos.estados,
+
+    turnos:
+      Array.isArray(
+        result.data?.turnos
+      )
+        ? result.data.turnos
+        : catalogos.turnos,
+
+    choferes:
+      Array.isArray(
+        result.data?.choferes
+      )
+        ? result.data.choferes
+        : [],
+
+    cuadrillas:
+      Array.isArray(
+        result.data?.cuadrillas
+      )
+        ? result.data.cuadrillas
+        : []
+  };
+
+  fillCatalogControls();
+}
+
 
 function renderTable() {
-  tableBody.innerHTML = trucks.map((truck) => `
-    <tr class="truck-row ${truck.id === selectedTruckId ? 'active' : ''}">
-      <td><strong>${truck.matricula}</strong></td>
-      <td>${truck.tipo}</td>
-      <td>${truck.marca} ${truck.modelo}</td>
-      <td>${truck.chofer || 'Sin asignar'}</td>
-      <td>${truck.estado}</td>
-      <td>${truck.gps || '—'}</td>
-      <td>${formatKm(truck.kmTurno)}</td>
-      <td>
-        <button class="btn btn-outline btn-sm" type="button"
-          data-open-truck="${truck.id}" aria-label="Ver información de ${truck.matricula}" title="Ver información">
-          <i class="bi bi-search" aria-hidden="true"></i>
-        </button>
+  if (!tableBody) return;
+
+  tableBody.innerHTML =
+    trucks.length
+      ? trucks.map(truck => `
+        <tr
+          class="truck-row ${
+            truck.id_camion ===
+            selectedTruckId
+              ? 'active'
+              : ''
+          }"
+        >
+          <td>
+            <strong>
+              ${escapeHtml(
+                truck.matricula
+              )}
+            </strong>
+          </td>
+
+          <td>
+            ${escapeHtml(
+              formatType(
+                truck.tipo
+              )
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              [
+                truck.marca,
+                truck.modelo
+              ]
+                .filter(Boolean)
+                .join(' ')
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              truck.chofer ||
+              'Sin asignar'
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              truck.estado || '—'
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              truck.gps || '—'
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              formatKm(
+                truck.km_en_turno
+              )
+            )}
+          </td>
+
+          <td>
+            <button
+              class="btn btn-outline btn-sm"
+              type="button"
+              data-open-truck="${truck.id_camion}"
+              aria-label="Ver información de ${escapeHtml(
+                truck.matricula
+              )}"
+              title="Ver información"
+            >
+              <i
+                class="bi bi-search"
+                aria-hidden="true"
+              ></i>
+            </button>
+          </td>
+        </tr>
+      `).join('')
+      : `
+        <tr>
+          <td
+            colspan="8"
+            class="text-center text-muted-custom py-4"
+          >
+            No hay camiones registrados.
+          </td>
+        </tr>
+      `;
+
+  if (!removeSelect) return;
+
+  removeSelect.innerHTML =
+    trucks.length
+      ? trucks.map(truck => `
+        <option
+          value="${truck.id_camion}"
+        >
+          ${escapeHtml(
+            truck.matricula
+          )}
+          ·
+          ${escapeHtml(
+            [
+              truck.marca,
+              truck.modelo
+            ]
+              .filter(Boolean)
+              .join(' ')
+          )}
+        </option>
+      `).join('')
+      : `
+        <option value="">
+          No hay camiones
+        </option>
+      `;
+
+  removeSelect.disabled =
+    !trucks.length;
+}
+
+
+async function loadTrucks() {
+  if (!tableBody) return;
+
+  tableBody.innerHTML = `
+    <tr>
+      <td
+        colspan="8"
+        class="text-center text-muted-custom py-4"
+      >
+        Cargando camiones…
       </td>
     </tr>
-  `).join('');
+  `;
 
-  removeSelect.innerHTML = trucks.map((truck) =>
-    `<option value="${truck.id}">${truck.matricula} · ${truck.marca} ${truck.modelo}</option>`
-  ).join('');
-}
+  try {
+    trucks = listData(
+      await requestJson(
+        `${API_GESTION}/api/camiones`
+      ),
+      'id_camion'
+    );
 
-function renderTruck(id) {
-  const truck = trucks.find((item) => item.id === Number(id));
-  if (!truck) return;
+    renderTable();
 
-  selectedTruckId = truck.id;
-  renderTable();
-  detailPanel.classList.remove('d-none');
-  historyPanel.classList.remove('d-none');
+  } catch (error) {
+    trucks = [];
 
-  title.textContent = truck.matricula;
-  status.textContent = truck.estado;
-  mapDriver.textContent = truck.chofer ? `Chofer: ${truck.chofer}` : 'Chofer: sin asignar';
-
-  assignDriverBtn.textContent = truck.chofer ? 'Editar chofer' : 'Asignar chofer';
-  assignDriverBtn.dataset.truckId = truck.id;
-
-  truckPhoto.onload = syncTruckVisualHeight;
-  truckPhoto.src = truck.imagen;
-  if (truckPhoto.complete) requestAnimationFrame(syncTruckVisualHeight);
-
-  truckPhoto.alt = `Camión ${truck.marca} ${truck.modelo} - ${truck.matricula}`;
-
-  dataGrid.innerHTML = [
-    field('Tipo', truck.tipo),
-    field('Marca', truck.marca),
-    field('Modelo', truck.modelo),
-    field('Chasis', truck.chasis),
-    field('Km totales', formatKm(truck.kmTotal)),
-    field('Última carga', formatDate(truck.ultimaCarga)),
-    field('Activo', truck.activo ? 'Sí' : 'No'),
-    field('GPS / ubicación', truck.gps || '—')
-  ].join('');
-
-  operationGrid.innerHTML = [
-    field('Ruta', truck.ruta || 'Sin asignar'),
-    field('Turno', truck.turno),
-    field('Acompañante', truck.acompanante ? `Cuadrilla ${truck.acompanante}` : 'Sin asignar'),
-    field('Km en turno', formatKm(truck.kmTurno)),
-    field('Tiempo activo', truck.tiempoActivo),
-    field('Capacidad', formatKg(truck.capacidad)),
-    field('Peso recolectado', formatKg(truck.peso)),
-    field('Contenedores', `${truck.recolectados} / ${truck.asignados}`)
-  ].join('');
-
-  renderHistory(truck);
-}
-
-function renderHistory(truck) {
-  historyBody.innerHTML = truck.historial.length
-    ? truck.historial.map((item) => `
+    tableBody.innerHTML = `
       <tr>
-        <td>${item.fecha}</td>
-        <td>${item.tipo}</td>
-        <td>${item.detalle}</td>
-        <td>${formatKm(item.kilometraje)}</td>
-        <td><span class="history-status ${item.estado === 'Resuelta' ? 'resolved' : 'open'}">${item.estado}</span></td>
-        <td>
-          <button class="btn btn-outline btn-sm" type="button"
-            data-open-incident="${item.id}" aria-label="Ver detalle del registro del ${item.fecha}">
-            <i class="bi bi-search" aria-hidden="true"></i>
-          </button>
+        <td
+          colspan="8"
+          class="text-center text-muted-custom py-4"
+        >
+          ${escapeHtml(
+            error.message
+          )}
         </td>
       </tr>
-    `).join('')
-    : `<tr><td colspan="6" class="text-center text-muted-custom py-4">No hay incidencias o mantenimientos registrados.</td></tr>`;
+    `;
+
+    if (removeSelect) {
+      removeSelect.innerHTML = `
+        <option value="">
+          No hay camiones
+        </option>
+      `;
+
+      removeSelect.disabled = true;
+    }
+  }
 }
 
+
+function renderTruck(truck) {
+  selectedTruckId =
+    validId(
+      truck.id_camion
+    );
+
+  selectedTruck =
+    truck;
+
+  truckHistory =
+    Array.isArray(
+      truck.historial
+    )
+      ? truck.historial
+      : [];
+
+  renderTable();
+
+  detailPanel?.classList.remove(
+    'd-none'
+  );
+
+  historyPanel?.classList.remove(
+    'd-none'
+  );
+
+  if (title) {
+    title.textContent =
+      truck.matricula;
+  }
+
+  if (status) {
+    status.textContent =
+      truck.estado || '—';
+  }
+
+  if (mapDriver) {
+    mapDriver.textContent =
+      truck.chofer
+        ? `Chofer asignado: ${truck.chofer}`
+        : 'Chofer asignado: sin asignar';
+  }
+
+  if (assignDriverBtn) {
+    assignDriverBtn.textContent =
+      truck.id_chofer
+        ? 'Editar chofer'
+        : 'Asignar chofer';
+  }
+
+  if (assignCompanionBtn) {
+    assignCompanionBtn.textContent =
+      truck.id_cuadrilla
+        ? 'Editar acompañante'
+        : 'Agregar acompañante';
+  }
+
+  setTruckPhoto(truck);
+
+  if (dataGrid) {
+    dataGrid.innerHTML = [
+      field(
+        'Tipo',
+        formatType(
+          truck.tipo
+        )
+      ),
+
+      field(
+        'Marca',
+        truck.marca
+      ),
+
+      field(
+        'Modelo',
+        truck.modelo
+      ),
+
+      field(
+        'Chasis',
+        truck.chasis
+      ),
+
+      field(
+        'Km totales',
+        formatKm(
+          truck.km_total
+        )
+      ),
+
+      field(
+        'Última carga',
+        formatDate(
+          truck.ult_carga_combustible
+        )
+      ),
+
+      field(
+        'Activo',
+        truck.activo
+          ? 'Sí'
+          : 'No'
+      ),
+
+      field(
+        'GPS / ubicación',
+        truck.gps || '—'
+      )
+    ].join('');
+  }
+
+  const route =
+    truck.ruta_circuito ||
+    truck.ruta_nombre ||
+    'Sin asignar';
+
+  if (operationGrid) {
+    operationGrid.innerHTML = [
+      field(
+        'Ruta',
+        route
+      ),
+
+      field(
+        'Turno',
+        truck.turno ||
+        'Sin asignar'
+      ),
+
+      field(
+        'Acompañante',
+        truck.id_cuadrilla
+          ? `Cuadrilla ${truck.id_cuadrilla}`
+          : 'Sin asignar'
+      ),
+
+      field(
+        'Km en turno',
+        formatKm(
+          truck.km_en_turno
+        )
+      ),
+
+      field(
+        'Tiempo activo',
+        formatTime(
+          truck.tiempo_activo
+        )
+      ),
+
+      field(
+        'Capacidad',
+        formatKg(
+          truck.capacidad_kg
+        )
+      ),
+
+      field(
+        'Peso recolectado',
+        formatKg(
+          truck.peso_recolectado_kg
+        )
+      ),
+
+      field(
+        'Contenedores',
+        `${truck.contenedores_recolectados ?? 0} / ${truck.contenedores_asignados ?? 0}`
+      )
+    ].join('');
+  }
+
+  renderHistory();
+}
+
+
+async function openTruck(id) {
+  try {
+    const result =
+      await requestJson(
+        `${API_GESTION}/api/camiones/${validId(id)}`
+      );
+
+    renderTruck(
+      result.data
+    );
+
+  } catch (error) {
+    console.error(
+      'Camiones:',
+      error.message
+    );
+  }
+}
+
+
+function resolvedStatus(value) {
+  const currentStatus =
+    String(value || '')
+      .toLowerCase();
+
+  return (
+    currentStatus.includes(
+      'resuelta'
+    ) ||
+    currentStatus.includes(
+      'resuelto'
+    ) ||
+    currentStatus.includes(
+      'finalizada'
+    ) ||
+    currentStatus.includes(
+      'finalizado'
+    ) ||
+    currentStatus.includes(
+      'completada'
+    ) ||
+    currentStatus.includes(
+      'completado'
+    )
+  );
+}
+
+
+function renderHistory() {
+  if (!historyBody) return;
+
+  historyBody.innerHTML =
+    truckHistory.length
+      ? truckHistory.map(item => `
+        <tr>
+          <td>
+            ${escapeHtml(
+              formatDate(
+                item.fecha
+              )
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              item.tipo || '—'
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              item.detalle || '—'
+            )}
+          </td>
+
+          <td>
+            <span
+              class="history-status ${
+                resolvedStatus(
+                  item.estado
+                )
+                  ? 'resolved'
+                  : 'open'
+              }"
+            >
+              ${escapeHtml(
+                item.estado || '—'
+              )}
+            </span>
+          </td>
+
+          <td>
+            <button
+              class="btn btn-outline btn-sm"
+              type="button"
+              data-open-incident="${escapeHtml(
+                item.id_historial
+              )}"
+              aria-label="Ver detalle del registro"
+            >
+              <i
+                class="bi bi-search"
+                aria-hidden="true"
+              ></i>
+            </button>
+          </td>
+        </tr>
+      `).join('')
+      : `
+        <tr>
+          <td
+            colspan="5"
+            class="text-center text-muted-custom py-4"
+          >
+            No hay incidencias o mantenimientos registrados.
+          </td>
+        </tr>
+      `;
+}
+
+
 function openIncident(id) {
-  const truck = trucks.find((item) => item.id === selectedTruckId);
-  const item = truck?.historial.find((entry) => entry.id === Number(id));
-  if (!truck || !item) return;
+  const item =
+    truckHistory.find(
+      entry =>
+        String(
+          entry.id_historial
+        ) === String(id)
+    );
+
+  if (
+    !selectedTruck ||
+    !item ||
+    !incidentCard
+  ) {
+    return;
+  }
 
   incidentCard.innerHTML = `
     <div class="incident-card-head">
-      <div><span class="text-muted-custom">${truck.matricula}</span><h3>${item.tipo}</h3></div>
-      <span class="history-status ${item.estado === 'Resuelta' ? 'resolved' : 'open'}">${item.estado}</span>
+      <div>
+        <span class="text-muted-custom">
+          ${escapeHtml(
+            selectedTruck.matricula
+          )}
+        </span>
+
+        <h3>
+          ${escapeHtml(
+            item.tipo || 'Registro'
+          )}
+        </h3>
+      </div>
+
+      <span
+        class="history-status ${
+          resolvedStatus(
+            item.estado
+          )
+            ? 'resolved'
+            : 'open'
+        }"
+      >
+        ${escapeHtml(
+          item.estado || '—'
+        )}
+      </span>
     </div>
+
     <div class="incident-card-grid">
-      ${field('Fecha', item.fecha)}
-      ${field('Kilometraje', formatKm(item.kilometraje))}
+      ${field(
+        'Fecha',
+        formatDate(
+          item.fecha
+        )
+      )}
+
+      ${field(
+        'Origen',
+        item.origen ===
+        'mantenimiento'
+          ? 'Mantenimiento'
+          : 'Incidencia'
+      )}
+
+      ${field(
+        'Responsable',
+        item.responsable ||
+        '—'
+      )}
     </div>
-    <div class="incident-description"><span>Descripción</span><p>${item.detalle}</p></div>
+
+    <div class="incident-description">
+      <span>
+        Descripción
+      </span>
+
+      <p>
+        ${escapeHtml(
+          item.detalle || '—'
+        )}
+      </p>
+    </div>
+
+    ${
+      item.resolucion
+        ? `
+          <div class="incident-description">
+            <span>
+              Resolución
+            </span>
+
+            <p>
+              ${escapeHtml(
+                item.resolucion
+              )}
+            </p>
+          </div>
+        `
+        : ''
+    }
   `;
+
   incidentModal.show();
 }
 
-async function api(payload) {
-  if (location.protocol === 'file:') return;
-  try {
-    await fetch('../api-gestion/camiones.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-  } catch (_) {
-    // El prototipo local sigue funcionando aunque PHP no esté disponible.
+
+addForm?.addEventListener(
+  'submit',
+  async event => {
+    event.preventDefault();
+
+    if (
+      truckBusy ||
+      !addForm.reportValidity()
+    ) {
+      return;
+    }
+
+    showMessage(
+      $('agregarCamionMensaje')
+    );
+
+    const data =
+      Object.fromEntries(
+        new FormData(
+          addForm
+        )
+      );
+
+    const body = {
+      matricula:
+        data.matricula.trim(),
+
+      tipo:
+        data.tipo,
+
+      marca:
+        data.marca.trim(),
+
+      modelo:
+        data.modelo.trim(),
+
+      chasis:
+        data.chasis.trim(),
+
+      estado:
+        data.estado,
+
+      km_total:
+        Number(
+          data.km_total
+        ),
+
+      ult_carga_combustible:
+        data.ult_carga_combustible ||
+        null,
+
+      gps:
+        data.gps?.trim() ||
+        null,
+
+      capacidad_kg:
+        data.capacidad_kg
+          ? Number(
+              data.capacidad_kg
+            )
+          : null,
+
+      turno:
+        data.turno ||
+        null,
+
+      id_chofer:
+        data.id_chofer
+          ? Number(
+              data.id_chofer
+            )
+          : null
+    };
+
+    try {
+      truckBusy = true;
+
+      const result =
+        await requestJson(
+          `${API_GESTION}/api/camiones`,
+          {
+            method: 'POST',
+            body
+          }
+        );
+
+      addForm.reset();
+
+      fillCatalogControls();
+
+      addModal.hide();
+
+      await loadTrucks();
+
+      await openTruck(
+        result.data.id_camion
+      );
+
+    } catch (error) {
+      showMessage(
+        $('agregarCamionMensaje'),
+        error.message
+      );
+
+    } finally {
+      truckBusy = false;
+    }
   }
+);
+
+
+removeForm?.addEventListener(
+  'submit',
+  async event => {
+    event.preventDefault();
+
+    if (
+      truckBusy ||
+      !removeSelect?.value
+    ) {
+      return;
+    }
+
+    const id =
+      validId(
+        removeSelect.value
+      );
+
+    const truck =
+      trucks.find(
+        item =>
+          item.id_camion === id
+      );
+
+    if (!truck) {
+      return;
+    }
+
+    if (
+      !confirm(
+        `¿Dar de baja el camión ${truck.matricula}?`
+      )
+    ) {
+      return;
+    }
+
+    showMessage(
+      $('quitarCamionMensaje')
+    );
+
+    try {
+      truckBusy = true;
+
+      await requestJson(
+        `${API_GESTION}/api/camiones/${id}`,
+        {
+          method: 'DELETE'
+        }
+      );
+
+      removeModal.hide();
+
+      if (
+        selectedTruckId === id
+      ) {
+        selectedTruckId = null;
+        selectedTruck = null;
+        truckHistory = [];
+
+        detailPanel?.classList.add(
+          'd-none'
+        );
+
+        historyPanel?.classList.add(
+          'd-none'
+        );
+      }
+
+      await loadTrucks();
+
+    } catch (error) {
+      showMessage(
+        $('quitarCamionMensaje'),
+        error.message
+      );
+
+    } finally {
+      truckBusy = false;
+    }
+  }
+);
+
+
+assignDriverBtn?.addEventListener(
+  'click',
+  () => {
+    if (!selectedTruck) {
+      return;
+    }
+
+    const truckLabel =
+      $('asignarChoferCamion');
+
+    if (truckLabel) {
+      truckLabel.textContent =
+        `${selectedTruck.matricula} · ${selectedTruck.marca} ${selectedTruck.modelo}`;
+    }
+
+    fillDriverSelect(
+      $('asignarChoferNombre'),
+      selectedTruck.id_chofer
+    );
+
+    showMessage(
+      $('asignarChoferMensaje')
+    );
+
+    if (driverModalTitle) {
+      driverModalTitle.textContent =
+        selectedTruck.id_chofer
+          ? 'Editar chofer'
+          : 'Asignar chofer';
+    }
+
+    if (saveDriverBtn) {
+      saveDriverBtn.textContent =
+        selectedTruck.id_chofer
+          ? 'Guardar cambios'
+          : 'Asignar';
+    }
+
+    driverModal.show();
+  }
+);
+
+
+driverForm?.addEventListener(
+  'submit',
+  async event => {
+    event.preventDefault();
+
+    if (
+      driverBusy ||
+      !selectedTruck
+    ) {
+      return;
+    }
+
+    const value =
+      $('asignarChoferNombre')
+        ?.value || '';
+
+    const idChofer =
+      value
+        ? validId(value)
+        : null;
+
+    showMessage(
+      $('asignarChoferMensaje')
+    );
+
+    try {
+      driverBusy = true;
+
+      await requestJson(
+        `${API_GESTION}/api/camiones/${selectedTruck.id_camion}/chofer`,
+        {
+          method: 'PUT',
+
+          body: {
+            id_chofer:
+              idChofer
+          }
+        }
+      );
+
+      driverModal.hide();
+
+      await loadTrucks();
+
+      await openTruck(
+        selectedTruckId
+      );
+
+    } catch (error) {
+      showMessage(
+        $('asignarChoferMensaje'),
+        error.message
+      );
+
+    } finally {
+      driverBusy = false;
+    }
+  }
+);
+
+
+assignCompanionBtn?.addEventListener(
+  'click',
+  () => {
+    if (!selectedTruck) {
+      return;
+    }
+
+    const truckLabel =
+      $('asignarAcompananteCamion');
+
+    if (truckLabel) {
+      truckLabel.textContent =
+        `${selectedTruck.matricula} · ${selectedTruck.marca} ${selectedTruck.modelo}`;
+    }
+
+    fillCrewSelect(
+      $('asignarAcompananteCuadrilla'),
+      selectedTruck.id_cuadrilla
+    );
+
+    showMessage(
+      $('asignarAcompananteMensaje')
+    );
+
+    companionModal.show();
+  }
+);
+
+
+companionForm?.addEventListener(
+  'submit',
+  async event => {
+    event.preventDefault();
+
+    if (
+      companionBusy ||
+      !selectedTruck
+    ) {
+      return;
+    }
+
+    const value =
+      $('asignarAcompananteCuadrilla')
+        ?.value || '';
+
+    showMessage(
+      $('asignarAcompananteMensaje')
+    );
+
+    try {
+      companionBusy = true;
+
+      await requestJson(
+        `${API_GESTION}/api/camiones/${selectedTruck.id_camion}/cuadrilla`,
+        {
+          method: 'PUT',
+
+          body: {
+            id_cuadrilla:
+              value || null
+          }
+        }
+      );
+
+      companionModal.hide();
+
+      await loadTrucks();
+
+      await openTruck(
+        selectedTruckId
+      );
+
+    } catch (error) {
+      showMessage(
+        $('asignarAcompananteMensaje'),
+        error.message
+      );
+
+    } finally {
+      companionBusy = false;
+    }
+  }
+);
+
+
+document.addEventListener(
+  'click',
+  event => {
+    const target =
+      event.target;
+
+    if (
+      !(target instanceof Element)
+    ) {
+      return;
+    }
+
+    const truckButton =
+      target.closest(
+        '[data-open-truck]'
+      );
+
+    if (truckButton) {
+      void openTruck(
+        truckButton.dataset
+          .openTruck
+      );
+
+      return;
+    }
+
+    const incidentButton =
+      target.closest(
+        '[data-open-incident]'
+      );
+
+    if (incidentButton) {
+      openIncident(
+        incidentButton.dataset
+          .openIncident
+      );
+    }
+  }
+);
+
+async function init() {
+
+  fillCatalogControls();
+
+  try {
+    await loadCatalogs();
+
+  } catch (error) {
+    console.error(
+      'Catálogos de camiones:',
+      error.message
+    );
+  }
+  await loadTrucks();
 }
 
-$('agregarCamionForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const data = Object.fromEntries(new FormData(event.currentTarget));
 
-  if (trucks.some((truck) => truck.matricula.toUpperCase() === data.matricula.trim().toUpperCase())) {
-    $('agregarCamionMensaje').textContent = 'Ya existe un camión con esa matrícula.';
-    $('agregarCamionMensaje').style.display = 'block';
-    return;
-  }
+window.addEventListener(
+  'resize',
+  syncTruckVisualHeight
+);
 
-  const truck = {
-    id: Math.max(0, ...trucks.map((item) => item.id)) + 1,
-    matricula: data.matricula.trim().toUpperCase(),
-    imagen: '../resources/Camion1.png',
-    fotoPosicion: 'center',
-    fotoAjuste: 'cover',
-    tipo: data.tipo,
-    marca: data.marca.trim(),
-    modelo: data.modelo.trim(),
-    chasis: data.chasis.trim(),
-    chofer: data.chofer.trim() || null,
-    acompanante: null,
-    estado: data.estado,
-    gps: data.gps.trim(),
-    ruta: 'Sin asignar',
-    turno: data.turno,
-    kmTotal: Number(data.km_total),
-    kmTurno: 0,
-    ultimaCarga: data.ultima_carga,
-    tiempoActivo: '00:00',
-    activo: true,
-    capacidad: Number(data.capacidad || 8000),
-    peso: 0,
-    asignados: 0,
-    recolectados: 0,
-    historial: []
-  };
-
-  trucks.push(truck);
-  saveTrucks();
-  renderTable();
-  renderTruck(truck.id);
-  await api({
-    accion: 'crear',
-    matricula: truck.matricula, tipo: truck.tipo, marca: truck.marca, modelo: truck.modelo,
-    chasis: truck.chasis, estado: truck.estado, km_total: truck.kmTotal,
-    ult_carga_combustible: truck.ultimaCarga || null, gps: truck.gps,
-    capacidad_kg: truck.capacidad, turno: truck.turno, chofer_asignado: truck.chofer
-  });
-
-  event.currentTarget.reset();
-  $('agregarCamionMensaje').style.display = 'none';
-  addModal.hide();
-});
-
-$('quitarCamionForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const id = Number(removeSelect.value);
-  const index = trucks.findIndex((truck) => truck.id === id);
-  if (index < 0) return;
-
-  trucks.splice(index, 1);
-  saveTrucks();
-  await api({ accion: 'eliminar', id_camion: id });
-
-  if (selectedTruckId === id) {
-    selectedTruckId = null;
-    detailPanel.classList.add('d-none');
-    historyPanel.classList.add('d-none');
-  }
-
-  renderTable();
-  removeModal.hide();
-});
-
-assignDriverBtn.addEventListener('click', () => {
-  const truck = trucks.find((item) => item.id === selectedTruckId);
-  if (!truck) return;
-
-  $('asignarChoferCamion').textContent = `${truck.matricula} · ${truck.marca} ${truck.modelo}`;
-  $('asignarChoferNombre').value = truck.chofer || '';
-  $('asignarChoferMensaje').style.display = 'none';
-  driverModalTitle.textContent = truck.chofer ? 'Editar chofer' : 'Asignar chofer';
-  saveDriverBtn.textContent = truck.chofer ? 'Guardar cambios' : 'Asignar';
-  driverModal.show();
-});
-
-$('asignarChoferForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const truck = trucks.find((item) => item.id === selectedTruckId);
-  const nombre = $('asignarChoferNombre').value.trim();
-  if (!truck || !nombre) return;
-
-  truck.chofer = nombre;
-  saveTrucks();
-  await api({ accion: 'asignar_chofer', id_camion: truck.id, chofer_asignado: nombre });
-  renderTruck(truck.id);
-  driverModal.hide();
-});
-
-assignCompanionBtn.addEventListener('click', () => {
-  const truck = trucks.find((item) => item.id === selectedTruckId);
-  if (!truck) return;
-
-  $('asignarAcompananteCamion').textContent = `${truck.matricula} · ${truck.marca} ${truck.modelo}`;
-  $('asignarAcompananteCuadrilla').value = truck.acompanante || '';
-  $('asignarAcompananteMensaje').style.display = 'none';
-  companionModal.show();
-});
-
-$('asignarAcompananteForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const truck = trucks.find((item) => item.id === selectedTruckId);
-  const cuadrilla = $('asignarAcompananteCuadrilla').value;
-  if (!truck || !cuadrilla) return;
-
-  truck.acompanante = cuadrilla;
-  saveTrucks();
-  await api({
-    accion: 'asignar_acompanante',
-    id_camion: truck.id,
-    cuadrilla_acompanante: cuadrilla
-  });
-  renderTruck(truck.id);
-  companionModal.hide();
-});
-
-document.addEventListener('click', (event) => {
-  const truckButton = event.target.closest('[data-open-truck]');
-  if (truckButton) return renderTruck(truckButton.dataset.openTruck);
-
-  const incidentButton = event.target.closest('[data-open-incident]');
-  if (incidentButton) openIncident(incidentButton.dataset.openIncident);
-});
-
-renderTable();
-
-window.addEventListener('resize', syncTruckVisualHeight);
+void init();

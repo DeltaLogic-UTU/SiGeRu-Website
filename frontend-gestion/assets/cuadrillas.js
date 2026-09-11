@@ -1,284 +1,1753 @@
-const crews=[
-  {
-    id:'B-02',responsable:'Diego Forlán',turno:'Nocturno',estado:'En servicio',ubicacion:'B_01',
-    integrantes:[
-      {nombre:'Edinson Cavani',estado:'Activo',fecha:'2026-05-10'},
-      {nombre:'Federico Valverde',estado:'Activo',fecha:'2026-05-10'},
-      {nombre:'Valeria Ripoll',estado:'Activo',fecha:'2026-05-12'},
-      {nombre:'Victoria Rodríguez',estado:'Activo',fecha:'2026-05-12'}
-    ],
-    historiales:{
-      limpieza:[
-        {circuito:'B_01',asignacion:'2026-07-20',finalizacion:'2026-07-20'},
-        {circuito:'B_02',asignacion:'2026-07-24',finalizacion:'Pendiente'}
-      ],
-      reclamos:[
-        {reclamo:'Jun26-C9753',asignacion:'2026-06-26',finalizacion:'Pendiente'},
-        {reclamo:'Jun26-B7483',asignacion:'2026-06-28',finalizacion:'2026-06-28'}
-      ],
-      incidencias:[
-        {codigo:'INC-B02-01',tipo:'Contenedor desbordado',estado:'Resuelta',reporte:'2026-06-28',resolucion:'2026-06-28',descripcion:'Se retiraron residuos acumulados y se normalizó el punto.'}
-      ]
-    }
-  },
-  {
-    id:'B-03',responsable:'Luis Suárez',turno:'Nocturno',estado:'Regresando',ubicacion:'B_03',
-    integrantes:[
-      {nombre:'Rodrigo Bentancur',estado:'Activo',fecha:'2026-05-18'},
-      {nombre:'José María Giménez',estado:'Activo',fecha:'2026-05-18'},
-      {nombre:'Sergio Rochet',estado:'Activo',fecha:'2026-05-20'},
-      {nombre:'Nicolás de la Cruz',estado:'Activo',fecha:'2026-05-20'}
-    ],
-    historiales:{
-      limpieza:[
-        {circuito:'B_03',asignacion:'2026-07-21',finalizacion:'2026-07-21'},
-        {circuito:'B_04',asignacion:'2026-07-24',finalizacion:'2026-07-24'}
-      ],
-      reclamos:[
-        {reclamo:'Jun26-A1234',asignacion:'2026-06-27',finalizacion:'2026-06-27'}
-      ],
-      incidencias:[]
-    }
-  },
-  {
-    id:'CH_03',responsable:'Juana de Ibarbourou',turno:'Nocturno',estado:'En base',ubicacion:'CH_114',
-    integrantes:[
-      {nombre:'Delmira Agustini',estado:'Activo',fecha:'2026-06-01'},
-      {nombre:'Idea Vilariño',estado:'Activo',fecha:'2026-06-01'},
-      {nombre:'Mario Benedetti',estado:'Activo',fecha:'2026-06-02'},
-      {nombre:'Amanda Berenguer',estado:'Activo',fecha:'2026-06-02'}
-    ],
-    historiales:{
-      limpieza:[{circuito:'CH_114',asignacion:'2026-07-22',finalizacion:'2026-07-22'}],
-      reclamos:[{reclamo:'Jun26-1236',asignacion:'2026-06-19',finalizacion:'2026-06-19'}],
-      incidencias:[
-        {codigo:'INC-CH03-01',tipo:'Rotura de contenedor',estado:'Resuelta',reporte:'2026-06-19',resolucion:'2026-06-19',descripcion:'Se informó la rotura y se dejó el contenedor fuera de servicio.'}
-      ]
-    }
-  },
-  {
-    id:'CH_01',responsable:'China Zorrilla',turno:'Nocturno',estado:'En servicio',ubicacion:'CH_109',
-    integrantes:[
-      {nombre:'Estela Medina',estado:'Activo',fecha:'2026-06-04'},
-      {nombre:'Antonio Larreta',estado:'Activo',fecha:'2026-06-04'},
-      {nombre:'Dahd Sfeir',estado:'Activo',fecha:'2026-06-05'},
-      {nombre:'Walter Reyno',estado:'Activo',fecha:'2026-06-05'}
-    ],
-    historiales:{
-      limpieza:[
-        {circuito:'CH_108',asignacion:'2026-07-23',finalizacion:'2026-07-23'},
-        {circuito:'CH_109',asignacion:'2026-07-25',finalizacion:'Pendiente'}
-      ],
-      reclamos:[{reclamo:'Jun26-F0056',asignacion:'2026-07-22',finalizacion:'Pendiente'}],
-      incidencias:[]
-    }
-  },
-  {
-    id:'CH_02',responsable:'Natalia Oreiro',turno:'Nocturno',estado:'Esperando circuito',ubicacion:'CH_102',
-    integrantes:[
-      {nombre:'Edinson Cavani',estado:'Activo',fecha:'2026-05-10'},
-      {nombre:'Federico Valverde',estado:'Activo',fecha:'2026-05-10'},
-      {nombre:'Valeria Ripoll',estado:'Activo',fecha:'2026-05-12'},
-      {nombre:'Victoria Rodríguez',estado:'Activo',fecha:'2026-05-12'}
-    ],
-    historiales:{
-      limpieza:[
-        {circuito:'CH_105',asignacion:'2026-07-24',finalizacion:'2026-07-24'},
-        {circuito:'CH_102',asignacion:'2026-07-25',finalizacion:'Pendiente'}
-      ],
-      reclamos:[],
-      incidencias:[
-        {codigo:'INC-CH02-01',tipo:'Falta de recolección',estado:'En curso',reporte:'2026-07-25',resolucion:'Pendiente',descripcion:'Circuito pendiente de completar por demora operativa.'}
-      ]
-    }
+const API_GESTION = 'http://127.0.0.1:8001';
+
+let crews = [];
+let responsables = [];
+
+const crewState = {
+  selectedId: null
+};
+
+const crewBody =
+  document.getElementById(
+    'crewTableBody'
+  );
+
+const membersBody =
+  document.getElementById(
+    'crewMembersBody'
+  );
+
+const cleaningHistoryBody =
+  document.getElementById(
+    'crewCleaningHistoryBody'
+  );
+
+const claimsHistoryBody =
+  document.getElementById(
+    'crewClaimsHistoryBody'
+  );
+
+const incidentsHistoryBody =
+  document.getElementById(
+    'crewIncidentsHistoryBody'
+  );
+
+const crewModal =
+  bootstrap.Modal.getOrCreateInstance(
+    document.getElementById(
+      'crewModal'
+    )
+  );
+
+const memberModal =
+  bootstrap.Modal.getOrCreateInstance(
+    document.getElementById(
+      'memberModal'
+    )
+  );
+
+const esc = value =>
+  String(value ?? '').replace(
+    /[&<>"']/g,
+    character =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      })[character]
+  );
+
+const emptyRow = (
+  columns,
+  message = 'Sin registros.'
+) =>
+  `<tr><td colspan="${columns}" class="text-center py-3 text-muted-custom">${message}</td></tr>`;
+
+const selectedCrew = () =>
+  crews.find(
+    item =>
+      item.id ===
+      crewState.selectedId
+  );
+
+function obtenerData(result) {
+  if (Array.isArray(result)) {
+    return result;
   }
-];
 
-const crewState={selectedId:'B-02'};
-const crewBody=document.getElementById('crewTableBody');
-const membersBody=document.getElementById('crewMembersBody');
-const cleaningHistoryBody=document.getElementById('crewCleaningHistoryBody');
-const claimsHistoryBody=document.getElementById('crewClaimsHistoryBody');
-const incidentsHistoryBody=document.getElementById('crewIncidentsHistoryBody');
-const crewModal=bootstrap.Modal.getOrCreateInstance(document.getElementById('crewModal'));
-const memberModal=bootstrap.Modal.getOrCreateInstance(document.getElementById('memberModal'));
+  if (
+    Array.isArray(
+      result?.data
+    )
+  ) {
+    return result.data;
+  }
 
-const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]);
-const selectedCrew=()=>crews.find(item=>item.id===crewState.selectedId);
-const emptyRow=(columns,message='Sin registros.')=>`<tr><td colspan="${columns}" class="text-center py-3 text-muted-custom">${message}</td></tr>`;
-
-function historyCount(crew){
-  return crew.historiales.limpieza.length+crew.historiales.reclamos.length+crew.historiales.incidencias.length;
+  return [];
 }
 
-function renderCrews(){
-  crewBody.innerHTML=crews.map(item=>`<tr class="${item.id===crewState.selectedId?'table-active':''}" data-crew-select="${esc(item.id)}">
-    <td><strong>${esc(item.id)}</strong></td>
-    <td>${esc(item.responsable)}</td>
-    <td>${esc(item.turno)}</td>
-    <td>${esc(item.estado)}</td>
-    <td>${esc(item.ubicacion)}</td>
-    <td>${historyCount(item)}</td>
-    <td>${item.integrantes.length}</td>
-    <td><div class="d-flex gap-2">
-      <button class="btn btn-outline btn-sm" data-crew-edit="${esc(item.id)}" type="button" aria-label="Editar ${esc(item.id)}"><i class="bi bi-pencil"></i></button>
-      <button class="btn btn-outline btn-sm" data-crew-delete="${esc(item.id)}" type="button" aria-label="Eliminar ${esc(item.id)}"><i class="bi bi-trash"></i></button>
-    </div></td>
-  </tr>`).join('');
+async function obtenerCsrfToken() {
+  const response = await fetch(
+    `${API_GESTION}/csrf-token`,
+    {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json'
+      }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      'No se pudo obtener el token de seguridad.'
+    );
+  }
+
+  const result =
+    await response.json();
+
+  return result.token;
 }
 
-function renderDetails(){
-  const crew=selectedCrew();
-  if(!crew){
-    membersBody.innerHTML=emptyRow(4,'Seleccioná una cuadrilla.');
-    cleaningHistoryBody.innerHTML=emptyRow(3);
-    claimsHistoryBody.innerHTML=emptyRow(3);
-    incidentsHistoryBody.innerHTML=emptyRow(6);
+async function requestGestion(
+  url,
+  options = {}
+) {
+  const settings = {
+    method:
+      options.method || 'GET',
+
+    credentials:
+      'include',
+
+    headers: {
+      Accept:
+        'application/json',
+
+      ...(options.headers || {})
+    }
+  };
+
+  if (
+    options.body !==
+    undefined
+  ) {
+    settings.body =
+      options.body;
+  }
+
+  if (
+    [
+      'POST',
+      'PUT',
+      'PATCH',
+      'DELETE'
+    ].includes(
+      settings.method
+    )
+  ) {
+    const token =
+      await obtenerCsrfToken();
+
+    settings.headers = {
+      ...settings.headers,
+
+      'Content-Type':
+        'application/json',
+
+      'X-CSRF-TOKEN':
+        token
+    };
+  }
+
+  const response =
+    await fetch(
+      `${API_GESTION}${url}`,
+      settings
+    );
+
+  let result = {};
+
+  try {
+    result =
+      await response.json();
+  } catch {
+    result = {};
+  }
+
+  if (!response.ok) {
+    let message =
+      result.message ||
+      'No se pudo completar la operación.';
+
+    if (result.errors) {
+      const firstError =
+        Object.values(
+          result.errors
+        )[0];
+
+      if (
+        Array.isArray(
+          firstError
+        ) &&
+        firstError.length
+      ) {
+        message =
+          firstError[0];
+      }
+    }
+
+    throw new Error(
+      message
+    );
+  }
+
+  return result;
+}
+
+function convertirIntegrante(
+  item
+) {
+  return {
+    id_usuario:
+      Number(
+        item.id_usuario
+      ),
+
+    nombre:
+      [
+        item.nombre || '',
+        item.apellido || ''
+      ]
+        .join(' ')
+        .trim(),
+
+    estado:
+      item.estado ||
+      'Activo',
+
+    fecha:
+      String(
+        item.fecha_asignacion ||
+        ''
+      ).slice(0, 10) ||
+      '—'
+  };
+}
+
+function convertirCuadrilla(
+  item
+) {
+  return {
+    id:
+      item.id_cuadrilla,
+
+    id_responsable:
+      item.id_responsable,
+
+    responsable:
+      item.responsable ||
+      'Sin responsable',
+
+    turno:
+      item.turno || '',
+
+    estado:
+      item.estado || '',
+
+    ubicacion:
+      item.ubicacion_actual ||
+      item.ubicacion ||
+      '',
+
+    integrantes: [],
+
+    historiales: {
+      limpieza: [],
+      reclamos: [],
+      incidencias: []
+    }
+  };
+}
+
+async function cargarIntegrantesCuadrilla(
+  crew
+) {
+  const result =
+    await requestGestion(
+      `/api/cuadrillas/${encodeURIComponent(
+        crew.id
+      )}/integrantes`
+    );
+
+  crew.integrantes =
+    obtenerData(result).map(
+      convertirIntegrante
+    );
+}
+
+async function cargarHistorialesCuadrilla(
+  crew
+) {
+  const result =
+    await requestGestion(
+      `/api/cuadrillas/${encodeURIComponent(
+        crew.id
+      )}/historiales`
+    );
+
+  const data =
+    result?.data || {};
+
+  crew.historiales = {
+    limpieza:
+      Array.isArray(
+        data.limpieza
+      )
+        ? data.limpieza
+        : [],
+
+    reclamos:
+      Array.isArray(
+        data.reclamos
+      )
+        ? data.reclamos
+        : [],
+
+    incidencias:
+      Array.isArray(
+        data.incidencias
+      )
+        ? data.incidencias
+        : []
+  };
+}
+
+async function cargarDetalleCuadrilla(
+  crew
+) {
+  await Promise.all([
+    cargarIntegrantesCuadrilla(
+      crew
+    ),
+
+    cargarHistorialesCuadrilla(
+      crew
+    )
+  ]);
+}
+
+async function cargarCuadrillas() {
+  const result =
+    await requestGestion(
+      '/api/cuadrillas'
+    );
+
+  crews =
+    obtenerData(result).map(
+      convertirCuadrilla
+    );
+
+  await Promise.all(
+    crews.map(
+      cargarDetalleCuadrilla
+    )
+  );
+
+  if (
+    !crewState.selectedId ||
+    !crews.some(
+      item =>
+        item.id ===
+        crewState.selectedId
+    )
+  ) {
+    crewState.selectedId =
+      crews[0]?.id ||
+      null;
+  }
+
+  renderCrews();
+  renderDetails();
+}
+
+async function cargarResponsables() {
+  const result =
+    await requestGestion(
+      '/api/cuadrillas/responsables'
+    );
+
+  responsables =
+    obtenerData(result);
+}
+
+async function cargarIntegrantesDisponibles(
+  idCuadrilla
+) {
+  const result =
+    await requestGestion(
+      `/api/cuadrillas/${encodeURIComponent(
+        idCuadrilla
+      )}/integrantes-disponibles`
+    );
+
+  return obtenerData(
+    result
+  );
+}
+
+function prepararSelectorResponsable(
+  idSeleccionado = ''
+) {
+  let campo =
+    document.getElementById(
+      'crewChiefInput'
+    );
+
+  if (!campo) {
     return;
   }
 
-  document.getElementById('crewMembersTitle').textContent=`Integrantes de ${crew.id}`;
+  if (
+    campo.tagName
+      .toLowerCase() !==
+    'select'
+  ) {
+    const select =
+      document.createElement(
+        'select'
+      );
 
-  membersBody.innerHTML=crew.integrantes.length
-    ?crew.integrantes.map((member,index)=>`<tr>
-      <td><strong>${esc(member.nombre)}</strong></td>
-      <td>${esc(member.estado)}</td>
-      <td>${esc(member.fecha)}</td>
-      <td><div class="d-flex gap-2">
-        <button class="btn btn-outline btn-sm" data-member-edit="${index}" type="button" aria-label="Editar integrante"><i class="bi bi-pencil"></i></button>
-        <button class="btn btn-outline btn-sm" data-member-delete="${index}" type="button" aria-label="Eliminar integrante"><i class="bi bi-trash"></i></button>
-      </div></td>
-    </tr>`).join('')
-    :emptyRow(4,'Sin integrantes.');
+    select.id =
+      campo.id;
 
-  cleaningHistoryBody.innerHTML=crew.historiales.limpieza.length
-    ?crew.historiales.limpieza.map(item=>`<tr><td>${esc(item.circuito)}</td><td>${esc(item.asignacion)}</td><td>${esc(item.finalizacion)}</td></tr>`).join('')
-    :emptyRow(3);
+    select.name =
+      campo.name;
 
-  claimsHistoryBody.innerHTML=crew.historiales.reclamos.length
-    ?crew.historiales.reclamos.map(item=>`<tr><td>${esc(item.reclamo)}</td><td>${esc(item.asignacion)}</td><td>${esc(item.finalizacion)}</td></tr>`).join('')
-    :emptyRow(3);
+    select.className =
+      campo.className;
 
-  incidentsHistoryBody.innerHTML=crew.historiales.incidencias.length
-    ?crew.historiales.incidencias.map(item=>`<tr>
-      <td><strong>${esc(item.codigo)}</strong></td>
-      <td>${esc(item.tipo)}</td>
-      <td>${esc(item.estado)}</td>
-      <td>${esc(item.reporte)}</td>
-      <td>${esc(item.resolucion)}</td>
-      <td>${esc(item.descripcion)}</td>
-    </tr>`).join('')
-    :emptyRow(6);
+    select.required =
+      true;
+
+    campo.replaceWith(
+      select
+    );
+
+    campo =
+      select;
+  }
+
+  campo.innerHTML = `
+    <option value="">
+      Seleccionar barrendero
+    </option>
+
+    ${responsables
+      .map(
+        usuario => {
+          const selected =
+            String(
+              usuario.id_usuario
+            ) ===
+            String(
+              idSeleccionado
+            );
+
+          return `
+            <option
+              value="${esc(
+                usuario.id_usuario
+              )}"
+              ${
+                selected
+                  ? 'selected'
+                  : ''
+              }
+            >
+              ${esc(
+                usuario.nombre
+              )}
+              ${esc(
+                usuario.apellido
+              )}
+            </option>
+          `;
+        }
+      )
+      .join('')}
+  `;
 }
 
-function fillCrew(item={}){
-  document.getElementById('crewOriginalId').value=item.id||'';
-  document.getElementById('crewCodeInput').value=item.id||'';
-  document.getElementById('crewChiefInput').value=item.responsable||'';
-  document.getElementById('crewTurnInput').value=item.turno||'Nocturno';
-  document.getElementById('crewStateInput').value=item.estado||'Disponible';
-  document.getElementById('crewLocationInput').value=item.ubicacion||'';
-  document.getElementById('crewModalTitle').textContent=item.id?'Editar cuadrilla':'Nueva cuadrilla';
+async function prepararSelectorIntegrante(
+  idSeleccionado = ''
+) {
+  const crew =
+    selectedCrew();
+
+  if (!crew) {
+    return;
+  }
+
+  let campo =
+    document.getElementById(
+      'memberName'
+    );
+
+  if (!campo) {
+    return;
+  }
+
+  if (
+    campo.tagName
+      .toLowerCase() !==
+    'select'
+  ) {
+    const select =
+      document.createElement(
+        'select'
+      );
+
+    select.id =
+      campo.id;
+
+    select.name =
+      campo.name;
+
+    select.className =
+      campo.className;
+
+    select.required =
+      true;
+
+    campo.replaceWith(
+      select
+    );
+
+    campo =
+      select;
+  }
+
+  const disponibles =
+    await cargarIntegrantesDisponibles(
+      crew.id
+    );
+
+  const opciones = [
+    ...disponibles
+  ];
+
+  if (idSeleccionado) {
+    const actual =
+      crew.integrantes.find(
+        integrante =>
+          String(
+            integrante.id_usuario
+          ) ===
+          String(
+            idSeleccionado
+          )
+      );
+
+    const existe =
+      opciones.some(
+        usuario =>
+          String(
+            usuario.id_usuario
+          ) ===
+          String(
+            idSeleccionado
+          )
+      );
+
+    if (
+      actual &&
+      !existe
+    ) {
+      opciones.unshift({
+        id_usuario:
+          actual.id_usuario,
+
+        nombre:
+          actual.nombre,
+
+        apellido:
+          ''
+      });
+    }
+  }
+
+  campo.innerHTML = `
+    <option value="">
+      Seleccionar barrendero
+    </option>
+
+    ${opciones
+      .map(
+        usuario => {
+          const selected =
+            String(
+              usuario.id_usuario
+            ) ===
+            String(
+              idSeleccionado
+            );
+
+          return `
+            <option
+              value="${esc(
+                usuario.id_usuario
+              )}"
+              ${
+                selected
+                  ? 'selected'
+                  : ''
+              }
+            >
+              ${esc(
+                usuario.nombre
+              )}
+              ${esc(
+                usuario.apellido ||
+                ''
+              )}
+            </option>
+          `;
+        }
+      )
+      .join('')}
+  `;
 }
 
-document.getElementById('crewForm').addEventListener('submit',event=>{
-  event.preventDefault();
-  const original=document.getElementById('crewOriginalId').value;
-  const previous=crews.find(item=>item.id===original);
-  const item={
-    id:document.getElementById('crewCodeInput').value.trim(),
-    responsable:document.getElementById('crewChiefInput').value.trim(),
-    turno:document.getElementById('crewTurnInput').value,
-    estado:document.getElementById('crewStateInput').value.trim(),
-    ubicacion:document.getElementById('crewLocationInput').value.trim(),
-    integrantes:previous?.integrantes||[],
-    historiales:previous?.historiales||{limpieza:[],reclamos:[],incidencias:[]}
-  };
+function historyCount(
+  crew
+) {
+  return (
+    crew.historiales
+      .limpieza.length +
 
-  const index=crews.findIndex(x=>x.id===original);
-  if(index>=0)crews[index]=item;else crews.push(item);
-  crewState.selectedId=item.id;
-  crewModal.hide();
-  renderCrews();
-  renderDetails();
-});
+    crew.historiales
+      .reclamos.length +
 
-document.getElementById('memberForm').addEventListener('submit',event=>{
-  event.preventDefault();
-  const crew=selectedCrew();
-  if(!crew)return;
+    crew.historiales
+      .incidencias.length
+  );
+}
 
-  const rawIndex=document.getElementById('memberIndex').value;
-  const item={
-    nombre:document.getElementById('memberName').value.trim(),
-    estado:document.getElementById('memberState').value,
-    fecha:document.getElementById('memberDate').value
-  };
-
-  if(rawIndex!=='')crew.integrantes[Number(rawIndex)]=item;
-  else crew.integrantes.push(item);
-
-  memberModal.hide();
-  renderCrews();
-  renderDetails();
-});
-
-document.querySelector('[data-crew-new]').addEventListener('click',()=>{
-  fillCrew();
-  crewModal.show();
-});
-
-document.querySelector('[data-member-new]').addEventListener('click',()=>{
-  if(!selectedCrew())return;
-  document.getElementById('memberForm').reset();
-  document.getElementById('memberIndex').value='';
-  document.getElementById('memberDate').value=new Date().toISOString().slice(0,10);
-  memberModal.show();
-});
-
-document.addEventListener('click',event=>{
-  const row=event.target.closest('[data-crew-select]');
-  const action=event.target.closest('button,a,input,select,textarea,label,[role="button"]');
-  if(row&&!action){
-    crewState.selectedId=row.dataset.crewSelect;
-    renderCrews();
-    renderDetails();
+function renderCrews() {
+  if (!crewBody) {
+    return;
   }
 
-  const edit=event.target.closest('[data-crew-edit]');
-  if(edit){
-    fillCrew(crews.find(item=>item.id===edit.dataset.crewEdit));
-    crewModal.show();
+  if (!crews.length) {
+    crewBody.innerHTML =
+      emptyRow(
+        8,
+        'No hay cuadrillas registradas.'
+      );
+
+    return;
   }
 
-  const remove=event.target.closest('[data-crew-delete]');
-  if(remove&&confirm('¿Eliminar la cuadrilla?')){
-    const index=crews.findIndex(item=>item.id===remove.dataset.crewDelete);
-    if(index>=0)crews.splice(index,1);
-    crewState.selectedId=crews[0]?.id||null;
-    renderCrews();
-    renderDetails();
+  crewBody.innerHTML =
+    crews
+      .map(
+        item => `
+          <tr
+            class="${
+              item.id ===
+              crewState.selectedId
+                ? 'table-active'
+                : ''
+            }"
+            data-crew-select="${esc(
+              item.id
+            )}"
+          >
+            <td>
+              <strong>
+                ${esc(
+                  item.id
+                )}
+              </strong>
+            </td>
+
+            <td>
+              ${esc(
+                item.responsable
+              )}
+            </td>
+
+            <td>
+              ${esc(
+                item.turno
+              )}
+            </td>
+
+            <td>
+              ${esc(
+                item.estado
+              )}
+            </td>
+
+            <td>
+              ${esc(
+                item.ubicacion
+              )}
+            </td>
+
+            <td>
+              ${historyCount(
+                item
+              )}
+            </td>
+
+            <td>
+              ${
+                item.integrantes
+                  .length
+              }
+            </td>
+
+            <td>
+              <div class="d-flex gap-2">
+
+                <button
+                  class="btn btn-outline btn-sm"
+                  data-crew-edit="${esc(
+                    item.id
+                  )}"
+                  type="button"
+                  aria-label="Editar ${esc(
+                    item.id
+                  )}"
+                >
+                  <i class="bi bi-pencil"></i>
+                </button>
+
+                <button
+                  class="btn btn-outline btn-sm"
+                  data-crew-delete="${esc(
+                    item.id
+                  )}"
+                  type="button"
+                  aria-label="Eliminar ${esc(
+                    item.id
+                  )}"
+                >
+                  <i class="bi bi-trash"></i>
+                </button>
+
+              </div>
+            </td>
+          </tr>
+        `
+      )
+      .join('');
+}
+
+function renderDetails() {
+  const crew =
+    selectedCrew();
+
+  if (!crew) {
+    if (membersBody) {
+      membersBody.innerHTML =
+        emptyRow(
+          4,
+          'Seleccioná una cuadrilla.'
+        );
+    }
+
+    if (
+      cleaningHistoryBody
+    ) {
+      cleaningHistoryBody
+        .innerHTML =
+        emptyRow(3);
+    }
+
+    if (
+      claimsHistoryBody
+    ) {
+      claimsHistoryBody
+        .innerHTML =
+        emptyRow(3);
+    }
+
+    if (
+      incidentsHistoryBody
+    ) {
+      incidentsHistoryBody
+        .innerHTML =
+        emptyRow(6);
+    }
+
+    return;
   }
 
-  const memberEdit=event.target.closest('[data-member-edit]');
-  if(memberEdit){
-    const member=selectedCrew()?.integrantes[Number(memberEdit.dataset.memberEdit)];
-    if(!member)return;
-    document.getElementById('memberIndex').value=memberEdit.dataset.memberEdit;
-    document.getElementById('memberName').value=member.nombre;
-    document.getElementById('memberState').value=member.estado;
-    document.getElementById('memberDate').value=member.fecha;
-    document.getElementById('memberModalTitle').textContent='Editar integrante';
-    memberModal.show();
+  const title =
+    document.getElementById(
+      'crewMembersTitle'
+    );
+
+  if (title) {
+    title.textContent =
+      `Integrantes de ${crew.id}`;
   }
 
-  const memberDelete=event.target.closest('[data-member-delete]');
-  if(memberDelete&&selectedCrew()&&confirm('¿Eliminar el integrante?')){
-    selectedCrew().integrantes.splice(Number(memberDelete.dataset.memberDelete),1);
-    renderCrews();
-    renderDetails();
-  }
-});
+  if (membersBody) {
+    membersBody.innerHTML =
+      crew.integrantes.length
+        ? crew.integrantes
+            .map(
+              (
+                member,
+                index
+              ) => `
+                <tr>
 
-renderCrews();
-renderDetails();
+                  <td>
+                    <strong>
+                      ${esc(
+                        member.nombre
+                      )}
+                    </strong>
+                  </td>
+
+                  <td>
+                    ${esc(
+                      member.estado
+                    )}
+                  </td>
+
+                  <td>
+                    ${esc(
+                      member.fecha
+                    )}
+                  </td>
+
+                  <td>
+                    <div class="d-flex gap-2">
+
+                      <button
+                        class="btn btn-outline btn-sm"
+                        data-member-edit="${index}"
+                        type="button"
+                        aria-label="Editar integrante"
+                      >
+                        <i class="bi bi-pencil"></i>
+                      </button>
+
+                      <button
+                        class="btn btn-outline btn-sm"
+                        data-member-delete="${index}"
+                        type="button"
+                        aria-label="Quitar integrante"
+                      >
+                        <i class="bi bi-trash"></i>
+                      </button>
+
+                    </div>
+                  </td>
+
+                </tr>
+              `
+            )
+            .join('')
+        : emptyRow(
+            4,
+            'Sin integrantes.'
+          );
+  }
+
+  if (
+    cleaningHistoryBody
+  ) {
+    cleaningHistoryBody
+      .innerHTML =
+      crew.historiales
+        .limpieza.length
+        ? crew.historiales
+            .limpieza
+            .map(
+              item => `
+                <tr>
+
+                  <td>
+                    ${esc(
+                      item.circuito
+                    )}
+                  </td>
+
+                  <td>
+                    ${esc(
+                      item.asignacion
+                    )}
+                  </td>
+
+                  <td>
+                    ${esc(
+                      item.finalizacion
+                    )}
+                  </td>
+
+                </tr>
+              `
+            )
+            .join('')
+        : emptyRow(3);
+  }
+
+  if (
+    claimsHistoryBody
+  ) {
+    claimsHistoryBody
+      .innerHTML =
+      crew.historiales
+        .reclamos.length
+        ? crew.historiales
+            .reclamos
+            .map(
+              item => `
+                <tr>
+
+                  <td>
+                    ${esc(
+                      item.reclamo
+                    )}
+                  </td>
+
+                  <td>
+                    ${esc(
+                      item.asignacion
+                    )}
+                  </td>
+
+                  <td>
+                    ${esc(
+                      item.finalizacion
+                    )}
+                  </td>
+
+                </tr>
+              `
+            )
+            .join('')
+        : emptyRow(3);
+  }
+
+  if (
+    incidentsHistoryBody
+  ) {
+    incidentsHistoryBody
+      .innerHTML =
+      crew.historiales
+        .incidencias.length
+        ? crew.historiales
+            .incidencias
+            .map(
+              item => `
+                <tr>
+
+                  <td>
+                    <strong>
+                      ${esc(
+                        item.codigo
+                      )}
+                    </strong>
+                  </td>
+
+                  <td>
+                    ${esc(
+                      item.tipo
+                    )}
+                  </td>
+
+                  <td>
+                    ${esc(
+                      item.estado
+                    )}
+                  </td>
+
+                  <td>
+                    ${esc(
+                      item.reporte
+                    )}
+                  </td>
+
+                  <td>
+                    ${esc(
+                      item.resolucion
+                    )}
+                  </td>
+
+                  <td>
+                    ${esc(
+                      item.descripcion
+                    )}
+                  </td>
+
+                </tr>
+              `
+            )
+            .join('')
+        : emptyRow(6);
+  }
+}
+
+async function fillCrew(
+  item = {}
+) {
+  if (
+    !responsables.length
+  ) {
+    await cargarResponsables();
+  }
+
+  const originalInput =
+    document.getElementById(
+      'crewOriginalId'
+    );
+
+  const codeInput =
+    document.getElementById(
+      'crewCodeInput'
+    );
+
+  if (originalInput) {
+    originalInput.value =
+      item.id || '';
+  }
+
+  if (codeInput) {
+    codeInput.value =
+      item.id || '';
+
+    codeInput.disabled =
+      Boolean(
+        item.id
+      );
+  }
+
+  prepararSelectorResponsable(
+    item.id_responsable ||
+    ''
+  );
+
+  const turnInput =
+    document.getElementById(
+      'crewTurnInput'
+    );
+
+  if (turnInput) {
+    turnInput.value =
+      item.turno ||
+      'Nocturno';
+  }
+
+  const stateInput =
+    document.getElementById(
+      'crewStateInput'
+    );
+
+  if (stateInput) {
+    stateInput.value =
+      item.estado ||
+      'En base';
+  }
+
+  const locationInput =
+    document.getElementById(
+      'crewLocationInput'
+    );
+
+  if (locationInput) {
+    locationInput.value =
+      item.ubicacion ||
+      '';
+  }
+
+  const modalTitle =
+    document.getElementById(
+      'crewModalTitle'
+    );
+
+  if (modalTitle) {
+    modalTitle.textContent =
+      item.id
+        ? 'Editar cuadrilla'
+        : 'Nueva cuadrilla';
+  }
+}
+
+const crewForm =
+  document.getElementById(
+    'crewForm'
+  );
+
+if (crewForm) {
+  crewForm.addEventListener(
+    'submit',
+    async event => {
+      event.preventDefault();
+
+      const original =
+        document.getElementById(
+          'crewOriginalId'
+        )?.value || '';
+
+      const idResponsable =
+        document.getElementById(
+          'crewChiefInput'
+        )?.value || '';
+
+      const turno =
+        document.getElementById(
+          'crewTurnInput'
+        )?.value || '';
+
+      const estado =
+        document.getElementById(
+          'crewStateInput'
+        )?.value || '';
+
+      const ubicacion =
+        document.getElementById(
+          'crewLocationInput'
+        )?.value.trim() ||
+        '';
+
+      if (
+        !idResponsable
+      ) {
+        alert(
+          'Seleccioná un barrendero responsable.'
+        );
+
+        return;
+      }
+
+      if (!turno) {
+        alert(
+          'Seleccioná el turno.'
+        );
+
+        return;
+      }
+
+      if (!estado) {
+        alert(
+          'Ingresá el estado.'
+        );
+
+        return;
+      }
+
+      if (!ubicacion) {
+        alert(
+          'Ingresá la ubicación.'
+        );
+
+        return;
+      }
+
+      const payload = {
+        id_responsable:
+          Number(
+            idResponsable
+          ),
+
+        turno,
+
+        estado,
+
+        ubicacion_actual:
+          ubicacion
+      };
+
+      try {
+        if (original) {
+          await requestGestion(
+            `/api/cuadrillas/${encodeURIComponent(
+              original
+            )}`,
+            {
+              method:
+                'PUT',
+
+              body:
+                JSON.stringify(
+                  payload
+                )
+            }
+          );
+        } else {
+          const codigo =
+            document.getElementById(
+              'crewCodeInput'
+            )?.value.trim() ||
+            '';
+
+          if (!codigo) {
+            alert(
+              'Ingresá el código de la cuadrilla.'
+            );
+
+            return;
+          }
+
+          payload.id_cuadrilla =
+            codigo;
+
+          await requestGestion(
+            '/api/cuadrillas',
+            {
+              method:
+                'POST',
+
+              body:
+                JSON.stringify(
+                  payload
+                )
+            }
+          );
+
+          crewState.selectedId =
+            codigo;
+        }
+
+        crewModal.hide();
+
+        await cargarResponsables();
+
+        await cargarCuadrillas();
+      } catch (error) {
+        alert(
+          error.message
+        );
+      }
+    }
+  );
+}
+
+const memberForm =
+  document.getElementById(
+    'memberForm'
+  );
+
+if (memberForm) {
+  memberForm.addEventListener(
+    'submit',
+    async event => {
+      event.preventDefault();
+
+      const crew =
+        selectedCrew();
+
+      if (!crew) {
+        return;
+      }
+
+      const nuevoId =
+        Number(
+          document.getElementById(
+            'memberName'
+          )?.value
+        );
+
+      const idOriginal =
+        Number(
+          document.getElementById(
+            'memberIndex'
+          )?.value
+        );
+
+      if (!nuevoId) {
+        alert(
+          'Seleccioná un barrendero.'
+        );
+
+        return;
+      }
+
+      try {
+        if (idOriginal) {
+          if (
+            idOriginal !==
+            nuevoId
+          ) {
+            await requestGestion(
+              `/api/cuadrillas/${encodeURIComponent(
+                crew.id
+              )}/integrantes/${idOriginal}`,
+              {
+                method:
+                  'PUT',
+
+                body:
+                  JSON.stringify({
+                    id_usuario:
+                      nuevoId
+                  })
+              }
+            );
+          }
+        } else {
+          await requestGestion(
+            `/api/cuadrillas/${encodeURIComponent(
+              crew.id
+            )}/integrantes`,
+            {
+              method:
+                'POST',
+
+              body:
+                JSON.stringify({
+                  id_usuario:
+                    nuevoId
+                })
+            }
+          );
+        }
+
+        memberModal.hide();
+
+        await cargarCuadrillas();
+      } catch (error) {
+        alert(
+          error.message
+        );
+      }
+    }
+  );
+}
+
+const newCrewButton =
+  document.querySelector(
+    '[data-crew-new]'
+  );
+
+if (newCrewButton) {
+  newCrewButton
+    .addEventListener(
+      'click',
+      async () => {
+        try {
+          if (crewForm) {
+            crewForm.reset();
+          }
+
+          await fillCrew();
+
+          crewModal.show();
+        } catch (error) {
+          alert(
+            error.message
+          );
+        }
+      }
+    );
+}
+
+const newMemberButton =
+  document.querySelector(
+    '[data-member-new]'
+  );
+
+if (newMemberButton) {
+  newMemberButton
+    .addEventListener(
+      'click',
+      async () => {
+        const crew =
+          selectedCrew();
+
+        if (!crew) {
+          alert(
+            'Seleccioná una cuadrilla.'
+          );
+
+          return;
+        }
+
+        try {
+          if (memberForm) {
+            memberForm.reset();
+          }
+
+          const indexInput =
+            document.getElementById(
+              'memberIndex'
+            );
+
+          if (indexInput) {
+            indexInput.value =
+              '';
+          }
+
+          await prepararSelectorIntegrante();
+
+          const stateInput =
+            document.getElementById(
+              'memberState'
+            );
+
+          if (stateInput) {
+            stateInput.value =
+              'Activo';
+
+            stateInput.disabled =
+              true;
+          }
+
+          const dateInput =
+            document.getElementById(
+              'memberDate'
+            );
+
+          if (dateInput) {
+            dateInput.value =
+              new Date()
+                .toISOString()
+                .slice(0, 10);
+
+            dateInput.disabled =
+              true;
+          }
+
+          const title =
+            document.getElementById(
+              'memberModalTitle'
+            );
+
+          if (title) {
+            title.textContent =
+              'Nuevo integrante';
+          }
+
+          memberModal.show();
+        } catch (error) {
+          alert(
+            error.message
+          );
+        }
+      }
+    );
+}
+
+document.addEventListener(
+  'click',
+  async event => {
+    const row =
+      event.target.closest(
+        '[data-crew-select]'
+      );
+
+    const action =
+      event.target.closest(
+        'button,a,input,select,textarea,label,[role="button"]'
+      );
+
+    if (
+      row &&
+      !action
+    ) {
+      crewState.selectedId =
+        row.dataset
+          .crewSelect;
+
+      renderCrews();
+
+      renderDetails();
+
+      return;
+    }
+
+    const edit =
+      event.target.closest(
+        '[data-crew-edit]'
+      );
+
+    if (edit) {
+      const crew =
+        crews.find(
+          item =>
+            item.id ===
+            edit.dataset
+              .crewEdit
+        );
+
+      if (!crew) {
+        return;
+      }
+
+      try {
+        if (crewForm) {
+          crewForm.reset();
+        }
+
+        await fillCrew(
+          crew
+        );
+
+        crewModal.show();
+      } catch (error) {
+        alert(
+          error.message
+        );
+      }
+
+      return;
+    }
+
+    const remove =
+      event.target.closest(
+        '[data-crew-delete]'
+      );
+
+    if (remove) {
+      const id =
+        remove.dataset
+          .crewDelete;
+
+      const confirmar =
+        confirm(
+          `¿Eliminar la cuadrilla ${id}?`
+        );
+
+      if (!confirmar) {
+        return;
+      }
+
+      try {
+        await requestGestion(
+          `/api/cuadrillas/${encodeURIComponent(
+            id
+          )}`,
+          {
+            method:
+              'DELETE'
+          }
+        );
+
+        if (
+          crewState.selectedId ===
+          id
+        ) {
+          crewState.selectedId =
+            null;
+        }
+
+        await cargarCuadrillas();
+      } catch (error) {
+        alert(
+          error.message
+        );
+      }
+
+      return;
+    }
+
+    const memberEdit =
+      event.target.closest(
+        '[data-member-edit]'
+      );
+
+    if (memberEdit) {
+      const crew =
+        selectedCrew();
+
+      const member =
+        crew?.integrantes[
+          Number(
+            memberEdit.dataset
+              .memberEdit
+          )
+        ];
+
+      if (!member) {
+        return;
+      }
+
+      try {
+        if (memberForm) {
+          memberForm.reset();
+        }
+
+        const indexInput =
+          document.getElementById(
+            'memberIndex'
+          );
+
+        if (indexInput) {
+          indexInput.value =
+            member.id_usuario;
+        }
+
+        await prepararSelectorIntegrante(
+          member.id_usuario
+        );
+
+        const stateInput =
+          document.getElementById(
+            'memberState'
+          );
+
+        if (stateInput) {
+          stateInput.value =
+            member.estado;
+
+          stateInput.disabled =
+            true;
+        }
+
+        const dateInput =
+          document.getElementById(
+            'memberDate'
+          );
+
+        if (dateInput) {
+          dateInput.value =
+            member.fecha ===
+            '—'
+              ? ''
+              : member.fecha;
+
+          dateInput.disabled =
+            true;
+        }
+
+        const title =
+          document.getElementById(
+            'memberModalTitle'
+          );
+
+        if (title) {
+          title.textContent =
+            'Editar integrante';
+        }
+
+        memberModal.show();
+      } catch (error) {
+        alert(
+          error.message
+        );
+      }
+
+      return;
+    }
+
+    const memberDelete =
+      event.target.closest(
+        '[data-member-delete]'
+      );
+
+    if (memberDelete) {
+      const crew =
+        selectedCrew();
+
+      const member =
+        crew?.integrantes[
+          Number(
+            memberDelete.dataset
+              .memberDelete
+          )
+        ];
+
+      if (
+        !crew ||
+        !member
+      ) {
+        return;
+      }
+
+      const confirmar =
+        confirm(
+          `¿Quitar a ${member.nombre} de ${crew.id}?`
+        );
+
+      if (!confirmar) {
+        return;
+      }
+
+      try {
+        await requestGestion(
+          `/api/cuadrillas/${encodeURIComponent(
+            crew.id
+          )}/integrantes/${member.id_usuario}`,
+          {
+            method:
+              'DELETE'
+          }
+        );
+
+        await cargarCuadrillas();
+      } catch (error) {
+        alert(
+          error.message
+        );
+      }
+
+      return;
+    }
+  }
+);
+
+async function iniciarCuadrillas() {
+  try {
+    await cargarResponsables();
+
+    await cargarCuadrillas();
+  } catch (error) {
+    console.error(
+      error
+    );
+
+    if (crewBody) {
+      crewBody.innerHTML =
+        emptyRow(
+          8,
+          error.message ||
+            'No se pudieron cargar las cuadrillas.'
+        );
+    }
+
+    if (membersBody) {
+      membersBody.innerHTML =
+        emptyRow(
+          4,
+          'No se pudieron cargar los integrantes.'
+        );
+    }
+
+    if (
+      cleaningHistoryBody
+    ) {
+      cleaningHistoryBody
+        .innerHTML =
+        emptyRow(3);
+    }
+
+    if (
+      claimsHistoryBody
+    ) {
+      claimsHistoryBody
+        .innerHTML =
+        emptyRow(3);
+    }
+
+    if (
+      incidentsHistoryBody
+    ) {
+      incidentsHistoryBody
+        .innerHTML =
+        emptyRow(6);
+    }
+  }
+}
+
+iniciarCuadrillas();

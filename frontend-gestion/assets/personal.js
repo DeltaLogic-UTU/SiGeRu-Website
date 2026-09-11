@@ -1,7 +1,16 @@
+const API_USUARIOS_PERSONAL = 'http://127.0.0.1:8000';
+const API_GESTION_PERSONAL = 'http://127.0.0.1:8001';
+
 const personnelState = {
   current: 'cuadrillas',
   editIndex: null,
-  data: { cuadrillas: [], choferes: [], operarios: [], barrenderos: [] }
+  mode: null,
+  data: {
+    cuadrillas: [],
+    choferes: [],
+    operarios: [],
+    barrenderos: []
+  }
 };
 
 const personnelHead = document.getElementById('personnelTableHead');
@@ -9,334 +18,1485 @@ const personnelBody = document.getElementById('personnelTableBody');
 const personnelTitle = document.getElementById('personnelTableTitle');
 const detailGrid = document.getElementById('personnelDetailGrid');
 const membersBox = document.getElementById('personnelMembers');
-const personnelModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('personnelModal'));
-const personnelEditModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('personnelEditModal'));
 const personnelEditForm = document.getElementById('personnelEditForm');
 const personnelEditFields = document.getElementById('personnelEditFields');
-const PERSONNEL_EDITS_KEY = 'sigeru-personal-ediciones';
+const personnelEditMessage = document.getElementById('personnelEditMessage');
+const personnelCreateButton = document.getElementById('personnelCreateButton');
+const personnelEditModalKicker = document.getElementById('personnelEditModalKicker');
+const personnelEditSubmit = document.getElementById('personnelEditSubmit');
 
-const fallbackPersonnel = {
-  cuadrillas: [
-    {id:'B-02',tipo:'cuadrilla',nombre:'Cuadrilla B-02',responsable:'Diego Forlán',estado:'En servicio',turno:'Nocturno',ubicacion:'B_01',integrantes:['Edinson Cavani','Federico Valverde','Valeria Ripoll','Victoria Rodríguez']},
-    {id:'B-03',tipo:'cuadrilla',nombre:'Cuadrilla B-03',responsable:'Luis Suárez',estado:'Regresando',turno:'Nocturno',ubicacion:'B_03',integrantes:['Rodrigo Bentancur','José María Giménez','Sergio Rochet','Nicolás de la Cruz']},
-    {id:'CH_03',tipo:'cuadrilla',nombre:'Cuadrilla CH_03',responsable:'Juana de Ibarbourou',estado:'En base',turno:'Nocturno',ubicacion:'CH_114',integrantes:['Delmira Agustini','Idea Vilariño','Mario Benedetti','Amanda Berenguer']},
-    {id:'CH_01',tipo:'cuadrilla',nombre:'Cuadrilla CH_01',responsable:'China Zorrilla',estado:'En servicio',turno:'Nocturno',ubicacion:'CH_109',integrantes:['Estela Medina','Antonio Larreta','Dahd Sfeir','Walter Reyno']},
-    {id:'CH_02',tipo:'cuadrilla',nombre:'Cuadrilla CH_02',responsable:'Natalia Oreiro',estado:'Esperando circuito',turno:'Nocturno',ubicacion:'CH_102',integrantes:['Edinson Cavani','Federico Valverde','Valeria Ripoll','Victoria Rodríguez']}
-  ],
-  choferes: [
-    {id_trabajador:101,nombre:'Albert',apellido:'Einstein',documento:'4.111.111-1',telefono:'099 111 111',email:'albert@sigeru.uy',rol:'chofer',licencia:'CAT-C-3265',estado:'activo',asignacion:'SBK-3265'},
-    {id_trabajador:102,nombre:'Leonardo',apellido:'da Vinci',documento:'4.222.222-2',telefono:'099 222 222',email:'leonardo@sigeru.uy',rol:'chofer',licencia:'CAT-C-5268',estado:'activo',asignacion:'SAE-5268'},
-    {id_trabajador:103,nombre:'Frida',apellido:'Kahlo',documento:'4.333.333-3',telefono:'099 333 333',email:'frida@sigeru.uy',rol:'chofer',licencia:'CAT-C-1235',estado:'activo',asignacion:'SCE-1235'},
-    {id_trabajador:104,nombre:'Julio',apellido:'César',documento:'4.666.666-6',telefono:'099 666 666',email:'julio@sigeru.uy',rol:'chofer',licencia:'CAT-C-5632',estado:'activo',asignacion:'SDT-5632'}
-  ],
-  barrenderos: [{"id_trabajador":301,"nombre":"Edinson","apellido":"Cavani","documento":"5.101.201-1","telefono":"098 301 401","email":"edinson.cavani@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["B-02","CH_02"],"turnos":["Nocturno"],"ubicaciones":["B_01","CH_102"]},{"id_trabajador":302,"nombre":"Federico","apellido":"Valverde","documento":"5.102.202-2","telefono":"098 302 402","email":"federico.valverde@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["B-02","CH_02"],"turnos":["Nocturno"],"ubicaciones":["B_01","CH_102"]},{"id_trabajador":303,"nombre":"Valeria","apellido":"Ripoll","documento":"5.103.203-3","telefono":"098 303 403","email":"valeria.ripoll@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["B-02","CH_02"],"turnos":["Nocturno"],"ubicaciones":["B_01","CH_102"]},{"id_trabajador":304,"nombre":"Victoria","apellido":"Rodríguez","documento":"5.104.204-4","telefono":"098 304 404","email":"victoria.rodriguez@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["B-02","CH_02"],"turnos":["Nocturno"],"ubicaciones":["B_01","CH_102"]},{"id_trabajador":305,"nombre":"Rodrigo","apellido":"Bentancur","documento":"5.105.205-5","telefono":"098 305 405","email":"rodrigo.bentancur@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["B-03"],"turnos":["Nocturno"],"ubicaciones":["B_03"]},{"id_trabajador":306,"nombre":"José","apellido":"María Giménez","documento":"5.106.206-6","telefono":"098 306 406","email":"jose.maria.gimenez@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["B-03"],"turnos":["Nocturno"],"ubicaciones":["B_03"]},{"id_trabajador":307,"nombre":"Sergio","apellido":"Rochet","documento":"5.107.207-7","telefono":"098 307 407","email":"sergio.rochet@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["B-03"],"turnos":["Nocturno"],"ubicaciones":["B_03"]},{"id_trabajador":308,"nombre":"Nicolás","apellido":"de la Cruz","documento":"5.108.208-8","telefono":"098 308 408","email":"nicolas.de.la.cruz@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["B-03"],"turnos":["Nocturno"],"ubicaciones":["B_03"]},{"id_trabajador":309,"nombre":"Delmira","apellido":"Agustini","documento":"5.109.209-9","telefono":"098 309 409","email":"delmira.agustini@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["CH_03"],"turnos":["Nocturno"],"ubicaciones":["CH_114"]},{"id_trabajador":310,"nombre":"Idea","apellido":"Vilariño","documento":"5.110.210-0","telefono":"098 310 410","email":"idea.vilarino@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["CH_03"],"turnos":["Nocturno"],"ubicaciones":["CH_114"]},{"id_trabajador":311,"nombre":"Mario","apellido":"Benedetti","documento":"5.111.211-1","telefono":"098 311 411","email":"mario.benedetti@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["CH_03"],"turnos":["Nocturno"],"ubicaciones":["CH_114"]},{"id_trabajador":312,"nombre":"Amanda","apellido":"Berenguer","documento":"5.112.212-2","telefono":"098 312 412","email":"amanda.berenguer@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["CH_03"],"turnos":["Nocturno"],"ubicaciones":["CH_114"]},{"id_trabajador":313,"nombre":"Estela","apellido":"Medina","documento":"5.113.213-3","telefono":"098 313 413","email":"estela.medina@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["CH_01"],"turnos":["Nocturno"],"ubicaciones":["CH_109"]},{"id_trabajador":314,"nombre":"Antonio","apellido":"Larreta","documento":"5.114.214-4","telefono":"098 314 414","email":"antonio.larreta@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["CH_01"],"turnos":["Nocturno"],"ubicaciones":["CH_109"]},{"id_trabajador":315,"nombre":"Dahd","apellido":"Sfeir","documento":"5.115.215-5","telefono":"098 315 415","email":"dahd.sfeir@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["CH_01"],"turnos":["Nocturno"],"ubicaciones":["CH_109"]},{"id_trabajador":316,"nombre":"Walter","apellido":"Reyno","documento":"5.116.216-6","telefono":"098 316 416","email":"walter.reyno@sigeru.uy","rol":"barrendero","estado":"activo","cuadrillas":["CH_01"],"turnos":["Nocturno"],"ubicaciones":["CH_109"]}],
-  operarios: [
-    {id_trabajador:201,nombre:'María',apellido:'Pérez',documento:'4.444.444-4',telefono:'099 444 444',email:'maria@sigeru.uy',rol:'operario',estado:'activo',asignacion:'Centro de acopio Norte'},
-    {id_trabajador:202,nombre:'Carlos',apellido:'Silva',documento:'4.555.555-5',telefono:'099 555 555',email:'carlos@sigeru.uy',rol:'operario',estado:'activo',asignacion:'Vertedero Oeste'},
-    {id_trabajador:203,nombre:'Lucía',apellido:'Rodríguez',documento:'4.777.777-7',telefono:'099 777 777',email:'lucia@sigeru.uy',rol:'operario',estado:'activo',asignacion:'Centro de reciclaje Sur'}
-  ]
-};
+const personnelModalElement = document.getElementById('personnelModal');
+const personnelEditModalElement = document.getElementById('personnelEditModal');
+
+const personnelModal = personnelModalElement
+  ? bootstrap.Modal.getOrCreateInstance(personnelModalElement)
+  : null;
+
+const personnelEditModal = personnelEditModalElement
+  ? bootstrap.Modal.getOrCreateInstance(personnelEditModalElement)
+  : null;
+
+function escapePersonnel(value) {
+  return String(value ?? '').replace(
+    /[&<>"']/g,
+    character => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    })[character]
+  );
+}
+
+function inputField(
+  name,
+  label,
+  value = '',
+  type = 'text',
+  required = true
+) {
+  return `
+    <label class="form-label">
+      ${escapePersonnel(label)}
+      <input
+        class="form-control"
+        name="${escapePersonnel(name)}"
+        type="${escapePersonnel(type)}"
+        value="${escapePersonnel(value)}"
+        ${required ? 'required' : ''}
+      >
+    </label>
+  `;
+}
+
+function selectField(
+  name,
+  label,
+  value,
+  options
+) {
+  return `
+    <label class="form-label">
+      ${escapePersonnel(label)}
+      <select
+        class="form-select"
+        name="${escapePersonnel(name)}"
+        required
+      >
+        ${options.map(option => `
+          <option
+            value="${escapePersonnel(option)}"
+            ${String(option) === String(value) ? 'selected' : ''}
+          >
+            ${escapePersonnel(
+              option.charAt(0).toUpperCase() + option.slice(1)
+            )}
+          </option>
+        `).join('')}
+      </select>
+    </label>
+  `;
+}
 
 function detailField(label, value) {
-  return `<div class="truck-field"><span>${label}</span><strong>${value || '—'}</strong></div>`;
+  return `
+    <div class="truck-field">
+      <span>${escapePersonnel(label)}</span>
+      <strong>${escapePersonnel(value || '—')}</strong>
+    </div>
+  `;
 }
 
-function mergeWorkers(data) {
-  let localWorkers = [];
+async function obtenerCsrfPersonal() {
+  const response = await fetch(
+    `${API_USUARIOS_PERSONAL}/csrf-token`,
+    {
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json'
+      }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      'No se pudo obtener el token CSRF.'
+    );
+  }
+
+  const result = await response.json();
+
+  return result.token;
+}
+
+async function requestUsuarios(
+  path,
+  method = 'GET',
+  body = null
+) {
+  const headers = {
+    Accept: 'application/json'
+  };
+
+  if (body !== null) {
+    headers['Content-Type'] =
+      'application/json';
+  }
+
+  if (
+    method === 'POST' ||
+    method === 'PUT' ||
+    method === 'PATCH' ||
+    method === 'DELETE'
+  ) {
+    headers['X-CSRF-TOKEN'] =
+      await obtenerCsrfPersonal();
+  }
+
+  const options = {
+    method,
+    credentials: 'include',
+    headers
+  };
+
+  if (body !== null) {
+    options.body =
+      JSON.stringify(body);
+  }
+
+  const response = await fetch(
+    `${API_USUARIOS_PERSONAL}${path}`,
+    options
+  );
+
+  let result = {};
 
   try {
-    const saved = JSON.parse(localStorage.getItem('sigeru-trabajadores-local') || '[]');
-    localWorkers = Array.isArray(saved) ? saved : [];
+    result =
+      await response.json();
   } catch {
-    localWorkers = [];
+    result = {
+      success: false,
+      message:
+        'La API devolvió una respuesta inválida.'
+    };
   }
 
-  ['choferes', 'operarios'].forEach((group) => {
-    const role = group === 'choferes' ? 'chofer' : 'operario';
-    const current = data[group] || [];
-
-    localWorkers
-      .filter((worker) => worker.rol === role)
-      .forEach((worker) => {
-        if (!current.some((item) => item.email === worker.email)) current.push(worker);
-      });
-
-    data[group] = current;
-  });
-
-  return data;
+  return {
+    response,
+    result
+  };
 }
 
+async function cargarUsuarios() {
+  const { response, result } =
+    await requestUsuarios(
+      '/api/usuarios'
+    );
 
-function editKey(type,item){
-  return type==='cuadrillas' ? item.id : String(item.id_trabajador ?? item.email);
+  if (response.status === 401) {
+    window.location.replace(
+      '../landing-page/login.html'
+    );
+
+    return null;
+  }
+
+  if (response.status === 403) {
+    throw new Error(
+      'No tenés permisos para ver el personal.'
+    );
+  }
+
+  if (
+    !response.ok ||
+    !result.success
+  ) {
+    throw new Error(
+      result.message ||
+      'No se pudo cargar el personal.'
+    );
+  }
+
+  return result.data || [];
 }
 
-function applyPersonnelEdits(data){
-  let edits={};
-  try{edits=JSON.parse(localStorage.getItem(PERSONNEL_EDITS_KEY)||'{}')||{};}catch(_){edits={};}
-
-  Object.keys(data).forEach((type)=>{
-    data[type]=(data[type]||[]).map((item)=>{
-      const saved=edits[`${type}:${editKey(type,item)}`];
-      return saved ? {...item,...saved} : item;
-    });
-  });
-  return data;
-}
-
-function persistPersonnelEdit(type,item){
-  let edits={};
-  try{edits=JSON.parse(localStorage.getItem(PERSONNEL_EDITS_KEY)||'{}')||{};}catch(_){edits={};}
-  edits[`${type}:${editKey(type,item)}`]=item;
-  localStorage.setItem(PERSONNEL_EDITS_KEY,JSON.stringify(edits));
-}
-
-async function syncPersonnelEdit(type,item){
-  if(location.protocol==='file:')return;
-  const endpoint=type==='cuadrillas'?'../api-gestion/cuadrillas.php':'../api-gestion/trabajadores.php';
-  const payload=type==='cuadrillas'
-    ? {accion:'modificar',id_cuadrilla:item.id,responsable:item.responsable,turno:item.turno,estado:item.estado,ubicacion:item.ubicacion}
-    : {accion:'modificar',...item};
-  try{
-    await fetch(endpoint,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
-    });
-  }catch(_){}
-}
-
-function inputField(name,label,value,type='text'){
-  return `<label class="form-label">${label}<input class="form-control" name="${name}" type="${type}" value="${String(value??'').replace(/"/g,'&quot;')}"></label>`;
-}
-
-function selectField(name,label,value,options){
-  return `<label class="form-label">${label}<select class="form-select" name="${name}">${options.map(option=>`<option ${option===value?'selected':''}>${option}</option>`).join('')}</select></label>`;
-}
-
-function openPersonnelEdit(index){
-  const type=personnelState.current;
-  const item=(personnelState.data[type]||[])[Number(index)];
-  if(!item)return;
-
-  personnelState.editIndex=Number(index);
-  document.getElementById('personnelEditModalTitle').textContent=
-    type==='cuadrillas' ? `Editar ${item.id}` : `Editar ${item.nombre} ${item.apellido}`;
-
-  if(type==='cuadrillas'){
-    personnelEditFields.innerHTML=[
-      inputField('responsable','Responsable',item.responsable),
-      selectField('turno','Turno',item.turno,['Diurno','Nocturno']),
-      inputField('estado','Estado',item.estado),
-      inputField('ubicacion','Ubicación',item.ubicacion)
-    ].join('');
-  }else{
-    const baseFields=[
-      inputField('nombre','Nombre',item.nombre),
-      inputField('apellido','Apellido',item.apellido),
-      inputField('documento','Documento',item.documento),
-      inputField('telefono','Teléfono',item.telefono),
-      inputField('email','Correo',item.email,'email'),
-      selectField('estado','Estado',item.estado||'activo',['activo','inactivo'])
-    ];
-
-    if(type==='choferes'){
-      baseFields.push(inputField('licencia','Licencia',item.licencia));
-      baseFields.push(inputField('asignacion','Camión asignado',item.asignacion));
-    }else if(type==='operarios'){
-      baseFields.push(inputField('asignacion','Asignación',item.asignacion));
-    }else if(type==='barrenderos'){
-      baseFields.push(inputField('cuadrillas','Cuadrillas',(item.cuadrillas||[]).join(', ')));
-      baseFields.push(inputField('turnos','Turnos',(item.turnos||[]).join(', ')));
-      baseFields.push(inputField('ubicaciones','Ubicaciones',(item.ubicaciones||[]).join(', ')));
+async function cargarCuadrillas() {
+  const response = await fetch(
+    `${API_GESTION_PERSONAL}/api/cuadrillas`,
+    {
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json'
+      }
     }
+  );
 
-    personnelEditFields.innerHTML=baseFields.join('');
+  if (!response.ok) {
+    throw new Error(
+      'No se pudieron cargar los responsables.'
+    );
   }
 
-  document.getElementById('personnelEditMessage').textContent='';
-  personnelEditModal.show();
+  const result =
+    await response.json();
+
+  return Array.isArray(result)
+    ? result
+    : result.data || [];
+}
+
+function convertirUsuario(usuario) {
+  return {
+    id_usuario:
+      usuario.id_usuario,
+
+    nombre:
+      usuario.nombre || '',
+
+    apellido:
+      usuario.apellido || '',
+
+    documento:
+      usuario.documento || '',
+
+    telefono:
+      usuario.telefono || '',
+
+    email:
+      usuario.email || '',
+
+    rol:
+      String(
+        usuario.rol || ''
+      ).toLowerCase(),
+
+    estado:
+      usuario.estado || 'activo',
+
+    licencia:
+      usuario.licencia || '',
+
+    responsableDe: []
+  };
+}
+
+function organizarPersonal(
+  usuarios,
+  cuadrillas
+) {
+  const responsables =
+    new Map();
+
+  cuadrillas.forEach(
+    cuadrilla => {
+      const idUsuario =
+        Number(
+          cuadrilla.id_responsable
+        );
+
+      if (!idUsuario) {
+        return;
+      }
+
+      if (
+        !responsables.has(
+          idUsuario
+        )
+      ) {
+        responsables.set(
+          idUsuario,
+          []
+        );
+      }
+
+      responsables
+        .get(idUsuario)
+        .push(
+          cuadrilla.id_cuadrilla
+        );
+    }
+  );
+
+  const personal =
+    usuarios.map(
+      usuario => {
+        const item =
+          convertirUsuario(
+            usuario
+          );
+
+        item.responsableDe =
+          responsables.get(
+            Number(
+              item.id_usuario
+            )
+          ) || [];
+
+        return item;
+      }
+    );
+
+  const esResponsable =
+    usuario =>
+      usuario.responsableDe.length > 0;
+
+  personnelState.data = {
+    cuadrillas:
+      personal.filter(
+        usuario =>
+          usuario.rol === 'cuadrilla' ||
+          esResponsable(usuario)
+      ),
+
+    choferes:
+      personal.filter(
+        usuario =>
+          usuario.rol === 'chofer' &&
+          !esResponsable(usuario)
+      ),
+
+    operarios:
+      personal.filter(
+        usuario =>
+          usuario.rol === 'operario' &&
+          !esResponsable(usuario)
+      ),
+
+    barrenderos:
+      personal.filter(
+        usuario =>
+          usuario.rol === 'barrendero' &&
+          !esResponsable(usuario)
+      )
+  };
 }
 
 async function loadPersonnel() {
   try {
-    const response = await fetch('../api-gestion/personal.php?accion=listar');
-    if (!response.ok) throw new Error('Servidor no disponible.');
+    const usuarios =
+      await cargarUsuarios();
 
-    const result = await response.json();
-    if (!result.success) throw new Error(result.message);
+    if (!usuarios) {
+      return;
+    }
 
-    personnelState.data = applyPersonnelEdits(mergeWorkers(result.data));
-  } catch {
-    personnelState.data = applyPersonnelEdits(mergeWorkers(structuredClone(fallbackPersonnel)));
+    const cuadrillas =
+      await cargarCuadrillas();
+
+    organizarPersonal(
+      usuarios,
+      cuadrillas
+    );
+
+    renderPersonnel();
+  } catch (error) {
+    personnelBody.innerHTML = `
+      <tr>
+        <td
+          colspan="6"
+          class="text-center py-4"
+        >
+          ${escapePersonnel(
+            error.message
+          )}
+        </td>
+      </tr>
+    `;
   }
+}
 
-  renderPersonnel();
+function botonesUsuario(
+  item,
+  index,
+  mostrarBaja = true
+) {
+  const baja =
+    mostrarBaja &&
+    item.estado !== 'inactivo'
+      ? `
+        <button
+          class="btn btn-outline btn-sm"
+          data-personnel-delete="${index}"
+          type="button"
+          aria-label="Dar de baja"
+        >
+          <i class="bi bi-trash"></i>
+        </button>
+      `
+      : '';
+
+  return `
+    <div class="d-flex gap-2">
+      <button
+        class="btn btn-outline btn-sm"
+        data-personnel-index="${index}"
+        type="button"
+        aria-label="Ver"
+      >
+        <i class="bi bi-search"></i>
+      </button>
+
+      <button
+        class="btn btn-outline btn-sm"
+        data-personnel-edit="${index}"
+        type="button"
+        aria-label="Editar"
+      >
+        <i class="bi bi-pencil"></i>
+      </button>
+
+      ${baja}
+    </div>
+  `;
 }
 
 function renderPersonnel() {
-  const type = personnelState.current;
-  const rows = personnelState.data[type] || [];
-  personnelTitle.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+  const type =
+    personnelState.current;
+
+  const rows =
+    personnelState.data[type] ||
+    [];
+
+  const nombres = {
+    cuadrillas: 'Cuadrillas',
+    choferes: 'Choferes',
+    operarios: 'Operarios',
+    barrenderos: 'Barrenderos'
+  };
+
+  personnelTitle.textContent =
+    nombres[type] ||
+    'Personal';
 
   if (type === 'cuadrillas') {
-    personnelHead.innerHTML = '<tr><th>Código</th><th>Responsable</th><th>Turno</th><th>Estado</th><th>Ubicación</th><th>Acciones</th></tr>';
-    personnelBody.innerHTML = rows.map((item, index) => `
+    personnelHead.innerHTML = `
       <tr>
-        <td><strong>${item.id}</strong></td>
-        <td>${item.responsable}</td>
-        <td>${item.turno}</td>
-        <td>${item.estado}</td>
-        <td>${item.ubicacion}</td>
-        <td><div class="d-flex gap-2"><button class="btn btn-outline btn-sm" data-personnel-index="${index}" type="button" aria-label="Ver ${item.nombre}"><i class="bi bi-search"></i></button><button class="btn btn-outline btn-sm" data-personnel-edit="${index}" type="button" aria-label="Editar ${item.nombre}"><i class="bi bi-pencil"></i></button></div></td>
-      </tr>`).join('');
+        <th>Nombre</th>
+        <th>Documento</th>
+        <th>Estado</th>
+        <th>Responsable de</th>
+        <th>Correo</th>
+        <th>Acciones</th>
+      </tr>
+    `;
+
+    personnelBody.innerHTML =
+      rows.length
+        ? rows.map(
+            (item, index) => `
+              <tr>
+                <td>
+                  <strong>
+                    ${escapePersonnel(
+                      item.nombre
+                    )}
+                    ${escapePersonnel(
+                      item.apellido
+                    )}
+                  </strong>
+                </td>
+
+                <td>
+                  ${escapePersonnel(
+                    item.documento ||
+                    '—'
+                  )}
+                </td>
+
+                <td>
+                  ${escapePersonnel(
+                    item.estado ||
+                    '—'
+                  )}
+                </td>
+
+                <td>
+                  ${escapePersonnel(
+                    item.responsableDe.length
+                      ? item.responsableDe.join(
+                          ' / '
+                        )
+                      : '—'
+                  )}
+                </td>
+
+                <td>
+                  ${escapePersonnel(
+                    item.email ||
+                    '—'
+                  )}
+                </td>
+
+                <td>
+                  ${botonesUsuario(
+                    item,
+                    index,
+                    false
+                  )}
+                </td>
+              </tr>
+            `
+          ).join('')
+        : `
+          <tr>
+            <td
+              colspan="6"
+              class="text-center py-4"
+            >
+              No hay personal de cuadrilla.
+            </td>
+          </tr>
+        `;
+
     return;
   }
 
-  if (type === 'barrenderos') {
-    personnelHead.innerHTML = '<tr><th>Nombre</th><th>Documento</th><th>Estado</th><th>Cuadrilla</th><th>Turno</th><th>Acciones</th></tr>';
-    personnelBody.innerHTML = rows.map((item, index) => `
+  if (type === 'choferes') {
+    personnelHead.innerHTML = `
       <tr>
-        <td><strong>${item.nombre} ${item.apellido}</strong></td>
-        <td>${item.documento || '—'}</td>
-        <td>${item.estado || 'activo'}</td>
-        <td>${(item.cuadrillas || []).join(' / ') || 'Sin asignar'}</td>
-        <td>${(item.turnos || []).join(' / ') || '—'}</td>
-        <td><div class="d-flex gap-2"><button class="btn btn-outline btn-sm" data-personnel-index="${index}" type="button" aria-label="Ver ${item.nombre} ${item.apellido}"><i class="bi bi-search"></i></button><button class="btn btn-outline btn-sm" data-personnel-edit="${index}" type="button" aria-label="Editar ${item.nombre} ${item.apellido}"><i class="bi bi-pencil"></i></button></div></td>
-      </tr>`).join('');
+        <th>Nombre</th>
+        <th>Documento</th>
+        <th>Estado</th>
+        <th>Licencia</th>
+        <th>Correo</th>
+        <th>Acciones</th>
+      </tr>
+    `;
+
+    personnelBody.innerHTML =
+      rows.length
+        ? rows.map(
+            (item, index) => `
+              <tr>
+                <td>
+                  <strong>
+                    ${escapePersonnel(
+                      item.nombre
+                    )}
+                    ${escapePersonnel(
+                      item.apellido
+                    )}
+                  </strong>
+                </td>
+
+                <td>
+                  ${escapePersonnel(
+                    item.documento ||
+                    '—'
+                  )}
+                </td>
+
+                <td>
+                  ${escapePersonnel(
+                    item.estado ||
+                    '—'
+                  )}
+                </td>
+
+                <td>
+                  ${escapePersonnel(
+                    item.licencia ||
+                    'Sin registrar'
+                  )}
+                </td>
+
+                <td>
+                  ${escapePersonnel(
+                    item.email ||
+                    '—'
+                  )}
+                </td>
+
+                <td>
+                  ${botonesUsuario(
+                    item,
+                    index
+                  )}
+                </td>
+              </tr>
+            `
+          ).join('')
+        : `
+          <tr>
+            <td
+              colspan="6"
+              class="text-center py-4"
+            >
+              No hay choferes registrados.
+            </td>
+          </tr>
+        `;
+
     return;
   }
 
-  const isDriver = type === 'choferes';
-  personnelHead.innerHTML = `<tr><th>Nombre</th><th>Documento</th><th>Estado</th><th>${isDriver ? 'Camión' : 'Asignación'}</th>${isDriver ? '<th>Licencia</th>' : ''}<th>Acciones</th></tr>`;
-  personnelBody.innerHTML = rows.map((item, index) => `
+  personnelHead.innerHTML = `
     <tr>
-      <td><strong>${item.nombre} ${item.apellido}</strong></td>
-      <td>${item.documento || '—'}</td>
-      <td>${item.estado || 'activo'}</td>
-      <td>${item.asignacion || 'Sin asignar'}</td>
-      ${isDriver ? `<td>${item.licencia || 'Sin registrar'}</td>` : ''}
-      <td><div class="d-flex gap-2"><button class="btn btn-outline btn-sm" data-personnel-index="${index}" type="button" aria-label="Ver ${item.nombre} ${item.apellido}"><i class="bi bi-search"></i></button><button class="btn btn-outline btn-sm" data-personnel-edit="${index}" type="button" aria-label="Editar ${item.nombre} ${item.apellido}"><i class="bi bi-pencil"></i></button></div></td>
-    </tr>`).join('');
+      <th>Nombre</th>
+      <th>Documento</th>
+      <th>Estado</th>
+      <th>Correo</th>
+      <th>Acciones</th>
+    </tr>
+  `;
+
+  personnelBody.innerHTML =
+    rows.length
+      ? rows.map(
+          (item, index) => `
+            <tr>
+              <td>
+                <strong>
+                  ${escapePersonnel(
+                    item.nombre
+                  )}
+                  ${escapePersonnel(
+                    item.apellido
+                  )}
+                </strong>
+              </td>
+
+              <td>
+                ${escapePersonnel(
+                  item.documento ||
+                  '—'
+                )}
+              </td>
+
+              <td>
+                ${escapePersonnel(
+                  item.estado ||
+                  '—'
+                )}
+              </td>
+
+              <td>
+                ${escapePersonnel(
+                  item.email ||
+                  '—'
+                )}
+              </td>
+
+              <td>
+                ${botonesUsuario(
+                  item,
+                  index
+                )}
+              </td>
+            </tr>
+          `
+        ).join('')
+      : `
+        <tr>
+          <td
+            colspan="5"
+            class="text-center py-4"
+          >
+            No hay registros.
+          </td>
+        </tr>
+      `;
 }
 
 function openPersonnel(index) {
-  const type = personnelState.current;
-  const item = (personnelState.data[type] || [])[Number(index)];
-  if (!item) return;
+  const item =
+    personnelState.data[
+      personnelState.current
+    ]?.[
+      Number(index)
+    ];
 
-  document.getElementById('personnelModalKicker').textContent =
-    type === 'cuadrillas' ? 'Cuadrilla' : item.rol;
-  document.getElementById('personnelModalTitle').textContent =
-    type === 'cuadrillas' ? item.nombre : `${item.nombre} ${item.apellido}`;
+  if (!item) {
+    return;
+  }
 
-  if (type === 'cuadrillas') {
-    detailGrid.innerHTML = [
-      detailField('Código', item.id),
-      detailField('Responsable', item.responsable),
-      detailField('Turno', item.turno),
-      detailField('Estado', item.estado),
-      detailField('Ubicación', item.ubicacion),
-      detailField('Integrantes', item.integrantes?.length || 0)
-    ].join('');
+  const esResponsable =
+    item.responsableDe.length > 0;
 
-    membersBox.classList.remove('d-none');
-    membersBox.innerHTML = `
-      <h3>Integrantes</h3>
-      <div class="personnel-member-list">
-        ${(item.integrantes || []).map((name) => `<span>${name}</span>`).join('')}
-      </div>`;
-  } else if (type === 'barrenderos') {
-    detailGrid.innerHTML = [
-      detailField('Documento', item.documento),
-      detailField('Teléfono', item.telefono),
-      detailField('Correo', item.email),
-      detailField('Rol', 'Barrendero'),
-      detailField('Estado', item.estado),
-      detailField('Cuadrilla asignada', (item.cuadrillas || []).join(' / ')),
-      detailField('Turno', (item.turnos || []).join(' / ')),
-      detailField('Ubicación operativa', (item.ubicaciones || []).join(' / '))
-    ].join('');
-    membersBox.classList.add('d-none');
-    membersBox.innerHTML = '';
-  } else {
-    detailGrid.innerHTML = [
-      detailField('Documento', item.documento),
-      detailField('Teléfono', item.telefono),
-      detailField('Correo', item.email),
-      detailField('Rol', item.rol),
-      detailField('Estado', item.estado),
-      detailField(type === 'choferes' ? 'Camión asignado' : 'Asignación', item.asignacion),
-      ...(type === 'choferes' ? [detailField('Licencia', item.licencia)] : [])
-    ].join('');
-    membersBox.classList.add('d-none');
+  document.getElementById(
+    'personnelModalKicker'
+  ).textContent =
+    esResponsable
+      ? 'Responsable de cuadrilla'
+      : item.rol;
+
+  document.getElementById(
+    'personnelModalTitle'
+  ).textContent =
+    `${item.nombre} ${item.apellido}`;
+
+  const fields = [
+    detailField(
+      'Documento',
+      item.documento
+    ),
+
+    detailField(
+      'Teléfono',
+      item.telefono
+    ),
+
+    detailField(
+      'Correo',
+      item.email
+    ),
+
+    detailField(
+      'Rol',
+      item.rol
+    ),
+
+    detailField(
+      'Estado',
+      item.estado
+    )
+  ];
+
+  if (
+    item.rol === 'chofer'
+  ) {
+    fields.push(
+      detailField(
+        'Licencia',
+        item.licencia
+      )
+    );
+  }
+
+  if (esResponsable) {
+    fields.push(
+      detailField(
+        'Responsable de',
+        item.responsableDe.join(
+          ' / '
+        )
+      )
+    );
+  }
+
+  detailGrid.innerHTML =
+    fields.join('');
+
+  if (membersBox) {
+    membersBox.classList.add(
+      'd-none'
+    );
+
     membersBox.innerHTML = '';
   }
 
-  personnelModal.show();
+  personnelModal?.show();
 }
 
-document.querySelectorAll('[data-personnel-tab]').forEach((button) => {
-  button.addEventListener('click', () => {
-    personnelState.current = button.dataset.personnelTab;
-    document.querySelectorAll('[data-personnel-tab]').forEach((item) => {
-      item.classList.toggle('btn-primary', item === button);
-      item.classList.toggle('btn-outline', item !== button);
-      item.classList.toggle('active', item === button);
-    });
-    renderPersonnel();
-  });
-});
+function openPersonnelEdit(index) {
+  const item =
+    personnelState.data[
+      personnelState.current
+    ]?.[
+      Number(index)
+    ];
 
-personnelBody.addEventListener('click', (event) => {
-  const viewButton=event.target.closest('[data-personnel-index]');
-  if(viewButton)openPersonnel(viewButton.dataset.personnelIndex);
+  if (!item) {
+    return;
+  }
 
-  const editButton=event.target.closest('[data-personnel-edit]');
-  if(editButton)openPersonnelEdit(editButton.dataset.personnelEdit);
-});
+  personnelState.mode =
+    'edit';
 
-personnelEditForm.addEventListener('submit',async(event)=>{
-  event.preventDefault();
-  const type=personnelState.current;
-  const item=(personnelState.data[type]||[])[personnelState.editIndex];
-  if(!item)return;
+  personnelState.editIndex =
+    Number(index);
 
-  const data=Object.fromEntries(new FormData(event.currentTarget));
-  if(type==='cuadrillas'){
-    Object.assign(item,{
-      responsable:data.responsable.trim(),
-      turno:data.turno,
-      estado:data.estado.trim(),
-      ubicacion:data.ubicacion.trim()
-    });
-  }else{
-    Object.assign(item,{
-      nombre:data.nombre.trim(),
-      apellido:data.apellido.trim(),
-      documento:data.documento.trim(),
-      telefono:data.telefono.trim(),
-      email:data.email.trim(),
-      estado:data.estado
-    });
-    if(type==='choferes'){
-      item.licencia=data.licencia.trim();
-      item.asignacion=data.asignacion.trim();
-    }else if(type==='operarios'){
-      item.asignacion=data.asignacion.trim();
-    }else if(type==='barrenderos'){
-      const toList=value=>value.split(',').map(part=>part.trim()).filter(Boolean);
-      item.cuadrillas=toList(data.cuadrillas||'');
-      item.turnos=toList(data.turnos||'');
-      item.ubicaciones=toList(data.ubicaciones||'');
+  personnelEditModalKicker.textContent =
+    'Edición de personal';
+
+  document.getElementById(
+    'personnelEditModalTitle'
+  ).textContent =
+    `Editar ${item.nombre} ${item.apellido}`;
+
+  personnelEditSubmit.textContent =
+    'Guardar cambios';
+
+  const fields = [
+    inputField(
+      'nombre',
+      'Nombre',
+      item.nombre
+    ),
+
+    inputField(
+      'apellido',
+      'Apellido',
+      item.apellido
+    ),
+
+    inputField(
+      'documento',
+      'Documento',
+      item.documento
+    ),
+
+    inputField(
+      'telefono',
+      'Teléfono',
+      item.telefono
+    ),
+
+    inputField(
+      'email',
+      'Correo',
+      item.email,
+      'email'
+    ),
+
+    selectField(
+      'estado',
+      'Estado',
+      item.estado ||
+      'activo',
+      [
+        'activo',
+        'inactivo'
+      ]
+    )
+  ];
+
+  if (
+    item.rol === 'chofer'
+  ) {
+    fields.push(
+      inputField(
+        'licencia',
+        'Licencia',
+        item.licencia
+      )
+    );
+  }
+
+  personnelEditFields.innerHTML =
+    fields.join('');
+
+  personnelEditMessage.textContent =
+    '';
+
+  personnelEditModal?.show();
+}
+
+function openPersonnelCreate() {
+  personnelState.mode =
+    'create';
+
+  personnelState.editIndex =
+    null;
+
+  const rolInicial = {
+    cuadrillas: 'cuadrilla',
+    choferes: 'chofer',
+    operarios: 'operario',
+    barrenderos: 'barrendero'
+  }[
+    personnelState.current
+  ];
+
+  personnelEditModalKicker.textContent =
+    'Nuevo personal';
+
+  document.getElementById(
+    'personnelEditModalTitle'
+  ).textContent =
+    'Crear usuario';
+
+  personnelEditSubmit.textContent =
+    'Crear usuario';
+
+  personnelEditFields.innerHTML = `
+    ${inputField(
+      'nombre',
+      'Nombre'
+    )}
+
+    ${inputField(
+      'apellido',
+      'Apellido'
+    )}
+
+    ${inputField(
+      'documento',
+      'Documento'
+    )}
+
+    ${inputField(
+      'telefono',
+      'Teléfono'
+    )}
+
+    ${inputField(
+      'email',
+      'Correo',
+      '',
+      'email'
+    )}
+
+    ${selectField(
+      'rol',
+      'Rol',
+      rolInicial,
+      [
+        'cuadrilla',
+        'chofer',
+        'operario',
+        'barrendero'
+      ]
+    )}
+
+    <div
+      data-personnel-license
+      class="d-none"
+    >
+      ${inputField(
+        'licencia',
+        'Licencia',
+        '',
+        'text',
+        false
+      )}
+    </div>
+
+    ${inputField(
+      'password',
+      'Contraseña',
+      '',
+      'password'
+    )}
+
+    ${inputField(
+      'password_confirm',
+      'Confirmar contraseña',
+      '',
+      'password'
+    )}
+  `;
+
+  const rol =
+    personnelEditForm.querySelector(
+      '[name="rol"]'
+    );
+
+  const licenseBox =
+    personnelEditForm.querySelector(
+      '[data-personnel-license]'
+    );
+
+  const licencia =
+    personnelEditForm.querySelector(
+      '[name="licencia"]'
+    );
+
+  function actualizarLicencia() {
+    const esChofer =
+      rol.value ===
+      'chofer';
+
+    licenseBox.classList.toggle(
+      'd-none',
+      !esChofer
+    );
+
+    licencia.required =
+      esChofer;
+
+    if (!esChofer) {
+      licencia.value =
+        '';
     }
   }
 
-  persistPersonnelEdit(type,item);
-  await syncPersonnelEdit(type,item);
-  renderPersonnel();
-  personnelEditModal.hide();
-});
+  rol.addEventListener(
+    'change',
+    actualizarLicencia
+  );
 
+  actualizarLicencia();
+
+  personnelEditMessage.textContent =
+    '';
+
+  personnelEditModal?.show();
+}
+
+function obtenerPrimerError(
+  result,
+  fallback
+) {
+  if (
+    result.errors
+  ) {
+    const error =
+      Object.values(
+        result.errors
+      )[0];
+
+    if (
+      Array.isArray(
+        error
+      )
+    ) {
+      return error[0];
+    }
+  }
+
+  return (
+    result.message ||
+    fallback
+  );
+}
+
+async function crearUsuario() {
+  const data =
+    Object.fromEntries(
+      new FormData(
+        personnelEditForm
+      ).entries()
+    );
+
+  if (
+    data.password !==
+    data.password_confirm
+  ) {
+    personnelEditMessage.textContent =
+      'Las contraseñas no coinciden.';
+
+    return;
+  }
+
+  personnelEditMessage.textContent =
+    'Creando usuario...';
+
+  try {
+    const {
+      response,
+      result
+    } =
+      await requestUsuarios(
+        '/api/usuarios',
+        'POST',
+        {
+          nombre:
+            String(
+              data.nombre ||
+              ''
+            ).trim(),
+
+          apellido:
+            String(
+              data.apellido ||
+              ''
+            ).trim(),
+
+          documento:
+            String(
+              data.documento ||
+              ''
+            ).trim(),
+
+          telefono:
+            String(
+              data.telefono ||
+              ''
+            ).trim(),
+
+          email:
+            String(
+              data.email ||
+              ''
+            )
+              .trim()
+              .toLowerCase(),
+
+          rol:
+            String(
+              data.rol ||
+              ''
+            ).toLowerCase(),
+
+          licencia:
+            data.rol ===
+            'chofer'
+              ? String(
+                  data.licencia ||
+                  ''
+                ).trim()
+              : null,
+
+          password:
+            data.password,
+
+          password_confirm:
+            data.password_confirm
+        }
+      );
+
+    if (
+      response.status ===
+      401
+    ) {
+      window.location.replace(
+        '../landing-page/login.html'
+      );
+
+      return;
+    }
+
+    if (
+      !response.ok ||
+      !result.success
+    ) {
+      personnelEditMessage.textContent =
+        obtenerPrimerError(
+          result,
+          'No se pudo crear el usuario.'
+        );
+
+      return;
+    }
+
+    personnelState.current = {
+      cuadrilla:
+        'cuadrillas',
+
+      chofer:
+        'choferes',
+
+      operario:
+        'operarios',
+
+      barrendero:
+        'barrenderos'
+    }[
+      data.rol
+    ];
+
+    actualizarTabs();
+
+    await loadPersonnel();
+
+    personnelEditModal?.hide();
+  } catch {
+    personnelEditMessage.textContent =
+      'No se pudo conectar con la API.';
+  }
+}
+
+async function actualizarUsuario() {
+  const item =
+    personnelState.data[
+      personnelState.current
+    ]?.[
+      personnelState.editIndex
+    ];
+
+  if (!item) {
+    return;
+  }
+
+  const data =
+    Object.fromEntries(
+      new FormData(
+        personnelEditForm
+      ).entries()
+    );
+
+  personnelEditMessage.textContent =
+    'Guardando cambios...';
+
+  try {
+    const {
+      response,
+      result
+    } =
+      await requestUsuarios(
+        `/api/usuarios/${item.id_usuario}`,
+        'PUT',
+        {
+          nombre:
+            String(
+              data.nombre ||
+              ''
+            ).trim(),
+
+          apellido:
+            String(
+              data.apellido ||
+              ''
+            ).trim(),
+
+          documento:
+            String(
+              data.documento ||
+              ''
+            ).trim(),
+
+          telefono:
+            String(
+              data.telefono ||
+              ''
+            ).trim(),
+
+          email:
+            String(
+              data.email ||
+              ''
+            )
+              .trim()
+              .toLowerCase(),
+
+          estado:
+            data.estado,
+
+          licencia:
+            item.rol ===
+            'chofer'
+              ? String(
+                  data.licencia ||
+                  ''
+                ).trim()
+              : null
+        }
+      );
+
+    if (
+      response.status ===
+      401
+    ) {
+      window.location.replace(
+        '../landing-page/login.html'
+      );
+
+      return;
+    }
+
+    if (
+      !response.ok ||
+      !result.success
+    ) {
+      personnelEditMessage.textContent =
+        obtenerPrimerError(
+          result,
+          'No se pudo actualizar el usuario.'
+        );
+
+      return;
+    }
+
+    await loadPersonnel();
+
+    personnelEditModal?.hide();
+  } catch {
+    personnelEditMessage.textContent =
+      'No se pudo conectar con la API.';
+  }
+}
+
+async function darDeBajaUsuario(
+  index
+) {
+  if (
+    personnelState.current ===
+    'cuadrillas'
+  ) {
+    return;
+  }
+
+  const item =
+    personnelState.data[
+      personnelState.current
+    ]?.[
+      Number(index)
+    ];
+
+  if (
+    !item ||
+    !item.id_usuario
+  ) {
+    return;
+  }
+
+  const confirmar =
+    window.confirm(
+      `¿Dar de baja a ${item.nombre} ${item.apellido}?`
+    );
+
+  if (!confirmar) {
+    return;
+  }
+
+  try {
+    const {
+      response,
+      result
+    } =
+      await requestUsuarios(
+        `/api/usuarios/${item.id_usuario}`,
+        'DELETE'
+      );
+
+    if (
+      response.status ===
+      401
+    ) {
+      window.location.replace(
+        '../landing-page/login.html'
+      );
+
+      return;
+    }
+
+    if (
+      !response.ok ||
+      !result.success
+    ) {
+      window.alert(
+        result.message ||
+        'No se pudo dar de baja al usuario.'
+      );
+
+      return;
+    }
+
+    await loadPersonnel();
+  } catch {
+    window.alert(
+      'No se pudo conectar con la API.'
+    );
+  }
+}
+
+function actualizarTabs() {
+  document
+    .querySelectorAll(
+      '[data-personnel-tab]'
+    )
+    .forEach(
+      button => {
+        const activo =
+          button.dataset
+            .personnelTab ===
+          personnelState.current;
+
+        button.classList.toggle(
+          'btn-primary',
+          activo
+        );
+
+        button.classList.toggle(
+          'btn-outline',
+          !activo
+        );
+
+        button.classList.toggle(
+          'active',
+          activo
+        );
+      }
+    );
+}
+
+document
+  .querySelectorAll(
+    '[data-personnel-tab]'
+  )
+  .forEach(
+    button => {
+      button.addEventListener(
+        'click',
+        () => {
+          personnelState.current =
+            button.dataset
+              .personnelTab;
+
+          actualizarTabs();
+
+          renderPersonnel();
+        }
+      );
+    }
+  );
+
+personnelBody?.addEventListener(
+  'click',
+  event => {
+    const viewButton =
+      event.target.closest(
+        '[data-personnel-index]'
+      );
+
+    if (viewButton) {
+      openPersonnel(
+        viewButton.dataset
+          .personnelIndex
+      );
+
+      return;
+    }
+
+    const editButton =
+      event.target.closest(
+        '[data-personnel-edit]'
+      );
+
+    if (editButton) {
+      openPersonnelEdit(
+        editButton.dataset
+          .personnelEdit
+      );
+
+      return;
+    }
+
+    const deleteButton =
+      event.target.closest(
+        '[data-personnel-delete]'
+      );
+
+    if (deleteButton) {
+      darDeBajaUsuario(
+        deleteButton.dataset
+          .personnelDelete
+      );
+    }
+  }
+);
+
+personnelCreateButton?.addEventListener(
+  'click',
+  openPersonnelCreate
+);
+
+personnelEditForm?.addEventListener(
+  'submit',
+  async event => {
+    event.preventDefault();
+
+    if (
+      personnelState.mode ===
+      'create'
+    ) {
+      await crearUsuario();
+
+      return;
+    }
+
+    if (
+      personnelState.mode ===
+      'edit'
+    ) {
+      await actualizarUsuario();
+    }
+  }
+);
+
+actualizarTabs();
 loadPersonnel();

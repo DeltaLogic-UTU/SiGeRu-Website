@@ -1,89 +1,263 @@
-const PROFILE_KEY='sigeru-perfil-vecino';
-const DEFAULT_PROFILE={
-  nombre:'Vecino',
-  apellido:'117',
-  documento:'4.100.000-1',
-  telefono:'098 100 100',
-  email:'vecino@sigeru.uy',
-  rol:'vecino',
-  password:'Sigeru123'
-};
+const API_USUARIOS = 'http://127.0.0.1:8000';
 
-const form=document.getElementById('profileForm');
-const message=document.getElementById('profileMessage');
+const form = document.getElementById('profileForm');
+const message = document.getElementById('profileMessage');
 
-function loadProfile(){
-  let profile={...DEFAULT_PROFILE};
-  try{
-    const saved=JSON.parse(localStorage.getItem(PROFILE_KEY)||'null');
-    if(saved)profile={...profile,...saved};
-  }catch(_){}
+function showProfileMessage(text, error = false) {
+    if (!message) return;
 
-  ['nombre','apellido','documento','telefono','email'].forEach((field)=>{
-    if(form.elements[field])form.elements[field].value=profile[field]||'';
-  });
-  return profile;
+    message.textContent = text;
+    message.classList.toggle('error', error);
+    message.style.display = 'block';
 }
 
-let currentProfile=loadProfile();
+async function getCsrfToken() {
+    const response = await fetch(
+        `${API_USUARIOS}/csrf-token`,
+        {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json'
+            }
+        }
+    );
 
-function showProfileMessage(text,error=false){
-  message.textContent=text;
-  message.classList.toggle('error',error);
-  message.style.display='block';
+    if (!response.ok) {
+        throw new Error('No se pudo obtener el token CSRF.');
+    }
+
+    const result = await response.json();
+
+    return result.token;
 }
 
-async function validateProfile(payload){
-  if(location.protocol==='file:')return {success:true};
-  try{
-    const response=await fetch('../api-usuarios/validations.php',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({accion:'perfil',...payload})
+async function apiRequest(path, method = 'GET', body = null) {
+    const headers = {
+        'Accept': 'application/json'
+    };
+
+    if (body !== null) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    if (
+        method === 'POST' ||
+        method === 'PUT' ||
+        method === 'PATCH' ||
+        method === 'DELETE'
+    ) {
+        headers['X-CSRF-TOKEN'] = await getCsrfToken();
+    }
+
+    const options = {
+        method,
+        credentials: 'include',
+        headers
+    };
+
+    if (body !== null) {
+        options.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(
+        `${API_USUARIOS}${path}`,
+        options
+    );
+
+    let result = {};
+
+    try {
+        result = await response.json();
+    } catch {
+        result = {
+            success: false,
+            message: 'La API devolvió una respuesta inválida.'
+        };
+    }
+
+    return {
+        response,
+        result
+    };
+}
+
+async function cargarPerfil() {
+    try {
+        const { response, result } =
+            await apiRequest('/api/perfil');
+
+        if (response.status === 401) {
+            window.location.href =
+                '../landing-page/login.html';
+            return;
+        }
+
+        if (!response.ok || !result.success) {
+            showProfileMessage(
+                result.message ||
+                    'No se pudo cargar el perfil.',
+                true
+            );
+            return;
+        }
+
+        const perfil = result.data;
+
+        if (form.elements.nombre) {
+            form.elements.nombre.value =
+                perfil.nombre || '';
+        }
+
+        if (form.elements.apellido) {
+            form.elements.apellido.value =
+                perfil.apellido || '';
+        }
+
+        if (form.elements.documento) {
+            form.elements.documento.value =
+                perfil.documento || '';
+        }
+
+        if (form.elements.telefono) {
+            form.elements.telefono.value =
+                perfil.telefono || '';
+        }
+
+        if (form.elements.email) {
+            form.elements.email.value =
+                perfil.email || '';
+        }
+
+        if (form.elements.password) {
+            form.elements.password.value = '';
+        }
+
+        if (form.elements.password_confirm) {
+            form.elements.password_confirm.value = '';
+        }
+    } catch (error) {
+        console.error(error);
+
+        showProfileMessage(
+            'No se pudo conectar con la API de usuarios.',
+            true
+        );
+    }
+}
+
+if (form) {
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const data = Object.fromEntries(
+            new FormData(form).entries()
+        );
+
+        const password =
+            String(data.password || '').trim();
+
+        const confirmation =
+            String(data.password_confirm || '').trim();
+
+        if (password !== confirmation) {
+            showProfileMessage(
+                'Las contraseñas no coinciden.',
+                true
+            );
+            return;
+        }
+
+        if (password && password.length < 8) {
+            showProfileMessage(
+                'La nueva contraseña debe tener 8 o más caracteres.',
+                true
+            );
+            return;
+        }
+
+        try {
+            const { response, result } =
+                await apiRequest(
+                    '/api/perfil',
+                    'PUT',
+                    {
+                        nombre:
+                            String(data.nombre || '').trim(),
+
+                        apellido:
+                            String(data.apellido || '').trim(),
+
+                        documento:
+                            String(data.documento || '').trim(),
+
+                        telefono:
+                            String(data.telefono || '').trim(),
+
+                        email:
+                            String(data.email || '')
+                                .trim()
+                                .toLowerCase(),
+
+                        password:
+                            password || null,
+
+                        password_confirm:
+                            confirmation || null
+                    }
+                );
+
+            if (response.status === 401) {
+                window.location.href =
+                    '../landing-page/login.html';
+                return;
+            }
+
+            if (!response.ok || !result.success) {
+                let errorMessage =
+                    result.message ||
+                    'No se pudo actualizar el perfil.';
+
+                if (result.errors) {
+                    const firstError =
+                        Object.values(result.errors)[0];
+
+                    if (Array.isArray(firstError)) {
+                        errorMessage = firstError[0];
+                    }
+                }
+
+                showProfileMessage(
+                    errorMessage,
+                    true
+                );
+
+                return;
+            }
+
+            if (form.elements.password) {
+                form.elements.password.value = '';
+            }
+
+            if (form.elements.password_confirm) {
+                form.elements.password_confirm.value = '';
+            }
+
+            showProfileMessage(
+                'Tus datos se actualizaron correctamente.'
+            );
+
+            await cargarPerfil();
+
+        } catch (error) {
+            console.error(error);
+
+            showProfileMessage(
+                'No se pudo conectar con la API de usuarios.',
+                true
+            );
+        }
     });
-    return await response.json();
-  }catch(_){
-    return {success:true};
-  }
+
+    cargarPerfil();
 }
-
-form.addEventListener('submit',async(event)=>{
-  event.preventDefault();
-  const data=Object.fromEntries(new FormData(form).entries());
-  const password=data.password.trim();
-  const confirmation=data.password_confirm.trim();
-
-  if(password!==confirmation){
-    showProfileMessage('Las contraseñas no coinciden.',true);
-    return;
-  }
-  if(password && password.length<8){
-    showProfileMessage('La nueva contraseña debe tener 8 o más caracteres.',true);
-    return;
-  }
-
-  const profile={
-    ...currentProfile,
-    nombre:data.nombre.trim(),
-    apellido:data.apellido.trim(),
-    documento:data.documento.trim(),
-    telefono:data.telefono.trim(),
-    email:data.email.trim().toLowerCase(),
-    rol:'vecino',
-    password:password||currentProfile.password||DEFAULT_PROFILE.password
-  };
-
-  const result=await validateProfile({...profile,password});
-  if(!result.success){
-    showProfileMessage(result.message||'No se pudo validar el perfil.',true);
-    return;
-  }
-
-  currentProfile=profile;
-  localStorage.setItem(PROFILE_KEY,JSON.stringify(profile));
-  sessionStorage.setItem('sigeruNombre',`${profile.nombre} ${profile.apellido}`.trim());
-  sessionStorage.setItem('sigeruEmail',profile.email);
-  form.elements.password.value='';
-  form.elements.password_confirm.value='';
-  showProfileMessage('Tus datos se actualizaron correctamente.');
-});

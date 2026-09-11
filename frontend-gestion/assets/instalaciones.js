@@ -1,286 +1,1768 @@
-const facilities = [
-  {id_instalacion:1,nombre:'Estación BUCEO',tipo:'Depósito',estado:'Operativo',calle:'Av. Gral. Rivera',esquina_1:'Managripé',esquina_2:'Vanguardia',capacidad_actual:'Casi lleno'},
-  {id_instalacion:2,nombre:'Cantón 2',tipo:'Depósito',estado:'No operativo',calle:'Dr. Carlos María de Pena',esquina_1:'Cnel. Arana',esquina_2:'Filadelfia',capacidad_actual:'Lleno'},
-  {id_instalacion:3,nombre:'Usina 3',tipo:'Depósito',estado:'Operativo',calle:'Camino Corrales',esquina_1:'Pavón',esquina_2:'Añagualpo',capacidad_actual:'Disponible'},
-  {id_instalacion:4,nombre:'Géminis',tipo:'Centro de acopio',estado:'Operativo',calle:'Géminis',esquina_1:'Pilar',esquina_2:'Senda',capacidad_actual:'Casi lleno'},
-  {id_instalacion:5,nombre:'Durán',tipo:'Centro de acopio',estado:'No operativo',calle:'José Durán',esquina_1:'Antonio Taddei',esquina_2:'Durán Pasaje A',capacidad_actual:'Lleno'},
-  {id_instalacion:6,nombre:'Tróccoli',tipo:'Centro de acopio',estado:'Operativo',calle:'La Paloma',esquina_1:'Tróccoli',esquina_2:'Joaquín Martorí',capacidad_actual:'Disponible'},
-  {id_instalacion:7,nombre:'Felipe Cardoso',tipo:'Vertedero',estado:'Operativo',calle:'Felipe Cardoso',esquina_1:'Cepeda',esquina_2:'Punta Rieles',capacidad_actual:'Disponible'}
+const API_GESTION = 'http://127.0.0.1:8001';
+
+const $ = id => document.getElementById(id);
+
+const TIPOS = ['Depósito', 'Centro de acopio', 'Vertedero'];
+const TIPOS_RESIDUO = ['general', 'reciclaje'];
+const ESTADOS = ['Operativo', 'No operativo'];
+const CAPACIDADES = ['Disponible', 'Casi lleno', 'Lleno'];
+
+const TIPOS_ITEM = [
+  'Limpieza',
+  'Seguridad',
+  'Equipamiento',
+  'Mantenimiento',
+  'Insumo'
 ];
 
-const inventory = [
-  {id_inventario:1,id_instalacion:1,nombre_item:'Escoba',estado:'Excelente',tipo:'Limpieza',cantidad:52},
-  {id_inventario:2,id_instalacion:1,nombre_item:'Pala',estado:'Carencia',tipo:'Limpieza',cantidad:27},
-  {id_inventario:3,id_instalacion:1,nombre_item:'Llave inglesa',estado:'Óptimo',tipo:'Mantenimiento',cantidad:11},
-  {id_inventario:4,id_instalacion:1,nombre_item:'Carro de barrendero',estado:'Disponible',tipo:'Equipamiento',cantidad:18},
-  {id_inventario:5,id_instalacion:1,nombre_item:'Escobillón de calle',estado:'Disponible',tipo:'Limpieza',cantidad:35},
-  {id_inventario:6,id_instalacion:1,nombre_item:'Cepillo de cordón',estado:'Disponible',tipo:'Limpieza',cantidad:34},
-  {id_inventario:7,id_instalacion:1,nombre_item:'Recogedor industrial',estado:'Disponible',tipo:'Limpieza',cantidad:22},
-  {id_inventario:8,id_instalacion:1,nombre_item:'Pinza recolectora',estado:'Disponible',tipo:'Limpieza',cantidad:16},
-  {id_inventario:9,id_instalacion:1,nombre_item:'Rastrillo metálico',estado:'Disponible',tipo:'Limpieza',cantidad:15},
-  {id_inventario:10,id_instalacion:1,nombre_item:'Chaleco reflectivo',estado:'Disponible',tipo:'Seguridad',cantidad:48},
-  {id_inventario:11,id_instalacion:1,nombre_item:'Guantes de protección',estado:'Disponible',tipo:'Seguridad',cantidad:96},
-  {id_inventario:12,id_instalacion:1,nombre_item:'Conos de señalización',estado:'Disponible',tipo:'Seguridad',cantidad:30},
-  {id_inventario:13,id_instalacion:1,nombre_item:'Bolsas reforzadas',estado:'Disponible',tipo:'Insumo',cantidad:240},
-  {id_inventario:14,id_instalacion:2,nombre_item:'Escoba',estado:'Carencia',tipo:'Limpieza',cantidad:4},
-  {id_inventario:15,id_instalacion:2,nombre_item:'Pala',estado:'Disponible',tipo:'Limpieza',cantidad:9},
-  {id_inventario:16,id_instalacion:3,nombre_item:'Carro de barrendero',estado:'Disponible',tipo:'Equipamiento',cantidad:8},
-  {id_inventario:17,id_instalacion:3,nombre_item:'Chaleco reflectivo',estado:'Disponible',tipo:'Seguridad',cantidad:21}
+const ESTADOS_ITEM = [
+  'Disponible',
+  'Excelente',
+  'Óptimo',
+  'Carencia',
+  'Fuera de servicio'
 ];
 
-const state = {
-  tab:'depositos',
-  selectedId:1
-};
+let facilities = [];
+let inventory = [];
+let workers = [];
 
-const facilityBody = document.getElementById('facilityBody');
-const inventoryBody = document.getElementById('inventoryBody');
-const inventoryPanel = document.getElementById('inventoryPanel');
-const facilityStatus = document.getElementById('facilityStatus');
-const facilityModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('facilityModal'));
-const itemModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('itemModal'));
+let selectedId = null;
+let currentTab = 'depositos';
+let inventoryType = '';
 
-const facilityForm = document.getElementById('facilityForm');
-const itemForm = document.getElementById('itemForm');
+let facilityBusy = false;
+let itemBusy = false;
+let workerBusy = false;
+
+let itemFacilityId = null;
+let workerFacilityId = null;
+let editWorkerId = null;
+let availableUsers = [];
+
+let csrfToken = '';
+
+const ui = {};
+const modals = {};
+const messageTimers = new WeakMap();
 
 function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
-  })[character]);
+  return String(value ?? '').replace(
+    /[&<>"']/g,
+    character => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    })[character]
+  );
+}
+
+function validId(value) {
+  const id = Number(value);
+
+  if (!Number.isSafeInteger(id) || id < 1) {
+    throw new Error('El identificador no es válido.');
+  }
+
+  return id;
+}
+
+function message(element, text = '', type = 'danger') {
+  if (!element) return;
+
+  const previousTimer = messageTimers.get(element);
+
+  if (previousTimer) {
+    clearTimeout(previousTimer);
+    messageTimers.delete(element);
+  }
+
+  if (!text) {
+    element.textContent = '';
+    element.className = 'd-none';
+    element.removeAttribute('style');
+    return;
+  }
+
+  const success = type === 'success';
+
+  element.textContent = text;
+  element.className = 'alert mb-3';
+
+  element.style.background = success
+    ? 'color-mix(in srgb, var(--primary) 12%, var(--panel))'
+    : 'color-mix(in srgb, #fb7185 10%, var(--panel))';
+
+  element.style.border = success
+    ? '1px solid color-mix(in srgb, var(--primary) 35%, var(--line))'
+    : '1px solid color-mix(in srgb, #fb7185 35%, var(--line))';
+
+  element.style.color = success
+    ? 'var(--secondary)'
+    : '#fb7185';
+
+  const timer = setTimeout(() => {
+    element.textContent = '';
+    element.className = 'd-none';
+    element.removeAttribute('style');
+    messageTimers.delete(element);
+  }, success ? 3000 : 5000);
+
+  messageTimers.set(element, timer);
+}
+
+function ensureMessage(id, parent) {
+  let element = $(id);
+
+  if (!element) {
+    element = document.createElement('div');
+    element.id = id;
+    element.className = 'd-none';
+    element.setAttribute('aria-live', 'polite');
+    parent.prepend(element);
+  }
+
+  return element;
+}
+
+function setOptions(select, values, selected = '', emptyLabel = '') {
+  select.innerHTML =
+    (emptyLabel
+      ? `<option value="">${escapeHtml(emptyLabel)}</option>`
+      : '') +
+    values.map(value => `
+      <option value="${escapeHtml(value)}">
+        ${escapeHtml(value)}
+      </option>
+    `).join('');
+
+  select.value = selected;
+}
+
+function wasteTypeLabel(value) {
+  if (value === 'general') return 'General';
+  if (value === 'reciclaje') return 'Reciclaje';
+  return 'Sin asignar';
+}
+
+function responseError(data, status) {
+  const errors =
+    data?.errors && typeof data.errors === 'object'
+      ? Object.values(data.errors)
+          .flat()
+          .filter(error => typeof error === 'string')
+      : [];
+
+  if (errors.length) return errors.join('\n');
+  if (data?.message) return data.message;
+  if (status === 401) return 'Tu sesión finalizó.';
+  if (status === 403) return 'No tienes permiso para realizar esta acción.';
+  if (status === 419) return 'La sesión expiró. Recarga la página.';
+
+  return `No se pudo completar la solicitud (HTTP ${status}).`;
+}
+
+async function getCsrfToken(force = false) {
+  if (force) csrfToken = '';
+  if (csrfToken) return csrfToken;
+
+  let response;
+
+  try {
+    response = await fetch(
+      `${API_GESTION}/csrf-token`,
+      {
+        headers: {
+          Accept: 'application/json'
+        },
+        credentials: 'include'
+      }
+    );
+  } catch {
+    throw new Error('No se pudo conectar con Laravel.');
+  }
+
+  const data = await response.json();
+
+  if (!response.ok || !data.token) {
+    throw new Error('No se pudo obtener el token CSRF.');
+  }
+
+  csrfToken = data.token;
+  return csrfToken;
+}
+
+async function requestJson(
+  url,
+  { method = 'GET', body } = {},
+  retry = true
+) {
+  const headers = {
+    Accept: 'application/json'
+  };
+
+  if (method !== 'GET') {
+    headers['X-CSRF-TOKEN'] = await getCsrfToken();
+  }
+
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  let response;
+
+  try {
+    response = await fetch(url, {
+      method,
+      headers,
+      credentials: 'include',
+      ...(body !== undefined
+        ? { body: JSON.stringify(body) }
+        : {})
+    });
+  } catch {
+    throw new Error('No se pudo conectar con Laravel.');
+  }
+
+  if (
+    response.status === 419 &&
+    method !== 'GET' &&
+    retry
+  ) {
+    await getCsrfToken(true);
+
+    return requestJson(
+      url,
+      { method, body },
+      false
+    );
+  }
+
+  let data;
+
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error(
+      'Laravel no devolvió una respuesta válida.'
+    );
+  }
+
+  if (!response.ok || data?.success === false) {
+    throw new Error(
+      responseError(data, response.status)
+    );
+  }
+
+  return data;
+}
+
+function listData(result, idField) {
+  if (!Array.isArray(result.data)) {
+    throw new Error(
+      'Laravel no devolvió una lista válida.'
+    );
+  }
+
+  return result.data.map(item => ({
+    ...item,
+    [idField]: validId(item[idField])
+  }));
 }
 
 function currentFacilities() {
-  return facilities.filter((item) =>
-    state.tab === 'depositos'
+  return facilities.filter(item =>
+    currentTab === 'depositos'
       ? item.tipo === 'Depósito'
       : item.tipo !== 'Depósito'
   );
 }
 
-function renderFacilities() {
-  const rows = currentFacilities();
-  document.getElementById('facilityTitle').textContent =
-    state.tab === 'depositos' ? 'Depósitos' : 'Instalaciones';
-
-  facilityBody.innerHTML = rows.map((item) => `
-    <tr class="${state.selectedId === item.id_instalacion ? 'table-active' : ''}" data-facility-select="${item.id_instalacion}">
-      <td><strong>${escapeHtml(item.nombre)}</strong></td>
-      <td>${escapeHtml(item.tipo)}</td>
-      <td>${escapeHtml(item.estado)}</td>
-      <td>${escapeHtml(item.calle)}</td>
-      <td>${escapeHtml(item.esquina_1)}</td>
-      <td>${escapeHtml(item.esquina_2)}</td>
-      <td>${escapeHtml(item.capacidad_actual)}</td>
-      <td>
-        <div class="d-flex gap-2">
-          <button class="btn btn-outline btn-sm" data-facility-edit="${item.id_instalacion}" type="button" aria-label="Editar instalación">
-            <i class="bi bi-pencil"></i>
-          </button>
-          <button class="btn btn-outline btn-sm" data-facility-delete="${item.id_instalacion}" type="button" aria-label="Eliminar instalación">
-            <i class="bi bi-trash"></i>
-          </button>
-        </div>
-      </td>
-    </tr>`).join('');
+function selectedFacility() {
+  return facilities.find(
+    item => item.id_instalacion === selectedId
+  );
 }
 
-function renderInventory() {
-  const facility = facilities.find((item) => item.id_instalacion === state.selectedId);
-  if (!facility || facility.tipo !== 'Depósito') {
-    inventoryPanel.classList.add('d-none');
-    return;
-  }
+function actionButton(attribute, id, icon, label) {
+  return `
+    <button
+      type="button"
+      class="btn btn-outline btn-sm"
+      ${attribute}="${validId(id)}"
+      title="${escapeHtml(label)}"
+      aria-label="${escapeHtml(label)}"
+    >
+      <i class="bi bi-${icon}" aria-hidden="true"></i>
+    </button>
+  `;
+}
 
-  inventoryPanel.classList.remove('d-none');
-  document.getElementById('inventoryTitle').textContent = `Inventario ${facility.nombre}`;
+function updateTabs() {
+  document.querySelectorAll(
+    '[data-facility-tab]'
+  ).forEach(button => {
+    const active =
+      button.dataset.facilityTab === currentTab;
 
-  const rows = inventory.filter((item) => item.id_instalacion === facility.id_instalacion);
-  inventoryBody.innerHTML = rows.length
-    ? rows.map((item) => `
-      <tr>
-        <td><strong>${escapeHtml(item.nombre_item)}</strong></td>
-        <td>${escapeHtml(item.estado)}</td>
+    button.classList.toggle('btn-primary', active);
+    button.classList.toggle('btn-outline', !active);
+    button.classList.toggle('active', active);
+  });
+}
+
+function renderFacilities() {
+  ui.facilityTitle.textContent =
+    currentTab === 'depositos'
+      ? 'Depósitos'
+      : 'Instalaciones';
+
+  const rows = currentFacilities();
+
+  ui.facilityBody.innerHTML = rows.length
+    ? rows.map(item => `
+      <tr
+        class="${
+          selectedId === item.id_instalacion
+            ? 'table-active'
+            : ''
+        }"
+        data-facility-select="${item.id_instalacion}"
+      >
+        <td>
+          <strong>${escapeHtml(item.nombre)}</strong>
+        </td>
+
         <td>${escapeHtml(item.tipo)}</td>
-        <td>${item.cantidad}</td>
+
+        <td>
+          ${escapeHtml(
+            wasteTypeLabel(item.tipo_residuo)
+          )}
+        </td>
+
+        <td>${escapeHtml(item.estado)}</td>
+        <td>${escapeHtml(item.calle)}</td>
+
+        <td>
+          ${escapeHtml(item.esquina_1 || '—')}
+        </td>
+
+        <td>
+          ${escapeHtml(item.esquina_2 || '—')}
+        </td>
+
+        <td>
+          ${escapeHtml(item.capacidad_estado)}
+        </td>
+
         <td>
           <div class="d-flex gap-2">
-            <button class="btn btn-outline btn-sm" data-item-edit="${item.id_inventario}" type="button" aria-label="Editar artículo">
-              <i class="bi bi-pencil"></i>
-            </button>
-            <button class="btn btn-outline btn-sm" data-item-delete="${item.id_inventario}" type="button" aria-label="Eliminar artículo">
-              <i class="bi bi-trash"></i>
-            </button>
+            ${actionButton(
+              'data-facility-workers',
+              item.id_instalacion,
+              'people',
+              'Ver operarios'
+            )}
+
+            ${actionButton(
+              'data-facility-edit',
+              item.id_instalacion,
+              'pencil',
+              'Editar instalación'
+            )}
+
+            ${actionButton(
+              'data-facility-delete',
+              item.id_instalacion,
+              'trash',
+              'Eliminar instalación'
+            )}
           </div>
         </td>
-      </tr>`).join('')
-    : '<tr><td colspan="5" class="text-center py-4">No hay artículos registrados.</td></tr>';
+      </tr>
+    `).join('')
+    : `
+      <tr>
+        <td colspan="9" class="text-center py-4">
+          No hay instalaciones registradas.
+        </td>
+      </tr>
+    `;
+}
+
+async function loadFacilities() {
+  message(ui.facilityStatus);
+
+  ui.facilityBody.innerHTML = `
+    <tr>
+      <td colspan="9" class="text-center py-4">
+        Cargando instalaciones…
+      </td>
+    </tr>
+  `;
+
+  try {
+    facilities = listData(
+      await requestJson(
+        `${API_GESTION}/api/instalaciones`
+      ),
+      'id_instalacion'
+    );
+
+    const visible = currentFacilities();
+
+    if (
+      !visible.some(
+        item => item.id_instalacion === selectedId
+      )
+    ) {
+      selectedId =
+        visible[0]?.id_instalacion ?? null;
+    }
+
+    renderFacilities();
+    await loadInventory();
+  } catch (error) {
+    message(
+      ui.facilityStatus,
+      error.message
+    );
+
+    ui.facilityBody.innerHTML = `
+      <tr>
+        <td colspan="9" class="text-center py-4">
+          No se pudieron cargar las instalaciones.
+        </td>
+      </tr>
+    `;
+  }
 }
 
 function fillFacility(item = {}) {
-  facilityForm.reset();
-  document.getElementById('facilityId').value = item.id_instalacion || '';
-  document.getElementById('facilityName').value = item.nombre || '';
-  document.getElementById('facilityType').value =
-    item.tipo === 'Depósito' ? 'depósito' :
-    item.tipo === 'Vertedero' ? 'vertedero' : 'centro de acopio';
-  document.getElementById('facilityState').value =
-    item.estado === 'No operativo' ? 'no operativo' : 'operativo';
-  document.getElementById('facilityStreet').value = item.calle || '';
-  document.getElementById('facilityCorner1').value = item.esquina_1 || '';
-  document.getElementById('facilityCorner2').value = item.esquina_2 || '';
-  document.getElementById('facilityCapacityStatus').value = item.capacidad_actual || 'Disponible';
-  document.getElementById('facilityModalTitle').textContent =
-    item.id_instalacion ? 'Editar instalación' : 'Nueva instalación';
+  ui.facilityForm.reset();
+  message(ui.facilityFormStatus);
+
+  ui.facilityId.value =
+    item.id_instalacion || '';
+
+  ui.facilityName.value =
+    item.nombre || '';
+
+  ui.facilityType.value =
+    item.tipo ||
+    (
+      currentTab === 'depositos'
+        ? 'Depósito'
+        : 'Centro de acopio'
+    );
+
+  ui.facilityWasteType.value =
+    item.tipo_residuo || '';
+
+  ui.facilityState.value =
+    item.estado || 'Operativo';
+
+  ui.facilityStreet.value =
+    item.calle || '';
+
+  ui.facilityCorner1.value =
+    item.esquina_1 || '';
+
+  ui.facilityCorner2.value =
+    item.esquina_2 || '';
+
+  ui.facilityCapacityStatus.value =
+    item.capacidad_estado || 'Disponible';
+
+  ui.facilityModalTitle.textContent =
+    item.id_instalacion
+      ? 'Editar instalación'
+      : 'Nueva instalación';
 }
 
-function saveFacility(event) {
+async function saveFacility(event) {
   event.preventDefault();
 
-  const id = Number(document.getElementById('facilityId').value || 0);
-  const typeValue = document.getElementById('facilityType').value;
-  const stateValue = document.getElementById('facilityState').value;
-
-  const item = {
-    id_instalacion: id || Math.max(0, ...facilities.map((row) => row.id_instalacion)) + 1,
-    nombre: document.getElementById('facilityName').value.trim(),
-    tipo: typeValue === 'depósito' ? 'Depósito' : typeValue === 'vertedero' ? 'Vertedero' : 'Centro de acopio',
-    estado: stateValue === 'no operativo' ? 'No operativo' : 'Operativo',
-    calle: document.getElementById('facilityStreet').value.trim(),
-    esquina_1: document.getElementById('facilityCorner1').value.trim(),
-    esquina_2: document.getElementById('facilityCorner2').value.trim(),
-    capacidad_actual: document.getElementById('facilityCapacityStatus').value
-  };
-
-  if (id) {
-    const index = facilities.findIndex((row) => row.id_instalacion === id);
-    if (index >= 0) facilities[index] = item;
-  } else {
-    facilities.push(item);
+  if (
+    facilityBusy ||
+    !ui.facilityForm.reportValidity()
+  ) {
+    return;
   }
 
-  state.selectedId = item.id_instalacion;
-  facilityModal.hide();
-  renderFacilities();
-  renderInventory();
+  try {
+    facilityBusy = true;
+
+    const id =
+      ui.facilityId.value
+        ? validId(ui.facilityId.value)
+        : null;
+
+    const body = {
+      nombre: ui.facilityName.value.trim(),
+      tipo: ui.facilityType.value,
+      tipo_residuo: ui.facilityWasteType.value,
+      estado: ui.facilityState.value,
+      calle: ui.facilityStreet.value.trim(),
+      esquina_1:
+        ui.facilityCorner1.value.trim() || null,
+      esquina_2:
+        ui.facilityCorner2.value.trim() || null,
+      capacidad_estado:
+        ui.facilityCapacityStatus.value
+    };
+
+    if (
+      !body.nombre ||
+      !TIPOS.includes(body.tipo) ||
+      !TIPOS_RESIDUO.includes(body.tipo_residuo) ||
+      !ESTADOS.includes(body.estado) ||
+      !body.calle ||
+      !CAPACIDADES.includes(body.capacidad_estado)
+    ) {
+      throw new Error(
+        'Los datos de la instalación no son válidos.'
+      );
+    }
+
+    const result = await requestJson(
+      id
+        ? `${API_GESTION}/api/instalaciones/${id}`
+        : `${API_GESTION}/api/instalaciones`,
+      {
+        method: id ? 'PUT' : 'POST',
+        body
+      }
+    );
+
+    const saved = {
+      ...result.data,
+      id_instalacion:
+        validId(result.data.id_instalacion)
+    };
+
+    facilities = facilities.filter(
+      item =>
+        item.id_instalacion !==
+        saved.id_instalacion
+    );
+
+    facilities.push(saved);
+
+    facilities.sort(
+      (a, b) =>
+        a.nombre.localeCompare(
+          b.nombre,
+          'es'
+        )
+    );
+
+    currentTab =
+      saved.tipo === 'Depósito'
+        ? 'depositos'
+        : 'instalaciones';
+
+    selectedId = saved.id_instalacion;
+
+    updateTabs();
+    renderFacilities();
+    modals.facility.hide();
+
+    message(
+      ui.facilityStatus,
+      result.message,
+      'success'
+    );
+
+    await loadInventory();
+  } catch (error) {
+    message(
+      ui.facilityFormStatus,
+      error.message
+    );
+  } finally {
+    facilityBusy = false;
+  }
+}
+
+async function deleteFacility(id) {
+  if (facilityBusy) return;
+
+  id = validId(id);
+
+  const item = facilities.find(
+    facility =>
+      facility.id_instalacion === id
+  );
+
+  if (
+    !item ||
+    !confirm(
+      `¿Eliminar la instalación «${item.nombre}»?`
+    )
+  ) {
+    return;
+  }
+
+  try {
+    facilityBusy = true;
+
+    const result = await requestJson(
+      `${API_GESTION}/api/instalaciones/${id}`,
+      {
+        method: 'DELETE'
+      }
+    );
+
+    facilities = facilities.filter(
+      facility =>
+        facility.id_instalacion !== id
+    );
+
+    if (selectedId === id) {
+      selectedId =
+        currentFacilities()[0]
+          ?.id_instalacion ?? null;
+    }
+
+    renderFacilities();
+
+    message(
+      ui.facilityStatus,
+      result.message,
+      'success'
+    );
+
+    await loadInventory();
+  } catch (error) {
+    message(
+      ui.facilityStatus,
+      error.message
+    );
+  } finally {
+    facilityBusy = false;
+  }
+}
+
+function renderInventory() {
+  const facility = selectedFacility();
+
+  const isDeposit =
+    facility?.tipo === 'Depósito';
+
+  ui.inventoryPanel.classList.toggle(
+    'd-none',
+    !isDeposit
+  );
+
+  if (!isDeposit) return;
+
+  ui.inventoryTitle.textContent =
+    `Inventario ${facility.nombre}`;
+
+  ui.inventoryBody.innerHTML =
+    inventory.length
+      ? inventory.map(item => `
+        <tr>
+          <td>
+            <strong>
+              ${escapeHtml(item.nombre_item)}
+            </strong>
+          </td>
+
+          <td>${escapeHtml(item.estado)}</td>
+          <td>${escapeHtml(item.tipo)}</td>
+          <td>${escapeHtml(item.cantidad)}</td>
+
+          <td>
+            <div class="d-flex gap-2">
+              ${actionButton(
+                'data-item-edit',
+                item.id_inventario,
+                'pencil',
+                'Editar artículo'
+              )}
+
+              ${actionButton(
+                'data-item-delete',
+                item.id_inventario,
+                'trash',
+                'Eliminar artículo'
+              )}
+            </div>
+          </td>
+        </tr>
+      `).join('')
+      : `
+        <tr>
+          <td colspan="5" class="text-center py-4">
+            ${
+              inventoryType
+                ? 'No hay artículos de este tipo.'
+                : 'No hay artículos registrados.'
+            }
+          </td>
+        </tr>
+      `;
+}
+
+async function loadInventory() {
+  const facility = selectedFacility();
+
+  inventory = [];
+  message(ui.inventoryStatus);
+
+  if (facility?.tipo !== 'Depósito') {
+    renderInventory();
+    return;
+  }
+
+  ui.inventoryBody.innerHTML = `
+    <tr>
+      <td colspan="5" class="text-center py-4">
+        Cargando inventario…
+      </td>
+    </tr>
+  `;
+
+  const query =
+    inventoryType
+      ? `?tipo=${encodeURIComponent(inventoryType)}`
+      : '';
+
+  try {
+    inventory = listData(
+      await requestJson(
+        `${API_GESTION}/api/instalaciones/${facility.id_instalacion}/inventario${query}`
+      ),
+      'id_inventario'
+    );
+
+    renderInventory();
+  } catch (error) {
+    message(
+      ui.inventoryStatus,
+      error.message
+    );
+
+    inventory = [];
+    renderInventory();
+  }
 }
 
 function fillItem(item = {}) {
-  itemForm.reset();
-  document.getElementById('itemId').value = item.id_inventario || '';
-  document.getElementById('itemName').value = item.nombre_item || '';
-  document.getElementById('itemType').value = item.tipo || 'Limpieza';
-  document.getElementById('itemState').value = item.estado || 'Disponible';
-  document.getElementById('itemQuantity').value = item.cantidad ?? '';
-  document.getElementById('itemModalTitle').textContent =
-    item.id_inventario ? 'Editar artículo' : 'Agregar artículo';
+  const facility = selectedFacility();
+
+  if (facility?.tipo !== 'Depósito') {
+    return false;
+  }
+
+  itemFacilityId =
+    facility.id_instalacion;
+
+  ui.itemForm.reset();
+  message(ui.itemFormStatus);
+
+  ui.itemId.value =
+    item.id_inventario || '';
+
+  ui.itemName.value =
+    item.nombre_item || '';
+
+  ui.itemType.value =
+    item.tipo ||
+    inventoryType ||
+    'Limpieza';
+
+  ui.itemState.value =
+    item.estado || 'Disponible';
+
+  ui.itemQuantity.value =
+    item.cantidad ?? '';
+
+  ui.itemModalTitle.textContent =
+    item.id_inventario
+      ? 'Editar artículo'
+      : 'Agregar artículo';
+
+  return true;
 }
 
-function saveItem(event) {
+async function saveItem(event) {
   event.preventDefault();
-  if (!state.selectedId) return;
 
-  const id = Number(document.getElementById('itemId').value || 0);
-  const item = {
-    id_inventario: id || Math.max(0, ...inventory.map((row) => row.id_inventario)) + 1,
-    id_instalacion: state.selectedId,
-    nombre_item: document.getElementById('itemName').value.trim(),
-    tipo: document.getElementById('itemType').value,
-    estado: document.getElementById('itemState').value,
-    cantidad: Number(document.getElementById('itemQuantity').value)
-  };
-
-  if (id) {
-    const index = inventory.findIndex((row) => row.id_inventario === id);
-    if (index >= 0) inventory[index] = item;
-  } else {
-    inventory.push(item);
+  if (
+    itemBusy ||
+    !ui.itemForm.reportValidity()
+  ) {
+    return;
   }
 
-  itemModal.hide();
-  renderInventory();
+  try {
+    itemBusy = true;
+
+    const facilityId =
+      validId(itemFacilityId);
+
+    const id =
+      ui.itemId.value
+        ? validId(ui.itemId.value)
+        : null;
+
+    const cantidad =
+      Number(ui.itemQuantity.value);
+
+    const body = {
+      nombre_item:
+        ui.itemName.value.trim(),
+      estado:
+        ui.itemState.value,
+      tipo:
+        ui.itemType.value,
+      cantidad
+    };
+
+    if (
+      !body.nombre_item ||
+      !ESTADOS_ITEM.includes(body.estado) ||
+      !TIPOS_ITEM.includes(body.tipo) ||
+      !Number.isSafeInteger(cantidad) ||
+      cantidad < 0
+    ) {
+      throw new Error(
+        'Los datos del artículo no son válidos.'
+      );
+    }
+
+    const result = await requestJson(
+      `${API_GESTION}/api/instalaciones/${facilityId}/inventario${id ? `/${id}` : ''}`,
+      {
+        method: id ? 'PUT' : 'POST',
+        body
+      }
+    );
+
+    modals.item.hide();
+
+    message(
+      ui.facilityStatus,
+      result.message,
+      'success'
+    );
+
+    await loadInventory();
+  } catch (error) {
+    message(
+      ui.itemFormStatus,
+      error.message
+    );
+  } finally {
+    itemBusy = false;
+  }
 }
 
-function deleteFacility(id) {
-  const index = facilities.findIndex((item) => item.id_instalacion === id);
-  if (index < 0 || !confirm('¿Eliminar la instalación?')) return;
+async function deleteItem(id) {
+  if (itemBusy) return;
 
-  facilities.splice(index, 1);
-  for (let i = inventory.length - 1; i >= 0; i -= 1) {
-    if (inventory[i].id_instalacion === id) inventory.splice(i, 1);
+  id = validId(id);
+
+  const facility = selectedFacility();
+
+  const item = inventory.find(
+    row => row.id_inventario === id
+  );
+
+  if (
+    !facility ||
+    !item ||
+    !confirm(
+      `¿Eliminar el artículo «${item.nombre_item}»?`
+    )
+  ) {
+    return;
   }
 
-  const visible = currentFacilities();
-  state.selectedId = visible[0]?.id_instalacion || null;
-  renderFacilities();
-  renderInventory();
+  try {
+    itemBusy = true;
+
+    const result = await requestJson(
+      `${API_GESTION}/api/instalaciones/${facility.id_instalacion}/inventario/${id}`,
+      {
+        method: 'DELETE'
+      }
+    );
+
+    message(
+      ui.facilityStatus,
+      result.message,
+      'success'
+    );
+
+    await loadInventory();
+  } catch (error) {
+    message(
+      ui.facilityStatus,
+      error.message
+    );
+  } finally {
+    itemBusy = false;
+  }
 }
 
-function deleteItem(id) {
-  const index = inventory.findIndex((item) => item.id_inventario === id);
-  if (index < 0 || !confirm('¿Eliminar el artículo?')) return;
-  inventory.splice(index, 1);
-  renderInventory();
+function workerName(worker) {
+  return [
+    worker.nombre,
+    worker.apellido
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
-document.querySelectorAll('[data-facility-tab]').forEach((button) => {
-  button.addEventListener('click', () => {
-    state.tab = button.dataset.facilityTab;
-    document.querySelectorAll('[data-facility-tab]').forEach((item) => {
-      item.classList.toggle('btn-primary', item === button);
-      item.classList.toggle('btn-outline', item !== button);
-      item.classList.toggle('active', item === button);
-    });
+function assignmentDate(value) {
+  const date =
+    String(value || '').match(
+      /^(\d{4})-(\d{2})-(\d{2})/
+    );
 
-    const visible = currentFacilities();
-    state.selectedId = state.tab === 'depositos' ? visible[0]?.id_instalacion || null : null;
+  return date
+    ? `${date[3]}/${date[2]}/${date[1]}`
+    : '—';
+}
+
+function renderWorkers() {
+  ui.workersBody.innerHTML =
+    workers.length
+      ? workers.map(worker => `
+        <tr>
+          <td>${escapeHtml(workerName(worker))}</td>
+          <td>${escapeHtml(worker.documento || '—')}</td>
+          <td>${escapeHtml(worker.estado || '—')}</td>
+          <td>${escapeHtml(worker.telefono || '—')}</td>
+          <td>${escapeHtml(worker.email || '—')}</td>
+          <td>${assignmentDate(worker.fecha_asignacion)}</td>
+
+          <td>
+            <div class="d-flex gap-2">
+              ${actionButton(
+                'data-worker-edit',
+                worker.id_usuario,
+                'pencil',
+                'Cambiar operario'
+              )}
+
+              ${actionButton(
+                'data-worker-remove',
+                worker.id_usuario,
+                'trash',
+                'Quitar operario'
+              )}
+            </div>
+          </td>
+        </tr>
+      `).join('')
+      : `
+        <tr>
+          <td colspan="7" class="text-center py-4">
+            No hay operarios asignados.
+          </td>
+        </tr>
+      `;
+}
+
+async function loadWorkers() {
+  if (!workerFacilityId) return;
+
+  message(ui.workersStatus);
+
+  ui.workersBody.innerHTML = `
+    <tr>
+      <td colspan="7" class="text-center py-4">
+        Cargando operarios…
+      </td>
+    </tr>
+  `;
+
+  try {
+    workers = listData(
+      await requestJson(
+        `${API_GESTION}/api/instalaciones/${workerFacilityId}/operarios`
+      ),
+      'id_usuario'
+    );
+
+    renderWorkers();
+  } catch (error) {
+    workers = [];
+
+    message(
+      ui.workersStatus,
+      error.message
+    );
+
+    renderWorkers();
+  }
+}
+
+function cancelWorkerForm() {
+  editWorkerId = null;
+  availableUsers = [];
+
+  ui.workerForm.reset();
+  ui.workerForm.classList.add('d-none');
+
+  message(ui.workerFormStatus);
+}
+
+async function openWorkers(id) {
+  const facility = facilities.find(
+    item => item.id_instalacion === id
+  );
+
+  if (!facility) return;
+
+  workerFacilityId =
+    facility.id_instalacion;
+
+  cancelWorkerForm();
+  message(ui.workersStatus);
+
+  ui.workersTitle.textContent =
+    `Operarios de ${facility.nombre}`;
+
+  modals.workers.show();
+
+  await loadWorkers();
+}
+
+async function openWorkerForm(id = null) {
+  if (
+    !workerFacilityId ||
+    workerBusy
+  ) {
+    return;
+  }
+
+  const current =
+    id
+      ? workers.find(
+          worker =>
+            worker.id_usuario === id
+        )
+      : null;
+
+  if (id && !current) return;
+
+  editWorkerId = id;
+  availableUsers = [];
+
+  ui.workerForm.reset();
+  ui.workerForm.classList.remove('d-none');
+
+  ui.workerFormTitle.textContent =
+    current
+      ? `Cambiar asignación de ${workerName(current)}`
+      : 'Asignar operario';
+
+  setOptions(
+    ui.workerSelect,
+    [],
+    '',
+    'Cargando operarios…'
+  );
+
+  message(ui.workerFormStatus);
+
+  try {
+    const available = listData(
+      await requestJson(
+        `${API_GESTION}/api/instalaciones/${workerFacilityId}/operarios-disponibles`
+      ),
+      'id_usuario'
+    );
+
+    if (current) {
+      available.push(current);
+    }
+
+    availableUsers = available;
+
+    ui.workerSelect.innerHTML = `
+      <option value="">
+        Selecciona un operario
+      </option>
+    ` +
+    availableUsers.map(worker => `
+      <option value="${worker.id_usuario}">
+        ${escapeHtml(workerName(worker))}
+        ${
+          worker.documento
+            ? ` — ${escapeHtml(worker.documento)}`
+            : ''
+        }
+      </option>
+    `).join('');
+
+    ui.workerSelect.value =
+      id ? String(id) : '';
+  } catch (error) {
+    message(
+      ui.workerFormStatus,
+      error.message
+    );
+  }
+}
+
+async function saveWorker(event) {
+  event.preventDefault();
+
+  if (
+    workerBusy ||
+    !ui.workerForm.reportValidity()
+  ) {
+    return;
+  }
+
+  try {
+    workerBusy = true;
+
+    const facilityId =
+      validId(workerFacilityId);
+
+    const userId =
+      validId(ui.workerSelect.value);
+
+    if (
+      !availableUsers.some(
+        worker =>
+          worker.id_usuario === userId
+      )
+    ) {
+      throw new Error(
+        'Selecciona un operario válido.'
+      );
+    }
+
+    const result = await requestJson(
+      `${API_GESTION}/api/instalaciones/${facilityId}/operarios${editWorkerId ? `/${validId(editWorkerId)}` : ''}`,
+      {
+        method:
+          editWorkerId
+            ? 'PUT'
+            : 'POST',
+
+        body: {
+          id_usuario: userId
+        }
+      }
+    );
+
+    cancelWorkerForm();
+
+    await loadWorkers();
+
+    message(
+      ui.workersStatus,
+      result.message,
+      'success'
+    );
+  } catch (error) {
+    message(
+      ui.workerFormStatus,
+      error.message
+    );
+  } finally {
+    workerBusy = false;
+  }
+}
+
+async function removeWorker(id) {
+  if (workerBusy) return;
+
+  const worker = workers.find(
+    row => row.id_usuario === id
+  );
+
+  if (
+    !worker ||
+    !workerFacilityId ||
+    !confirm(
+      `¿Quitar a ${workerName(worker)} de esta instalación?`
+    )
+  ) {
+    return;
+  }
+
+  try {
+    workerBusy = true;
+
+    const result = await requestJson(
+      `${API_GESTION}/api/instalaciones/${workerFacilityId}/operarios/${validId(id)}`,
+      {
+        method: 'DELETE'
+      }
+    );
+
+    await loadWorkers();
+
+    message(
+      ui.workersStatus,
+      result.message,
+      'success'
+    );
+  } catch (error) {
+    message(
+      ui.workersStatus,
+      error.message
+    );
+  } finally {
+    workerBusy = false;
+  }
+}
+
+function createInventoryFilter() {
+  if (!$('inventoryTypeFilter')) {
+    const container =
+      document.createElement('div');
+
+    container.className =
+      'inventory-filter';
+
+    container.innerHTML = `
+      <label for="inventoryTypeFilter">
+        Filtrar por tipo
+      </label>
+
+      <select
+        id="inventoryTypeFilter"
+        class="form-select form-select-sm"
+      ></select>
+    `;
+
+    ui.inventoryTitle.insertAdjacentElement(
+      'afterend',
+      container
+    );
+  }
+
+  ui.inventoryTypeFilter =
+    $('inventoryTypeFilter');
+
+  setOptions(
+    ui.inventoryTypeFilter,
+    TIPOS_ITEM,
+    '',
+    'Todos los tipos'
+  );
+
+  ui.inventoryTypeFilter.addEventListener(
+    'change',
+    () => {
+      inventoryType =
+        TIPOS_ITEM.includes(
+          ui.inventoryTypeFilter.value
+        )
+          ? ui.inventoryTypeFilter.value
+          : '';
+
+      void loadInventory();
+    }
+  );
+}
+
+function createWorkersModal() {
+  if (!$('facilityWorkersModal')) {
+    const modal =
+      document.createElement('div');
+
+    modal.className = 'modal fade';
+    modal.id = 'facilityWorkersModal';
+    modal.tabIndex = -1;
+
+    modal.innerHTML = `
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content admin-modal">
+
+          <div class="modal-header">
+            <h5
+              class="modal-title"
+              id="facilityWorkersTitle"
+            >
+              Operarios
+            </h5>
+
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Cerrar"
+            ></button>
+          </div>
+
+          <div class="modal-body">
+
+            <div
+              id="facilityWorkersStatus"
+              class="d-none"
+            ></div>
+
+            <button
+              id="facilityWorkerAdd"
+              type="button"
+              class="btn btn-primary mb-3"
+            >
+              Asignar operario
+            </button>
+
+            <form
+              id="facilityWorkerForm"
+              class="worker-assignment-panel mb-3 d-none"
+            >
+              <h6 id="facilityWorkerFormTitle">
+                Asignar operario
+              </h6>
+
+              <div
+                id="facilityWorkerFormStatus"
+                class="d-none"
+              ></div>
+
+              <label
+                for="facilityWorkerSelect"
+                class="form-label"
+              >
+                Operario
+              </label>
+
+              <select
+                id="facilityWorkerSelect"
+                class="form-select mb-3"
+                required
+              ></select>
+
+              <button
+                class="btn btn-primary"
+                type="submit"
+              >
+                Guardar
+              </button>
+
+              <button
+                id="facilityWorkerCancel"
+                class="btn btn-outline"
+                type="button"
+              >
+                Cancelar
+              </button>
+            </form>
+
+            <div class="table-responsive">
+              <table class="table truck-table align-middle mb-0">
+
+                <thead>
+                  <tr>
+                    <th>Operario</th>
+                    <th>Documento</th>
+                    <th>Estado</th>
+                    <th>Teléfono</th>
+                    <th>Email</th>
+                    <th>Fecha de asignación</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+
+                <tbody id="facilityWorkersBody"></tbody>
+
+              </table>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.append(modal);
+  }
+
+  ui.workersModal =
+    $('facilityWorkersModal');
+
+  ui.workersTitle =
+    $('facilityWorkersTitle');
+
+  ui.workersStatus =
+    $('facilityWorkersStatus');
+
+  ui.workersBody =
+    $('facilityWorkersBody');
+
+  ui.workerAdd =
+    $('facilityWorkerAdd');
+
+  ui.workerForm =
+    $('facilityWorkerForm');
+
+  ui.workerFormTitle =
+    $('facilityWorkerFormTitle');
+
+  ui.workerFormStatus =
+    $('facilityWorkerFormStatus');
+
+  ui.workerSelect =
+    $('facilityWorkerSelect');
+
+  ui.workerCancel =
+    $('facilityWorkerCancel');
+
+  modals.workers =
+    bootstrap.Modal.getOrCreateInstance(
+      ui.workersModal
+    );
+
+  ui.workerAdd.addEventListener(
+    'click',
+    () => void openWorkerForm()
+  );
+
+  ui.workerCancel.addEventListener(
+    'click',
+    cancelWorkerForm
+  );
+
+  ui.workerForm.addEventListener(
+    'submit',
+    saveWorker
+  );
+}
+
+function handleClick(event) {
+  const target = event.target;
+
+  if (!(target instanceof Element)) {
+    return;
+  }
+
+  const tab =
+    target.closest('[data-facility-tab]');
+
+  if (tab) {
+    currentTab =
+      tab.dataset.facilityTab;
+
+    selectedId =
+      currentFacilities()[0]
+        ?.id_instalacion ?? null;
+
+    updateTabs();
     renderFacilities();
-    renderInventory();
-  });
-});
+    void loadInventory();
 
-document.addEventListener('click', (event) => {
-  const selectedRow = event.target.closest('[data-facility-select]');
-  const actionButton = event.target.closest('button,a,input,select,textarea,label,[role="button"]');
-
-  if (selectedRow && !actionButton && state.tab === 'depositos') {
-    state.selectedId = Number(selectedRow.dataset.facilitySelect);
-    renderFacilities();
-    renderInventory();
+    return;
   }
 
-  const editButton = event.target.closest('[data-facility-edit]');
-  if (editButton) {
-    const item = facilities.find((row) => row.id_instalacion === Number(editButton.dataset.facilityEdit));
-    fillFacility(item);
-    facilityModal.show();
+  const workersButton =
+    target.closest('[data-facility-workers]');
+
+  if (workersButton) {
+    void openWorkers(
+      Number(
+        workersButton.dataset.facilityWorkers
+      )
+    );
+
+    return;
   }
 
-  const deleteButton = event.target.closest('[data-facility-delete]');
-  if (deleteButton) deleteFacility(Number(deleteButton.dataset.facilityDelete));
+  const editFacilityButton =
+    target.closest('[data-facility-edit]');
 
-  const editItemButton = event.target.closest('[data-item-edit]');
+  if (editFacilityButton) {
+    const id =
+      Number(
+        editFacilityButton.dataset.facilityEdit
+      );
+
+    const item = facilities.find(
+      facility =>
+        facility.id_instalacion === id
+    );
+
+    if (item) {
+      fillFacility(item);
+      modals.facility.show();
+    }
+
+    return;
+  }
+
+  const deleteFacilityButton =
+    target.closest('[data-facility-delete]');
+
+  if (deleteFacilityButton) {
+    void deleteFacility(
+      Number(
+        deleteFacilityButton.dataset.facilityDelete
+      )
+    );
+
+    return;
+  }
+
+  const editItemButton =
+    target.closest('[data-item-edit]');
+
   if (editItemButton) {
-    const item = inventory.find((row) => row.id_inventario === Number(editItemButton.dataset.itemEdit));
-    fillItem(item);
-    itemModal.show();
+    const id =
+      Number(
+        editItemButton.dataset.itemEdit
+      );
+
+    const item = inventory.find(
+      row => row.id_inventario === id
+    );
+
+    if (item && fillItem(item)) {
+      modals.item.show();
+    }
+
+    return;
   }
 
-  const deleteItemButton = event.target.closest('[data-item-delete]');
-  if (deleteItemButton) deleteItem(Number(deleteItemButton.dataset.itemDelete));
-});
+  const deleteItemButton =
+    target.closest('[data-item-delete]');
 
-document.querySelector('[data-facility-new]')?.addEventListener('click', () => {
-  fillFacility();
-  facilityModal.show();
-});
+  if (deleteItemButton) {
+    void deleteItem(
+      Number(
+        deleteItemButton.dataset.itemDelete
+      )
+    );
 
-document.querySelector('[data-item-new]')?.addEventListener('click', () => {
-  fillItem();
-  itemModal.show();
-});
+    return;
+  }
 
-facilityForm.addEventListener('submit', saveFacility);
-itemForm.addEventListener('submit', saveItem);
+  const editWorkerButton =
+    target.closest('[data-worker-edit]');
 
-renderFacilities();
-renderInventory();
+  if (editWorkerButton) {
+    void openWorkerForm(
+      Number(
+        editWorkerButton.dataset.workerEdit
+      )
+    );
+
+    return;
+  }
+
+  const removeWorkerButton =
+    target.closest('[data-worker-remove]');
+
+  if (removeWorkerButton) {
+    void removeWorker(
+      Number(
+        removeWorkerButton.dataset.workerRemove
+      )
+    );
+
+    return;
+  }
+
+  if (target.closest('[data-facility-new]')) {
+    fillFacility();
+    modals.facility.show();
+    return;
+  }
+
+  if (target.closest('[data-item-new]')) {
+    if (fillItem()) {
+      modals.item.show();
+    }
+
+    return;
+  }
+
+  const row =
+    target.closest('[data-facility-select]');
+
+  if (
+    row &&
+    !target.closest('button')
+  ) {
+    selectedId =
+      validId(
+        row.dataset.facilitySelect
+      );
+
+    renderFacilities();
+    void loadInventory();
+  }
+}
+
+function init() {
+  ui.facilityBody = $('facilityBody');
+
+  if (!ui.facilityBody) return;
+
+  ui.facilityTitle = $('facilityTitle');
+
+  ui.inventoryBody = $('inventoryBody');
+  ui.inventoryPanel = $('inventoryPanel');
+  ui.inventoryTitle = $('inventoryTitle');
+
+  ui.facilityModal = $('facilityModal');
+  ui.facilityForm = $('facilityForm');
+  ui.facilityId = $('facilityId');
+  ui.facilityName = $('facilityName');
+  ui.facilityType = $('facilityType');
+  ui.facilityWasteType = $('facilityWasteType');
+  ui.facilityState = $('facilityState');
+  ui.facilityStreet = $('facilityStreet');
+  ui.facilityCorner1 = $('facilityCorner1');
+  ui.facilityCorner2 = $('facilityCorner2');
+  ui.facilityCapacityStatus = $('facilityCapacityStatus');
+  ui.facilityModalTitle = $('facilityModalTitle');
+
+  ui.itemModal = $('itemModal');
+  ui.itemForm = $('itemForm');
+  ui.itemId = $('itemId');
+  ui.itemName = $('itemName');
+  ui.itemType = $('itemType');
+  ui.itemState = $('itemState');
+  ui.itemQuantity = $('itemQuantity');
+  ui.itemModalTitle = $('itemModalTitle');
+
+  if (!window.bootstrap?.Modal) {
+    console.error(
+      'Carga Bootstrap antes de instalaciones.js.'
+    );
+    return;
+  }
+
+  if (!ui.facilityWasteType) {
+    console.error(
+      'No se encontró facilityWasteType.'
+    );
+    return;
+  }
+
+  ui.facilityStatus = ensureMessage(
+    'facilityStatus',
+    ui.facilityBody
+      .closest('table')
+      .parentElement
+  );
+
+  ui.inventoryStatus = ensureMessage(
+    'inventoryStatus',
+    ui.inventoryPanel
+  );
+
+  ui.facilityFormStatus = ensureMessage(
+    'facilityFormStatus',
+    ui.facilityForm
+  );
+
+  ui.itemFormStatus = ensureMessage(
+    'itemFormStatus',
+    ui.itemForm
+  );
+
+  modals.facility =
+    bootstrap.Modal.getOrCreateInstance(
+      ui.facilityModal
+    );
+
+  modals.item =
+    bootstrap.Modal.getOrCreateInstance(
+      ui.itemModal
+    );
+
+  setOptions(
+    ui.facilityType,
+    TIPOS,
+    'Depósito'
+  );
+
+  ui.facilityWasteType.innerHTML = `
+    <option value="" disabled>
+      Seleccionar
+    </option>
+
+    <option value="general">
+      General
+    </option>
+
+    <option value="reciclaje">
+      Reciclaje
+    </option>
+  `;
+
+  ui.facilityWasteType.value = '';
+
+  setOptions(
+    ui.facilityState,
+    ESTADOS,
+    'Operativo'
+  );
+
+  setOptions(
+    ui.facilityCapacityStatus,
+    CAPACIDADES,
+    'Disponible'
+  );
+
+  setOptions(
+    ui.itemType,
+    TIPOS_ITEM,
+    'Limpieza'
+  );
+
+  setOptions(
+    ui.itemState,
+    ESTADOS_ITEM,
+    'Disponible'
+  );
+
+  ui.itemQuantity.type = 'number';
+  ui.itemQuantity.min = '0';
+  ui.itemQuantity.step = '1';
+
+  createInventoryFilter();
+  createWorkersModal();
+
+  ui.facilityForm.addEventListener(
+    'submit',
+    saveFacility
+  );
+
+  ui.itemForm.addEventListener(
+    'submit',
+    saveItem
+  );
+
+  document.addEventListener(
+    'click',
+    handleClick
+  );
+
+  currentTab =
+    document.querySelector(
+      '[data-facility-tab].active'
+    )?.dataset.facilityTab ||
+    'depositos';
+
+  updateTabs();
+  void loadFacilities();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener(
+    'DOMContentLoaded',
+    init,
+    { once: true }
+  );
+} else {
+  init();
+}

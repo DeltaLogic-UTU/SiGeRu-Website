@@ -14,14 +14,18 @@ Actualmente funciona como un prototipo web desarrollado con:
 - CSS3
 - JavaScript
 - Bootstrap 5.3
-- Bootstrap Icons
 - PHP
 
-El proyecto utiliza datos locales y estructuras PHP para simular el funcionamiento del sistema.
+La información del sistema se obtiene mediante APIs desarrolladas con Laravel y se almacena en una base de datos MariaDB/MySQL.
 
-Todavía no utiliza una base de datos MySQL pero la estructura está preparada para realizar esa integración.
+SiGeRu está dividido en cuatro repositorios:
 
-## Estructura del proyecto
+- `SiGeRu-Website`: frontend del sistema.
+- `SiGeRu-API-Usuarios`: autenticación y gestión de usuarios.
+- `SiGeRu-API-Gestion`: gestión operativa del sistema.
+- `SiGeRu-DumpSQL`: estructura y datos de la base de datos.
+
+## Estructura de la página
 
 ```text
 SiGeRU/
@@ -53,28 +57,7 @@ SiGeRU/
 │   ├── perfil.html
 │   └── assets/
 │
-├── api-usuarios/
-│   ├── index.php
-│   └── validations.php
-│
-├── api-gestion/
-│   ├── index.php
-│   ├── camiones.php
-│   ├── contenedores.php
-│   ├── cuadrillas.php
-│   ├── incidencias_camiones.php
-│   ├── incidencias_contenedores.php
-│   ├── instalaciones.php
-│   ├── inventario.php
-│   ├── personal.php
-│   ├── reclamos.php
-│   ├── rutas.php
-│   ├── solicitudes.php
-│   └── trabajadores.php
-│
 ├── resources/
-├── .gitignore
-├── .gitattributes
 ├── gitflow.md
 └── README.md
 ```
@@ -107,7 +90,7 @@ Perfiles disponibles:
 - Operario
 - Chofer
 
-Cada página valida el perfil autenticado antes de permitir el acceso.
+Se valida el perfil autenticado antes de permitir el acceso.
 
 El vecino puede además:
 
@@ -136,8 +119,16 @@ Permite trabajar con:
 
 ## Contenedores y circuitos
 
-Cada circuito del prototipo representa un conjunto de 10 contenedores, este formato permite representar cómo funcionará a futuro,
-de forma escalable y visual para que sea accesible.
+Cada contenedor mantiene información como:
+
+- código;
+- modelo;
+- tipo de residuo;
+- capacidad;
+- estado;
+- ubicación;
+- circuito;
+- tiempo desde la última recolección.
 
 Los contenedores indican cuánto tiempo llevan sin ser recolectados:
 
@@ -215,33 +206,6 @@ El módulo permite administrar:
 - incidencias creadas;
 - circuitos asignados.
 
-## APIs
-
-El proyecto se divide principalmente en dos grupos de APIs.
-
-### API de Usuarios
-
-Responsable de:
-
-- login;
-- validación de usuarios;
-- solicitudes de acceso;
-- perfiles.
-
-### API de Gestión
-
-Responsable de la información operacional:
-
-- contenedores;
-- camiones;
-- cuadrillas;
-- instalaciones;
-- inventario;
-- rutas;
-- reclamos;
-- incidencias;
-- personal.
-
 ## Cuentas de demostración
 
 Para probar los diferentes perfiles:
@@ -269,33 +233,99 @@ Contraseña utilizada en las cuentas de demostración:
 Sigeru123
 ```
 
-## Ejecutar el proyecto localmente
+## Ejecutar el proyecto 
 
-Para utilizar también las APIs PHP se recomienda ejecutar el proyecto mediante Apache.
+Para ejecutar el sistema completo se necesitan:
 
-Con XAMPP:
+- Apache;
+- MariaDB/MySQL;
+- PHP;
+- Composer;
+- Laravel.
 
-1. Copiar la carpeta del proyecto dentro de:
+Se pueden encontrar las dos APIs en sus repositorios correspondientes.
+
+### 1. Base de datos
+
+Iniciar MySQL desde XAMPP.
+
+Crear una base de datos llamada:
+
+```text
+sigeru
+```
+
+Importar el archivo:
+
+```text
+SQL_SiGeRU.sql
+```
+
+### 2. API de Usuarios
+
+Dentro del repositorio:
+
+```text
+SiGeRu-API-Usuarios
+```
+
+ejecutar:
+
+```powershell
+composer install
+copy .env.example .env
+php artisan key:generate
+php artisan serve --port=8000
+```
+
+La API funciona en:
+
+```text
+http://127.0.0.1:8000
+```
+
+### 3. API de Gestión
+
+Dentro del repositorio:
+
+```text
+SiGeRu-API-Gestion
+```
+
+ejecutar:
+
+```powershell
+composer install
+copy .env.example .env
+php artisan key:generate
+php artisan serve --port=8001
+```
+
+La API funciona en:
+
+```text
+http://127.0.0.1:8001
+```
+
+### 4. Frontend
+
+Colocar el repositorio:
+
+```text
+SiGeRu-Website
+```
+
+dentro de:
 
 ```text
 C:\xampp\htdocs\
 ```
 
-Por ejemplo:
+Iniciar Apache desde XAMPP y abrir:
 
 ```text
-C:\xampp\htdocs\SiGeRU
+http://localhost/SiGeRu-Website/landing-page/index.html
 ```
-
-2. Iniciar Apache desde XAMPP.
-
-3. Abrir en el navegador:
-
-```text
-http://localhost/SiGeRU/landing-page/index.html
-```
-
-Para la versión actual no es obligatorio iniciar MySQL, se incluye en un repositorio a nivel demostrativo el SQL dump file.
 
 ## Bootstrap
 
@@ -303,25 +333,14 @@ Para la versión actual no es obligatorio iniciar MySQL, se incluye en un reposi
 
 2. El CSS propio se carga después de Bootstrap para mantener la identidad visual del sistema.
 
-## Persistencia local
-
-Algunas funciones del prototipo utilizan:
-
-- `localStorage`
-- `sessionStorage`
-
-Esto permite simular cambios y sesiones mientras no exista una base de datos definitiva.
-
 ## Próximos pasos
 
-- Integración con MySQL.
-- Persistencia real de usuarios.
-- Persistencia de contenedores y circuitos.
-- CAPTCHA real.
-- Integración definitiva entre APIs y API de Recolección.
-- Reportes y estadísticas.
-- Adaptación del sistema de mapas y geolocalización.
-- Rutas y sus funciones
+- Completar los módulos pendientes de estadísticas.
+- Completar las funciones de rutas.
+- Continuar mejorando la representación de mapas y geolocalización.
+- Continuar las pruebas de integración entre frontend, APIs y base de datos.
+- Mejorar las validaciones y controles de acceso según los distintos perfiles.
+- Continuar optimizando la interfaz responsive.
 
 ## Proyecto académico 2026
 

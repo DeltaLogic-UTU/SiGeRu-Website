@@ -1,202 +1,2340 @@
-const DEFAULT_CONTAINERS=[
-{id:1,codigo:'CONT-CH0985',modelo:'Ecopunto',tipo:'reciclaje',capacidad:3,estado:'roto',diasSinRecoleccion:2,calle:'Villasboas',esquina:'Av. Gral. Rivera',municipio:'CH',barrio:'Buceo',circuito:'CH_115',ultimoRegistro:'2026-07-24',imagen:'../resources/contenedor1.png',mapa:'../resources/mapa-contenedor1.png',historial:[
-{fecha:'2026-07-24',tipo:'Incidencia',detalle:'Daño detectado en la estructura lateral.',estado:'Abierta'},
-{fecha:'2026-07-10',tipo:'Mantenimiento',detalle:'Revisión de tapa y sistema de apertura.',estado:'Completado'},
-{fecha:'2026-06-15',tipo:'Alta',detalle:'Contenedor incorporado al circuito CH_115.',estado:'Registrado'}]},
-{id:2,codigo:'CONT-B0152',modelo:'EASY',tipo:'mixto',capacidad:2.25,estado:'desbordado',diasSinRecoleccion:4,calle:'Sarandí',esquina:'Ituzaingó',municipio:'B',barrio:'Ciudad Vieja',circuito:'B_05',ultimoRegistro:'2026-07-21',imagen:'../resources/contenedor2.png',mapa:'../resources/mapa-contenedor2.png',historial:[
-{fecha:'2026-07-19',tipo:'Incidencia',detalle:'Desborde reportado por acumulación de residuos.',estado:'En curso'},
-{fecha:'2026-07-01',tipo:'Limpieza',detalle:'Lavado interior y exterior.',estado:'Completado'},
-{fecha:'2026-06-17',tipo:'Reubicación',detalle:'Traslado a Sarandí e Ituzaingó.',estado:'Completado'}]},
-{id:3,codigo:'CONT-F0056',modelo:'Metálico',tipo:'general',capacidad:3,estado:'roto',diasSinRecoleccion:6,calle:'Veracruz',esquina:'Capitán Videla',municipio:'E',barrio:'Maroñas',circuito:'E_103',ultimoRegistro:'2026-07-19',imagen:'../resources/contenedor3.png',mapa:'../resources/mapa-contenedor3.png',historial:[
-{fecha:'2026-07-22',tipo:'Incidencia',detalle:'Falta de recolección en el circuito previsto.',estado:'En curso'},
-{fecha:'2026-06-28',tipo:'Mantenimiento',detalle:'Ajuste de ruedas y soldadura menor.',estado:'Completado'},
-{fecha:'2026-06-12',tipo:'Inspección',detalle:'Se detectó desgaste general.',estado:'Registrado'}]},
-{id:4,codigo:'CONT-A0215',modelo:'Metálico',tipo:'general',capacidad:3,estado:'funcional',diasSinRecoleccion:1,calle:'Japón',esquina:'Egipto',municipio:'C',barrio:'Centro',circuito:'C_102',ultimoRegistro:'2026-07-24',imagen:'../resources/contenedor4.png',mapa:'../resources/mapa-contenedor4.png',historial:[
-{fecha:'2026-07-20',tipo:'Mantenimiento',detalle:'Cambio de rueda y lubricación.',estado:'Completado'},
-{fecha:'2026-06-25',tipo:'Limpieza',detalle:'Lavado programado.',estado:'Completado'},
-{fecha:'2026-06-10',tipo:'Alta',detalle:'Contenedor incorporado al circuito C_102.',estado:'Registrado'}]}
-]
+const API_GESTION = 'http://127.0.0.1:8001';
 
-const STORAGE_KEY='sigeru-contenedores-v3';
-const $=id=>document.getElementById(id);
-const clone=value=>structuredClone(value);
+const $ = id => document.getElementById(id);
 
-function loadContainers(){
-  try{
-    const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if(!Array.isArray(saved))return clone(DEFAULT_CONTAINERS);
-    return saved.map(item=>{
-      const base=DEFAULT_CONTAINERS.find(def=>def.codigo===item.codigo);
-      return {
-        ...item,
-        diasSinRecoleccion:Number.isFinite(Number(item.diasSinRecoleccion))?Number(item.diasSinRecoleccion):(base?.diasSinRecoleccion??2),
-        historial:Array.isArray(item.historial)?item.historial:clone(base?.historial||[])
-      };
-    });
-  }catch(_){return clone(DEFAULT_CONTAINERS);}
-}
+let containers = [];
+let resumenCircuitos = [];
 
-let containers=loadContainers();
-let selectedId=null;
-let editingId=null;
+let selectedId = null;
+let editingId = null;
+let listadoExpandido = false;
+let circuitosExpandidos = false;
 
-const tableBody=$('containerTableBody');
-const detailPanel=$('containerDetailPanel');
-const historyPanel=$('containerHistoryPanel');
-const historyBody=$('containerHistoryBody');
-const circuitOverview=$('circuitOverview');
-const dataGrid=$('containerDataGrid');
-const photo=$('containerPhoto');
-const map=$('containerMap');
-const form=$('containerForm');
-const containerModal=bootstrap.Modal.getOrCreateInstance($('containerModal'));
-const removeContainerModal=bootstrap.Modal.getOrCreateInstance($('removeContainerModal'));
-const historyModal=bootstrap.Modal.getOrCreateInstance($('containerHistoryModal'));
+let catalogos = {
+  rutas: [],
+  tipos: [],
+  estados: []
+};
 
-const save=()=>localStorage.setItem(STORAGE_KEY,JSON.stringify(containers));
-const formatDate=value=>value?value.split('-').reverse().join('/'):'—';
-const label=value=>value?value.charAt(0).toUpperCase()+value.slice(1):'—';
-const field=(name,value)=>`<div class="truck-field"><span>${name}</span><strong>${value||'—'}</strong></div>`;
-const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]);
+let filtrosCircuitos = {
+  prioridad: '',
+  municipio: '',
+  circuito: ''
+};
 
+let filtrosContenedores = {
+  prioridad: '',
+  municipio: '',
+  tipo: ''
+};
 
-function collectionBadge(days){
-  const level=SiGeRUCircuitos.levelFromDays(days);
-  return `<span class="collection-age collection-${level}"><span class="collection-dot" aria-hidden="true"></span>${SiGeRUCircuitos.labelFromDays(days)}</span>`;
-}
+const tableBody = $('containerTableBody');
+const detailPanel = $('containerDetailPanel');
+const historyPanel = $('containerHistoryPanel');
+const historyBody = $('containerHistoryBody');
+const circuitOverview = $('circuitOverview');
+const dataGrid = $('containerDataGrid');
+const photo = $('containerPhoto');
+const map = $('containerMap');
+const form = $('containerForm');
 
-function collectionDetailLabel(days){
-  const level=SiGeRUCircuitos.levelFromDays(days);
-  return `<span class="collection-detail collection-${level}">${SiGeRUCircuitos.labelFromDays(days)}</span>`;
-}
+const containerModal =
+  bootstrap.Modal.getOrCreateInstance(
+    $('containerModal')
+  );
 
-function renderCircuitOverview(){
-  if(!circuitOverview)return;
-  circuitOverview.innerHTML=SiGeRUCircuitos.municipalities().flatMap((municipality)=>
-    SiGeRUCircuitos.circuits(municipality).map((circuit)=>{
-      const summary=SiGeRUCircuitos.summary(circuit);
-      return `<article class="circuit-overview-card circuit-${summary.level}">
-        <div><span>Municipio ${municipality}</span><strong>${circuit}</strong></div>
-        <span class="circuit-status-dot" aria-hidden="true"></span>
-        <div class="circuit-counts"><span>${summary.counts.verde} verdes</span><span>${summary.counts.amarillo} amarillos</span><span>${summary.counts.rojo} rojos</span></div>
-      </article>`;
-    })
-  ).join('');
-}
+const removeContainerModal =
+  bootstrap.Modal.getOrCreateInstance(
+    $('removeContainerModal')
+  );
 
-function renderTable(){
-  tableBody.innerHTML=containers.map(item=>`<tr class="${item.id===selectedId?'active':''}">
-<td><strong>${escapeHtml(item.codigo)}</strong></td><td>${escapeHtml(item.municipio)}</td><td>${escapeHtml(item.barrio)}</td><td>${escapeHtml(item.calle)}</td>
-<td>${label(item.tipo)}</td><td>${label(item.estado)}</td><td>${collectionBadge(item.diasSinRecoleccion)}</td><td>${formatDate(item.ultimoRegistro)}</td>
-<td><button class="btn btn-outline btn-sm" type="button" data-open-container="${item.id}" aria-label="Ver ${escapeHtml(item.codigo)}"><i class="bi bi-search"></i></button></td></tr>`).join('');
-}
+const historyModal =
+  bootstrap.Modal.getOrCreateInstance(
+    $('containerHistoryModal')
+  );
 
-function renderHistory(container){
-  historyBody.innerHTML=container.historial.length
-    ?container.historial.map((entry,index)=>`<tr><td>${formatDate(entry.fecha)}</td><td>${escapeHtml(entry.tipo)}</td><td>${escapeHtml(entry.detalle)}</td><td>${escapeHtml(entry.estado)}</td>
-<td><button class="btn btn-outline btn-sm" type="button" data-history-entry="${index}" aria-label="Ver registro"><i class="bi bi-search"></i></button></td></tr>`).join('')
-    :'<tr><td colspan="5" class="text-center py-4">No hay registros en el historial.</td></tr>';
-}
+const IMAGENES_RECICLAJE = [
+  '../resources/contenedor1.png',
+  '../resources/contenedor2.png'
+];
 
-function showContainer(id){
-  const item=containers.find(container=>container.id===Number(id));
-  if(!item)return;
-  selectedId=item.id;
-  renderTable();
-  detailPanel.classList.remove('d-none');
-  historyPanel.classList.remove('d-none');
-  $('containerTitle').textContent=item.codigo;
-  $('containerStatus').textContent=label(item.estado);
-  dataGrid.innerHTML=[
-    field('Último registro',formatDate(item.ultimoRegistro)),field('Calle',item.calle),field('Esquina',item.esquina),
-    field('Tipo',label(item.tipo)),field('Municipio',item.municipio),field('Circuito',item.circuito),
-    field('Barrio',item.barrio),field('Estado',label(item.estado)),
-    `<div class="truck-field"><span>Sin recolectar</span><strong>${collectionDetailLabel(item.diasSinRecoleccion)}</strong></div>`,
-    field('Capacidad',`${item.capacidad} m³`)
-  ].join('');
-  photo.src=item.imagen;photo.alt=`Contenedor ${item.codigo}`;
-  map.src=item.mapa;map.alt=`Ubicación de ${item.codigo}`;
-  renderHistory(item);
-}
+const IMAGEN_GENERAL =
+  '../resources/contenedor3.png';
 
-function fillForm(item=null){
-  editingId=item?.id??null;
-  $('containerModalTitle').textContent=item?'Editar contenedor':'Agregar contenedor';
-  form.reset();
-  if(!item)return;
-  const values={codigo:item.codigo,modelo:item.modelo,tipo:item.tipo,estado:item.estado,capacidad:item.capacidad,municipio:item.municipio,
-    barrio:item.barrio,calle:item.calle,esquina:item.esquina,circuito:item.circuito,dias_sin_recoleccion:item.diasSinRecoleccion,ultimo_registro:item.ultimoRegistro};
-  Object.entries(values).forEach(([name,value])=>{if(form.elements[name])form.elements[name].value=value??'';});
-}
+const IMAGEN_MIXTO =
+  '../resources/contenedor4.png';
 
-async function api(payload){
-  if(location.protocol==='file:')return;
-  try{await fetch('../api-gestion/contenedores.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});}catch(_){}
-}
+const MAPA_CH =
+  '../resources/mapa-contenedor1.png';
 
-$('addContainerBtn').addEventListener('click',()=>fillForm());
-$('editContainerBtn').addEventListener('click',()=>{const item=containers.find(x=>x.id===selectedId);if(item){fillForm(item);containerModal.show();}});
-$('removeContainerBtn').addEventListener('click',()=>{const item=containers.find(x=>x.id===selectedId);if(!item)return;$('removeContainerText').textContent=`¿Dar de baja ${item.codigo}?`;removeContainerModal.show();});
+const MAPAS_B = [
+  '../resources/mapa-contenedor2.png',
+  '../resources/mapa-contenedor3.png',
+  '../resources/mapa-contenedor4.png'
+];
 
-form.addEventListener('submit',async event=>{
-  event.preventDefault();
-  const data=Object.fromEntries(new FormData(form));
-  const duplicate=containers.some(item=>item.codigo.toUpperCase()===data.codigo.trim().toUpperCase()&&item.id!==editingId);
-  if(duplicate){$('containerFormMessage').textContent='Ya existe un contenedor con ese código.';$('containerFormMessage').style.display='block';return;}
+const formatDate = value => {
+  if (!value) return '—';
 
-  if(editingId){
-    const item=containers.find(x=>x.id===editingId);
-    const previous={estado:item.estado,calle:item.calle,esquina:item.esquina,circuito:item.circuito,diasSinRecoleccion:item.diasSinRecoleccion};
-    Object.assign(item,{codigo:data.codigo.trim().toUpperCase(),modelo:data.modelo.trim(),tipo:data.tipo,capacidad:Number(data.capacidad),estado:data.estado,
-      calle:data.calle.trim(),esquina:data.esquina.trim(),municipio:data.municipio.trim().toUpperCase(),barrio:data.barrio.trim(),
-      circuito:data.circuito.trim(),diasSinRecoleccion:Number(data.dias_sin_recoleccion),ultimoRegistro:data.ultimo_registro});
-    const changes=[];
-    if(previous.estado!==item.estado)changes.push(`Estado: ${label(previous.estado)} → ${label(item.estado)}`);
-    if(previous.calle!==item.calle||previous.esquina!==item.esquina)changes.push(`Ubicación actualizada a ${item.calle} y ${item.esquina}`);
-    if(previous.circuito!==item.circuito)changes.push(`Circuito: ${previous.circuito} → ${item.circuito}`);
-    if(previous.diasSinRecoleccion!==item.diasSinRecoleccion)changes.push(`Sin recolectar: ${previous.diasSinRecoleccion} → ${item.diasSinRecoleccion} días`);
-    if(previous.circuito===item.circuito){
-      SiGeRUCircuitos.updateContainer(item.circuito,previous.diasSinRecoleccion,item.diasSinRecoleccion);
+  return String(value)
+    .slice(0, 10)
+    .split('-')
+    .reverse()
+    .join('/');
+};
+
+const label = value => {
+  if (!value) return '—';
+
+  const text = String(value);
+
+  return (
+    text.charAt(0).toUpperCase() +
+    text.slice(1)
+  );
+};
+
+const escapeHtml = value =>
+  String(value ?? '').replace(
+    /[&<>"']/g,
+    character =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      })[character]
+  );
+
+const field = (name, value) => `
+  <div class="truck-field">
+    <span>${escapeHtml(name)}</span>
+    <strong>${value || '—'}</strong>
+  </div>
+`;
+
+async function obtenerCsrfToken() {
+  const response = await fetch(
+    `${API_GESTION}/csrf-token`,
+    {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json'
+      }
     }
-    if(changes.length)item.historial.unshift({fecha:new Date().toISOString().slice(0,10),tipo:'Modificación',detalle:changes.join('. '),estado:'Registrado'});
-    await api({accion:'modificar',id_contenedor:item.id,...item,ultimo_registro:item.ultimoRegistro});
-    save();renderCircuitOverview();showContainer(item.id);
-  }else{
-    const id=Math.max(0,...containers.map(item=>item.id))+1;
-    const item={id,codigo:data.codigo.trim().toUpperCase(),modelo:data.modelo.trim(),tipo:data.tipo,capacidad:Number(data.capacidad),estado:data.estado,
-      calle:data.calle.trim(),esquina:data.esquina.trim(),municipio:data.municipio.trim().toUpperCase(),barrio:data.barrio.trim(),
-      circuito:data.circuito.trim(),diasSinRecoleccion:Number(data.dias_sin_recoleccion),ultimoRegistro:data.ultimo_registro,imagen:'../resources/contenedor4.png',mapa:'../resources/mapa-contenedor4.png',
-      historial:[{fecha:new Date().toISOString().slice(0,10),tipo:'Alta',detalle:'Contenedor agregado al sistema.',estado:'Registrado'}]};
-    containers.push(item);
-    await api({accion:'crear',...item,ultimo_registro:item.ultimoRegistro});
-    save();renderCircuitOverview();showContainer(item.id);
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      'No se pudo obtener el token de seguridad.'
+    );
   }
-  $('containerFormMessage').style.display='none';
-  containerModal.hide();
-});
 
-$('confirmRemoveContainer').addEventListener('click',async()=>{
-  const id=selectedId;
-  containers=containers.filter(item=>item.id!==id);
-  save();await api({accion:'eliminar',id_contenedor:id});
-  selectedId=null;detailPanel.classList.add('d-none');historyPanel.classList.add('d-none');renderTable();renderCircuitOverview();removeContainerModal.hide();
-});
+  const result =
+    await response.json();
 
-document.addEventListener('click',event=>{
-  const open=event.target.closest('[data-open-container]');
-  if(open)showContainer(open.dataset.openContainer);
+  return result.token;
+}
 
-  const historyButton=event.target.closest('[data-history-entry]');
-  if(historyButton){
-    const container=containers.find(item=>item.id===selectedId);
-    const entry=container?.historial[Number(historyButton.dataset.historyEntry)];
-    if(!entry)return;
-    $('containerHistoryModalTitle').textContent=`${entry.tipo} · ${formatDate(entry.fecha)}`;
-    $('containerHistoryCard').innerHTML=`<div class="incident-card-head"><div><span class="truck-kicker">${escapeHtml(container.codigo)}</span><h3>${escapeHtml(entry.tipo)}</h3></div><span class="truck-status">${escapeHtml(entry.estado)}</span></div>
-<div class="incident-description"><span>Detalle</span><p>${escapeHtml(entry.detalle)}</p></div>`;
+async function requestGestion(
+  url,
+  options = {}
+) {
+  const method =
+    (options.method || 'GET')
+      .toUpperCase();
+
+  const headers = {
+    Accept: 'application/json',
+    ...(options.headers || {})
+  };
+
+  if (
+    [
+      'POST',
+      'PUT',
+      'DELETE'
+    ].includes(method)
+  ) {
+    headers['Content-Type'] =
+      'application/json';
+
+    headers['X-CSRF-TOKEN'] =
+      await obtenerCsrfToken();
+  }
+
+  const response = await fetch(
+    `${API_GESTION}${url}`,
+    {
+      ...options,
+      method,
+      headers,
+      credentials: 'include'
+    }
+  );
+
+  let result = {};
+
+  try {
+    result =
+      await response.json();
+  } catch {
+    result = {};
+  }
+
+  if (!response.ok) {
+    let message =
+      result.message ||
+      'No se pudo completar la operación.';
+
+    if (result.errors) {
+      const firstError =
+        Object.values(
+          result.errors
+        )[0];
+
+      if (
+        Array.isArray(firstError) &&
+        firstError.length
+      ) {
+        message =
+          firstError[0];
+      }
+    }
+
+    throw new Error(message);
+  }
+
+  return result;
+}
+
+function indiceVisual(
+  valor,
+  cantidad
+) {
+  if (!cantidad) return 0;
+
+  return [
+    ...String(valor || '')
+  ].reduce(
+    (total, caracter) =>
+      total +
+      caracter.charCodeAt(0),
+    0
+  ) % cantidad;
+}
+
+function obtenerImagen(item) {
+  const tipo =
+    String(
+      item.tipo || ''
+    ).toLowerCase();
+
+  if (tipo === 'reciclaje') {
+    return IMAGENES_RECICLAJE[
+      indiceVisual(
+        item.codigo,
+        IMAGENES_RECICLAJE.length
+      )
+    ];
+  }
+
+  if (tipo === 'mixto') {
+    return IMAGEN_MIXTO;
+  }
+
+  return IMAGEN_GENERAL;
+}
+
+function obtenerMapa(item) {
+  const circuito =
+    String(
+      item.circuito || ''
+    ).toUpperCase();
+
+  if (
+    circuito.startsWith('CH_')
+  ) {
+    return MAPA_CH;
+  }
+
+  if (
+    circuito.startsWith('B_')
+  ) {
+    return MAPAS_B[
+      indiceVisual(
+        item.codigo,
+        MAPAS_B.length
+      )
+    ];
+  }
+
+  return MAPAS_B[0];
+}
+
+function convertirContenedor(item) {
+  const dias =
+    Number(
+      item.dias_sin_recoleccion ||
+      0
+    );
+
+  return {
+    id:
+      Number(
+        item.id_contenedor
+      ),
+
+    codigo:
+      item.codigo || '',
+
+    modelo:
+      item.modelo || '',
+
+    tipo:
+      item.tipo || '',
+
+    capacidad:
+      Number(
+        item.capacidad || 0
+      ),
+
+    estado:
+      item.estado || '',
+
+    diasSinRecoleccion:
+      dias,
+
+    nivelRecoleccion:
+      item.nivel_recoleccion ||
+      'verde',
+
+    etiquetaRecoleccion:
+      item.etiqueta_recoleccion ||
+      `${dias} ${
+        dias === 1
+          ? 'día'
+          : 'días'
+      }`,
+
+    calle:
+      item.calle || '',
+
+    esquina:
+      item.esquina || '',
+
+    esquina2:
+      item.esquina_2 || '',
+
+    municipio:
+      item.municipio || '',
+
+    barrio:
+      item.barrio || '',
+
+    descripcion:
+      item.descripcion || '',
+
+    latitud:
+      item.latitud,
+
+    longitud:
+      item.longitud,
+
+    circuito:
+      item.circuito || '',
+
+    ultimoRegistro:
+      item.ultimo_registro
+        ? String(
+            item.ultimo_registro
+          ).slice(0, 10)
+        : '',
+
+    imagen:
+      obtenerImagen(item),
+
+    mapa:
+      obtenerMapa(item),
+
+    historial: []
+  };
+}
+
+async function cargarCatalogos() {
+  const result =
+    await requestGestion(
+      '/api/contenedores/catalogos'
+    );
+
+  catalogos = {
+    rutas:
+      Array.isArray(
+        result?.data?.rutas
+      )
+        ? result.data.rutas
+        : [],
+
+    tipos:
+      Array.isArray(
+        result?.data?.tipos
+      )
+        ? result.data.tipos
+        : [],
+
+    estados:
+      Array.isArray(
+        result?.data?.estados
+      )
+        ? result.data.estados
+        : []
+  };
+}
+
+async function cargarContenedores() {
+  const result =
+    await requestGestion(
+      '/api/contenedores'
+    );
+
+  containers =
+    Array.isArray(
+      result?.data
+    )
+      ? result.data.map(
+          convertirContenedor
+        )
+      : [];
+
+  if (
+    selectedId !== null &&
+    !containers.some(
+      item =>
+        item.id ===
+        selectedId
+    )
+  ) {
+    selectedId = null;
+  }
+
+  renderTable();
+}
+
+async function cargarResumenCircuitos() {
+  const parametros =
+    new URLSearchParams();
+
+  Object.entries(
+    filtrosCircuitos
+  ).forEach(
+    ([clave, valor]) => {
+      if (valor) {
+        parametros.set(
+          clave,
+          valor
+        );
+      }
+    }
+  );
+
+  const consulta =
+    parametros.toString();
+
+  const result =
+    await requestGestion(
+      `/api/contenedores/resumen-circuitos${
+        consulta
+          ? `?${consulta}`
+          : ''
+      }`
+    );
+
+  resumenCircuitos =
+    Array.isArray(
+      result?.data
+    )
+      ? result.data
+      : [];
+
+  renderCircuitOverview();
+}
+
+async function cargarHistorial(
+  container
+) {
+  const result =
+    await requestGestion(
+      `/api/contenedores/${container.id}/historial`
+    );
+
+  container.historial =
+    Array.isArray(
+      result?.data
+    )
+      ? result.data
+      : [];
+}
+
+function collectionBadge(item) {
+  return `
+    <span
+      class="collection-age collection-${escapeHtml(
+        item.nivelRecoleccion
+      )}"
+    >
+      <span
+        class="collection-dot"
+        aria-hidden="true"
+      ></span>
+
+      ${escapeHtml(
+        item.etiquetaRecoleccion
+      )}
+    </span>
+  `;
+}
+
+function collectionDetailLabel(item) {
+  return `
+    <span
+      class="collection-detail collection-${escapeHtml(
+        item.nivelRecoleccion
+      )}"
+    >
+      ${escapeHtml(
+        item.etiquetaRecoleccion
+      )}
+    </span>
+  `;
+}
+
+function renderCircuitOverview() {
+  if (!circuitOverview) return;
+
+  if (!resumenCircuitos.length) {
+    circuitOverview.innerHTML =
+      '<div class="text-center py-4 text-muted-custom">No hay circuitos que coincidan con los filtros.</div>';
+
+    $('toggleCircuitOverviewBtn')
+      ?.classList
+      .add('d-none');
+
+    return;
+  }
+
+  circuitOverview.innerHTML =
+    resumenCircuitos
+      .map(
+        item => `
+          <article
+            class="circuit-overview-card circuit-${escapeHtml(
+              item.nivel
+            )}"
+          >
+            <div>
+              <span>
+                Municipio
+                ${escapeHtml(
+                  item.municipio ||
+                  '—'
+                )}
+              </span>
+
+              <strong>
+                ${escapeHtml(
+                  item.circuito
+                )}
+              </strong>
+            </div>
+
+            <span
+              class="circuit-status-dot"
+              aria-hidden="true"
+            ></span>
+
+            <div class="circuit-counts">
+              <span>
+                ${Number(
+                  item.counts
+                    ?.verde || 0
+                )}
+                verdes
+              </span>
+
+              <span>
+                ${Number(
+                  item.counts
+                    ?.amarillo || 0
+                )}
+                amarillos
+              </span>
+
+              <span>
+                ${Number(
+                  item.counts
+                    ?.rojo || 0
+                )}
+                rojos
+              </span>
+            </div>
+          </article>
+        `
+      )
+      .join('');
+
+  aplicarLimiteFilasCircuitos();
+}
+
+function actualizarCircuitosFiltroEstado() {
+  const select =
+    $('circuitCircuitFilter');
+
+  if (!select) return;
+
+  const rutas =
+    catalogos.rutas.filter(
+      ruta =>
+        !filtrosCircuitos.municipio ||
+        ruta.municipio ===
+          filtrosCircuitos.municipio
+    );
+
+  if (
+    filtrosCircuitos.circuito &&
+    !rutas.some(
+      ruta =>
+        ruta.circuito ===
+        filtrosCircuitos.circuito
+    )
+  ) {
+    filtrosCircuitos.circuito =
+      '';
+  }
+
+  select.innerHTML = `
+    <option value="">
+      Todos los circuitos
+    </option>
+
+    ${rutas
+      .map(
+        ruta => `
+          <option
+            value="${escapeHtml(
+              ruta.circuito
+            )}"
+          >
+            ${escapeHtml(
+              ruta.circuito
+            )}
+          </option>
+        `
+      )
+      .join('')}
+  `;
+
+  select.value =
+    filtrosCircuitos.circuito;
+}
+
+function prepararFiltrosCircuitos() {
+  if (
+    !circuitOverview ||
+    $('circuitFilters')
+  ) {
+    return;
+  }
+
+  const municipios = [
+    ...new Set(
+      catalogos.rutas
+        .map(
+          ruta =>
+            ruta.municipio
+        )
+        .filter(Boolean)
+    )
+  ].sort(
+    (a, b) =>
+      String(a)
+        .localeCompare(
+          String(b)
+        )
+  );
+
+  const filtros =
+    document.createElement(
+      'div'
+    );
+
+  filtros.id =
+    'circuitFilters';
+
+  filtros.className =
+    'd-flex flex-wrap gap-2 mb-3';
+
+  filtros.innerHTML = `
+    <select
+      id="circuitPriorityFilter"
+      class="form-select form-select-sm w-auto"
+      aria-label="Filtrar circuitos por prioridad"
+    >
+      <option value="">
+        Todas las prioridades
+      </option>
+
+      <option value="rojo">
+        Alta
+      </option>
+
+      <option value="amarillo">
+        Media
+      </option>
+
+      <option value="verde">
+        Baja
+      </option>
+    </select>
+
+    <select
+      id="circuitMunicipalityFilter"
+      class="form-select form-select-sm w-auto"
+      aria-label="Filtrar circuitos por municipio"
+    >
+      <option value="">
+        Todos los municipios
+      </option>
+
+      ${municipios
+        .map(
+          municipio => `
+            <option
+              value="${escapeHtml(
+                municipio
+              )}"
+            >
+              Municipio ${escapeHtml(
+                municipio
+              )}
+            </option>
+          `
+        )
+        .join('')}
+    </select>
+
+    <select
+      id="circuitCircuitFilter"
+      class="form-select form-select-sm w-auto"
+      aria-label="Filtrar por circuito"
+    >
+      <option value="">
+        Todos los circuitos
+      </option>
+    </select>
+  `;
+
+  circuitOverview.parentNode
+    ?.insertBefore(
+      filtros,
+      circuitOverview
+    );
+
+  actualizarCircuitosFiltroEstado();
+
+  $('circuitPriorityFilter')
+    ?.addEventListener(
+      'change',
+      async event => {
+        filtrosCircuitos.prioridad =
+          event.target.value;
+
+        circuitosExpandidos =
+          false;
+
+        await cargarResumenCircuitos();
+      }
+    );
+
+  $('circuitMunicipalityFilter')
+    ?.addEventListener(
+      'change',
+      async event => {
+        filtrosCircuitos.municipio =
+          event.target.value;
+
+        filtrosCircuitos.circuito =
+          '';
+
+        actualizarCircuitosFiltroEstado();
+
+        circuitosExpandidos =
+          false;
+
+        await cargarResumenCircuitos();
+      }
+    );
+
+  $('circuitCircuitFilter')
+    ?.addEventListener(
+      'change',
+      async event => {
+        filtrosCircuitos.circuito =
+          event.target.value;
+
+        circuitosExpandidos =
+          false;
+
+        await cargarResumenCircuitos();
+      }
+    );
+}
+
+function prepararBotonExpansionCircuitos() {
+  if (
+    !circuitOverview ||
+    $('toggleCircuitOverviewBtn')
+  ) {
+    return;
+  }
+
+  const contenedor =
+    document.createElement(
+      'div'
+    );
+
+  contenedor.className =
+    'd-flex justify-content-center mt-2';
+
+  const button =
+    document.createElement(
+      'button'
+    );
+
+  button.id =
+    'toggleCircuitOverviewBtn';
+
+  button.type =
+    'button';
+
+  button.className =
+    'container-toggle-btn';
+
+  button.setAttribute(
+    'aria-label',
+    'Mostrar todos los circuitos'
+  );
+
+  button.innerHTML =
+    '<i class="bi bi-chevron-down"></i>';
+
+  button.addEventListener(
+    'click',
+    () => {
+      circuitosExpandidos =
+        !circuitosExpandidos;
+
+      aplicarLimiteFilasCircuitos();
+    }
+  );
+
+  contenedor.appendChild(
+    button
+  );
+
+  circuitOverview
+    .insertAdjacentElement(
+      'afterend',
+      contenedor
+    );
+}
+
+function aplicarLimiteFilasCircuitos() {
+  if (!circuitOverview) return;
+
+  const cards = [
+    ...circuitOverview
+      .querySelectorAll(
+        '.circuit-overview-card'
+      )
+  ];
+
+  const button =
+    $('toggleCircuitOverviewBtn');
+
+  if (!cards.length) {
+    button
+      ?.classList
+      .add('d-none');
+
+    return;
+  }
+
+  cards.forEach(
+    card =>
+      card.classList
+        .remove('d-none')
+  );
+
+  const posiciones =
+    cards.map(
+      card =>
+        card.offsetTop
+    );
+
+  const filas = [];
+
+  posiciones.forEach(
+    posicion => {
+      if (
+        !filas.some(
+          fila =>
+            Math.abs(
+              fila -
+              posicion
+            ) <= 2
+        )
+      ) {
+        filas.push(
+          posicion
+        );
+      }
+    }
+  );
+
+  const necesitaExpansion =
+    filas.length > 2;
+
+  button
+    ?.classList
+    .toggle(
+      'd-none',
+      !necesitaExpansion
+    );
+
+  if (
+    !circuitosExpandidos &&
+    necesitaExpansion
+  ) {
+    const filasVisibles =
+      filas.slice(
+        0,
+        2
+      );
+
+    cards.forEach(
+      (card, index) => {
+        const visible =
+          filasVisibles.some(
+            fila =>
+              Math.abs(
+                fila -
+                posiciones[index]
+              ) <= 2
+          );
+
+        card.classList.toggle(
+          'd-none',
+          !visible
+        );
+      }
+    );
+  }
+
+  if (!button) return;
+
+  button.innerHTML =
+    circuitosExpandidos
+      ? '<i class="bi bi-chevron-up"></i>'
+      : '<i class="bi bi-chevron-down"></i>';
+
+  button.setAttribute(
+    'aria-label',
+    circuitosExpandidos
+      ? 'Mostrar solo las primeras dos filas de circuitos'
+      : 'Mostrar todos los circuitos'
+  );
+}
+
+function filtrarContenedores() {
+  return containers.filter(
+    item => {
+      const prioridad =
+        !filtrosContenedores.prioridad ||
+        item.nivelRecoleccion ===
+          filtrosContenedores.prioridad;
+
+      const municipio =
+        !filtrosContenedores.municipio ||
+        item.municipio ===
+          filtrosContenedores.municipio;
+
+      const tipo =
+        !filtrosContenedores.tipo ||
+        item.tipo ===
+          filtrosContenedores.tipo;
+
+      return (
+        prioridad &&
+        municipio &&
+        tipo
+      );
+    }
+  );
+}
+
+function renderTable() {
+  if (!tableBody) return;
+
+  const filtrados =
+    filtrarContenedores();
+
+  actualizarBotonExpansion(
+    filtrados.length
+  );
+
+  if (!filtrados.length) {
+    tableBody.innerHTML = `
+      <tr>
+        <td
+          colspan="9"
+          class="text-center py-4 text-muted-custom"
+        >
+          No hay contenedores que coincidan con los filtros.
+        </td>
+      </tr>
+    `;
+
+    return;
+  }
+
+  const visibles =
+    listadoExpandido
+      ? filtrados
+      : filtrados.slice(
+          0,
+          4
+        );
+
+  tableBody.innerHTML =
+    visibles
+      .map(
+        item => `
+          <tr
+            class="${
+              item.id ===
+              selectedId
+                ? 'active'
+                : ''
+            }"
+          >
+            <td>
+              <strong>
+                ${escapeHtml(
+                  item.codigo
+                )}
+              </strong>
+            </td>
+
+            <td>
+              ${escapeHtml(
+                item.municipio
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                item.barrio
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                item.calle
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                label(
+                  item.tipo
+                )
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                label(
+                  item.estado
+                )
+              )}
+            </td>
+
+            <td>
+              ${collectionBadge(
+                item
+              )}
+            </td>
+
+            <td>
+              ${formatDate(
+                item.ultimoRegistro
+              )}
+            </td>
+
+            <td>
+              <button
+                class="btn btn-outline btn-sm"
+                type="button"
+                data-open-container="${item.id}"
+                aria-label="Ver ${escapeHtml(
+                  item.codigo
+                )}"
+              >
+                <i class="bi bi-search"></i>
+              </button>
+            </td>
+          </tr>
+        `
+      )
+      .join('');
+}
+
+function prepararFiltrosContenedores() {
+  if (
+    !tableBody ||
+    $('containerFilters')
+  ) {
+    return;
+  }
+
+  const table =
+    tableBody.closest(
+      'table'
+    );
+
+  if (!table) return;
+
+  const wrapper =
+    table.closest(
+      '.table-responsive'
+    ) || table;
+
+  const municipios = [
+    ...new Set(
+      catalogos.rutas
+        .map(
+          ruta =>
+            ruta.municipio
+        )
+        .filter(Boolean)
+    )
+  ].sort(
+    (a, b) =>
+      String(a)
+        .localeCompare(
+          String(b)
+        )
+  );
+
+  const filtros =
+    document.createElement(
+      'div'
+    );
+
+  filtros.id =
+    'containerFilters';
+
+  filtros.className =
+    'd-flex flex-wrap gap-2 mb-3';
+
+  filtros.innerHTML = `
+    <select
+      id="containerPriorityFilter"
+      class="form-select form-select-sm w-auto"
+      aria-label="Filtrar por prioridad"
+    >
+      <option value="">
+        Todas las prioridades
+      </option>
+
+      <option value="rojo">
+        Alta
+      </option>
+
+      <option value="amarillo">
+        Media
+      </option>
+
+      <option value="verde">
+        Baja
+      </option>
+    </select>
+
+    <select
+      id="containerMunicipalityFilter"
+      class="form-select form-select-sm w-auto"
+      aria-label="Filtrar por municipio"
+    >
+      <option value="">
+        Todos los municipios
+      </option>
+
+      ${municipios
+        .map(
+          municipio => `
+            <option
+              value="${escapeHtml(
+                municipio
+              )}"
+            >
+              Municipio ${escapeHtml(
+                municipio
+              )}
+            </option>
+          `
+        )
+        .join('')}
+    </select>
+
+    <select
+      id="containerTypeFilter"
+      class="form-select form-select-sm w-auto"
+      aria-label="Filtrar por tipo"
+    >
+      <option value="">
+        Todos los tipos
+      </option>
+
+      ${catalogos.tipos
+        .map(
+          item => `
+            <option
+              value="${escapeHtml(
+                item.tipo
+              )}"
+            >
+              ${escapeHtml(
+                label(
+                  item.tipo
+                )
+              )}
+            </option>
+          `
+        )
+        .join('')}
+    </select>
+  `;
+
+  wrapper.parentNode
+    .insertBefore(
+      filtros,
+      wrapper
+    );
+
+  $('containerPriorityFilter')
+    ?.addEventListener(
+      'change',
+      event => {
+        filtrosContenedores.prioridad =
+          event.target.value;
+
+        listadoExpandido =
+          false;
+
+        renderTable();
+      }
+    );
+
+  $('containerMunicipalityFilter')
+    ?.addEventListener(
+      'change',
+      event => {
+        filtrosContenedores.municipio =
+          event.target.value;
+
+        listadoExpandido =
+          false;
+
+        renderTable();
+      }
+    );
+
+  $('containerTypeFilter')
+    ?.addEventListener(
+      'change',
+      event => {
+        filtrosContenedores.tipo =
+          event.target.value;
+
+        listadoExpandido =
+          false;
+
+        renderTable();
+      }
+    );
+}
+
+function prepararBotonExpansion() {
+  if (
+    !tableBody ||
+    $('toggleContainerListBtn')
+  ) {
+    return;
+  }
+
+  const table =
+    tableBody.closest(
+      'table'
+    );
+
+  const detailHeader =
+    table?.querySelector(
+      'thead th:last-child'
+    );
+
+  if (!detailHeader) return;
+
+  const button =
+    document.createElement(
+      'button'
+    );
+
+  button.id =
+    'toggleContainerListBtn';
+
+  button.type =
+    'button';
+
+  button.className =
+    'container-toggle-btn ms-2';
+
+  button.setAttribute(
+    'aria-label',
+    'Mostrar todos los contenedores'
+  );
+
+  button.innerHTML =
+    '<i class="bi bi-chevron-down"></i>';
+
+  button.addEventListener(
+    'click',
+    () => {
+      listadoExpandido =
+        !listadoExpandido;
+
+      renderTable();
+    }
+  );
+
+  detailHeader.appendChild(
+    button
+  );
+}
+
+function actualizarBotonExpansion(
+  cantidad
+) {
+  const button =
+    $('toggleContainerListBtn');
+
+  if (!button) return;
+
+  button.classList.toggle(
+    'd-none',
+    cantidad <= 4
+  );
+
+  button.innerHTML =
+    listadoExpandido
+      ? '<i class="bi bi-chevron-up"></i>'
+      : '<i class="bi bi-chevron-down"></i>';
+
+  button.setAttribute(
+    'aria-label',
+    listadoExpandido
+      ? 'Mostrar solo los primeros cuatro contenedores'
+      : 'Mostrar todos los contenedores'
+  );
+}
+
+function renderHistory(container) {
+  if (!historyBody) return;
+
+  historyBody.innerHTML =
+    container.historial.length
+      ? container.historial
+          .map(
+            (
+              entry,
+              index
+            ) => `
+              <tr>
+                <td>
+                  ${formatDate(
+                    entry.fecha
+                  )}
+                </td>
+
+                <td>
+                  ${escapeHtml(
+                    entry.tipo
+                  )}
+                </td>
+
+                <td>
+                  ${escapeHtml(
+                    entry.detalle
+                  )}
+                </td>
+
+                <td>
+                  ${escapeHtml(
+                    entry.estado
+                  )}
+                </td>
+
+                <td>
+                  <button
+                    class="btn btn-outline btn-sm"
+                    type="button"
+                    data-history-entry="${index}"
+                    aria-label="Ver registro"
+                  >
+                    <i class="bi bi-search"></i>
+                  </button>
+                </td>
+              </tr>
+            `
+          )
+          .join('')
+      : `
+          <tr>
+            <td
+              colspan="5"
+              class="text-center py-4"
+            >
+              No hay registros en el historial.
+            </td>
+          </tr>
+        `;
+}
+
+async function showContainer(id) {
+  const item =
+    containers.find(
+      container =>
+        container.id ===
+        Number(id)
+    );
+
+  if (!item) return;
+
+  selectedId =
+    item.id;
+
+  await cargarHistorial(
+    item
+  );
+
+  renderTable();
+
+  detailPanel
+    ?.classList
+    .remove('d-none');
+
+  historyPanel
+    ?.classList
+    .remove('d-none');
+
+  if ($('containerTitle')) {
+    $('containerTitle')
+      .textContent =
+      item.codigo;
+  }
+
+  if ($('containerStatus')) {
+    $('containerStatus')
+      .textContent =
+      label(
+        item.estado
+      );
+  }
+
+  if (dataGrid) {
+    dataGrid.innerHTML = [
+      field(
+        'Último registro',
+        formatDate(
+          item.ultimoRegistro
+        )
+      ),
+
+      field(
+        'Calle',
+        escapeHtml(
+          item.calle
+        )
+      ),
+
+      field(
+        'Esquina',
+        escapeHtml(
+          item.esquina
+        )
+      ),
+
+      field(
+        'Tipo',
+        escapeHtml(
+          label(
+            item.tipo
+          )
+        )
+      ),
+
+      field(
+        'Municipio',
+        escapeHtml(
+          item.municipio
+        )
+      ),
+
+      field(
+        'Circuito',
+        escapeHtml(
+          item.circuito
+        )
+      ),
+
+      field(
+        'Barrio',
+        escapeHtml(
+          item.barrio
+        )
+      ),
+
+      field(
+        'Estado',
+        escapeHtml(
+          label(
+            item.estado
+          )
+        )
+      ),
+
+      `
+        <div class="truck-field">
+          <span>
+            Sin recolectar
+          </span>
+
+          <strong>
+            ${collectionDetailLabel(
+              item
+            )}
+          </strong>
+        </div>
+      `,
+
+      field(
+        'Capacidad',
+        `${escapeHtml(
+          item.capacidad
+        )} m³`
+      )
+    ].join('');
+  }
+
+  if (photo) {
+    photo.src =
+      item.imagen;
+
+    photo.alt =
+      `Contenedor ${item.codigo}`;
+  }
+
+  if (map) {
+    map.src =
+      item.mapa;
+
+    map.alt =
+      `Ubicación de ${item.codigo}`;
+  }
+
+  renderHistory(
+    item
+  );
+}
+
+function cargarSelect(
+  select,
+  opciones,
+  valorActual,
+  placeholder
+) {
+  if (
+    !select ||
+    select.tagName.toLowerCase() !==
+      'select'
+  ) {
+    return;
+  }
+
+  select.innerHTML = `
+    <option value="">
+      ${escapeHtml(
+        placeholder
+      )}
+    </option>
+
+    ${opciones.join('')}
+  `;
+
+  select.value =
+    valorActual || '';
+}
+
+function municipiosCatalogo() {
+  return [
+    ...new Set(
+      catalogos.rutas
+        .map(
+          ruta =>
+            String(
+              ruta.municipio || ''
+            )
+              .trim()
+              .toUpperCase()
+        )
+        .filter(Boolean)
+    )
+  ].sort(
+    (a, b) =>
+      a.localeCompare(
+        b,
+        'es'
+      )
+  );
+}
+
+function actualizarCircuitosFormulario(
+  seleccionado = ''
+) {
+  if (!form) return;
+
+  const municipio =
+    form.elements['municipio'];
+
+  const circuito =
+    form.elements['circuito'];
+
+  if (
+    !municipio ||
+    !circuito
+  ) {
+    return;
+  }
+
+  const municipioActual =
+    String(
+      municipio.value || ''
+    )
+      .trim()
+      .toUpperCase();
+
+  const rutas =
+    catalogos.rutas.filter(
+      ruta =>
+        String(
+          ruta.municipio || ''
+        )
+          .trim()
+          .toUpperCase() ===
+        municipioActual
+    );
+
+  cargarSelect(
+    circuito,
+
+    rutas.map(
+      ruta => `
+        <option
+          value="${escapeHtml(
+            ruta.circuito
+          )}"
+        >
+          ${escapeHtml(
+            ruta.circuito
+          )}
+        </option>
+      `
+    ),
+
+    seleccionado,
+
+    municipioActual
+      ? 'Seleccionar circuito'
+      : 'Seleccionar municipio primero'
+  );
+
+  circuito.disabled =
+    !municipioActual;
+}
+
+function prepararCatalogosForm(
+  municipioSeleccionado = '',
+  circuitoSeleccionado = ''
+) {
+  if (!form) return;
+
+  cargarSelect(
+    form.elements['tipo'],
+
+    catalogos.tipos.map(
+      item => `
+        <option
+          value="${escapeHtml(
+            item.tipo
+          )}"
+        >
+          ${escapeHtml(
+            label(
+              item.tipo
+            )
+          )}
+        </option>
+      `
+    ),
+
+    form.elements['tipo']
+      ?.value,
+
+    'Seleccionar tipo'
+  );
+
+  cargarSelect(
+    form.elements['municipio'],
+
+    municipiosCatalogo().map(
+      municipio => `
+        <option
+          value="${escapeHtml(
+            municipio
+          )}"
+        >
+          Municipio ${escapeHtml(
+            municipio
+          )}
+        </option>
+      `
+    ),
+
+    municipioSeleccionado,
+
+    'Seleccionar municipio'
+  );
+
+  cargarSelect(
+    form.elements['estado'],
+
+    catalogos.estados.map(
+      estado => `
+        <option
+          value="${escapeHtml(
+            estado
+          )}"
+        >
+          ${escapeHtml(
+            label(
+              estado
+            )
+          )}
+        </option>
+      `
+    ),
+
+    form.elements['estado']
+      ?.value,
+
+    'Seleccionar estado'
+  );
+
+  actualizarCircuitosFormulario(
+    circuitoSeleccionado
+  );
+}
+
+function mostrarMensajeFormulario(
+  mensaje = ''
+) {
+  const element =
+    $('containerFormMessage');
+
+  if (!element) return;
+
+  element.textContent =
+    mensaje;
+
+  element.classList.toggle(
+    'd-none',
+    !mensaje
+  );
+}
+
+function fillForm(item = null) {
+  editingId =
+    item?.id ?? null;
+
+  if ($('containerModalTitle')) {
+    $('containerModalTitle')
+      .textContent =
+      item
+        ? 'Editar contenedor'
+        : 'Agregar contenedor';
+  }
+
+  form?.reset();
+
+  prepararCatalogosForm(
+    item?.municipio || '',
+    item?.circuito || ''
+  );
+
+  mostrarMensajeFormulario();
+
+  if (
+    !item ||
+    !form
+  ) {
+    return;
+  }
+
+  const values = {
+    codigo:
+      item.codigo,
+
+    modelo:
+      item.modelo,
+
+    tipo:
+      item.tipo,
+
+    estado:
+      item.estado,
+
+    capacidad:
+      item.capacidad,
+
+    barrio:
+      item.barrio,
+
+    calle:
+      item.calle,
+
+    esquina:
+      item.esquina,
+
+    esquina_2:
+      item.esquina2,
+
+    dias_sin_recoleccion:
+      item.diasSinRecoleccion,
+
+    ultimo_registro:
+      item.ultimoRegistro,
+
+    descripcion:
+      item.descripcion,
+
+    latitud:
+      item.latitud,
+
+    longitud:
+      item.longitud
+  };
+
+  Object.entries(values)
+    .forEach(
+      ([name, value]) => {
+        if (
+          form.elements[name]
+        ) {
+          form.elements[name]
+            .value =
+            value ?? '';
+        }
+      }
+    );
+}
+
+function obtenerPayloadFormulario() {
+  const data =
+    Object.fromEntries(
+      new FormData(form)
+    );
+
+  const payload = {
+    codigo:
+      String(
+        data.codigo || ''
+      )
+        .trim()
+        .toUpperCase(),
+
+    modelo:
+      String(
+        data.modelo || ''
+      ).trim(),
+
+    tipo:
+      String(
+        data.tipo || ''
+      ).trim(),
+
+    capacidad:
+      Number(
+        data.capacidad
+      ),
+
+    estado:
+      String(
+        data.estado || ''
+      ).trim(),
+
+    calle:
+      String(
+        data.calle || ''
+      ).trim(),
+
+    esquina:
+      String(
+        data.esquina || ''
+      ).trim(),
+
+    municipio:
+      String(
+        data.municipio || ''
+      )
+        .trim()
+        .toUpperCase(),
+
+    barrio:
+      String(
+        data.barrio || ''
+      ).trim(),
+
+    circuito:
+      String(
+        data.circuito || ''
+      )
+        .trim()
+        .toUpperCase(),
+
+    ultimo_registro:
+      data.ultimo_registro ||
+      null
+  };
+
+  if (
+    String(
+      data.dias_sin_recoleccion ??
+      ''
+    ).trim()
+  ) {
+    payload.dias_sin_recoleccion =
+      Number(
+        data.dias_sin_recoleccion
+      );
+  }
+
+  if (
+    data.esquina_2 !==
+    undefined
+  ) {
+    payload.esquina_2 =
+      String(
+        data.esquina_2 ||
+        ''
+      ).trim();
+  }
+
+  if (
+    data.descripcion !==
+    undefined
+  ) {
+    payload.descripcion =
+      String(
+        data.descripcion ||
+        ''
+      ).trim();
+  }
+
+  if (
+    String(
+      data.latitud ?? ''
+    ).trim()
+  ) {
+    payload.latitud =
+      Number(
+        data.latitud
+      );
+  }
+
+  if (
+    String(
+      data.longitud ?? ''
+    ).trim()
+  ) {
+    payload.longitud =
+      Number(
+        data.longitud
+      );
+  }
+
+  return payload;
+}
+
+async function recargarDatos() {
+  await Promise.all([
+    cargarContenedores(),
+    cargarResumenCircuitos()
+  ]);
+}
+
+$('addContainerBtn')
+  ?.addEventListener(
+    'click',
+    () => {
+      fillForm();
+
+      containerModal.show();
+    }
+  );
+
+$('editContainerBtn')
+  ?.addEventListener(
+    'click',
+    () => {
+      const item =
+        containers.find(
+          container =>
+            container.id ===
+            selectedId
+        );
+
+      if (!item) return;
+
+      fillForm(
+        item
+      );
+
+      containerModal.show();
+    }
+  );
+
+$('removeContainerBtn')
+  ?.addEventListener(
+    'click',
+    () => {
+      const item =
+        containers.find(
+          container =>
+            container.id ===
+            selectedId
+        );
+
+      if (!item) return;
+
+      if (
+        $('removeContainerText')
+      ) {
+        $('removeContainerText')
+          .textContent =
+          `¿Dar de baja ${item.codigo}?`;
+      }
+
+      removeContainerModal
+        .show();
+    }
+  );
+
+form
+  ?.elements
+  ?.['municipio']
+  ?.addEventListener(
+    'change',
+    () => {
+      actualizarCircuitosFormulario();
+    }
+  );
+
+form?.addEventListener(
+  'submit',
+  async event => {
+    event.preventDefault();
+
+    const payload =
+      obtenerPayloadFormulario();
+
+    const duplicate =
+      containers.some(
+        item =>
+          item.codigo
+            .toUpperCase() ===
+            payload.codigo
+              .toUpperCase() &&
+          item.id !==
+            editingId
+      );
+
+    if (duplicate) {
+      mostrarMensajeFormulario(
+        'Ya existe un contenedor con ese código.'
+      );
+
+      return;
+    }
+
+    try {
+      const result =
+        editingId
+          ? await requestGestion(
+              `/api/contenedores/${editingId}`,
+              {
+                method:
+                  'PUT',
+
+                body:
+                  JSON.stringify(
+                    payload
+                  )
+              }
+            )
+          : await requestGestion(
+              '/api/contenedores',
+              {
+                method:
+                  'POST',
+
+                body:
+                  JSON.stringify(
+                    payload
+                  )
+              }
+            );
+
+      const id =
+        Number(
+          result?.data
+            ?.id_contenedor ||
+          editingId
+        );
+
+      mostrarMensajeFormulario();
+
+      containerModal.hide();
+
+      editingId =
+        null;
+
+      await recargarDatos();
+
+      if (id) {
+        await showContainer(
+          id
+        );
+      }
+    } catch (error) {
+      mostrarMensajeFormulario(
+        error.message
+      );
+    }
+  }
+);
+
+$('confirmRemoveContainer')
+  ?.addEventListener(
+    'click',
+    async () => {
+      if (!selectedId) return;
+
+      try {
+        await requestGestion(
+          `/api/contenedores/${selectedId}`,
+          {
+            method:
+              'DELETE'
+          }
+        );
+
+        selectedId =
+          null;
+
+        removeContainerModal
+          .hide();
+
+        detailPanel
+          ?.classList
+          .add(
+            'd-none'
+          );
+
+        historyPanel
+          ?.classList
+          .add(
+            'd-none'
+          );
+
+        await recargarDatos();
+      } catch (error) {
+        alert(
+          error.message
+        );
+      }
+    }
+  );
+
+document.addEventListener(
+  'click',
+  async event => {
+    const open =
+      event.target.closest(
+        '[data-open-container]'
+      );
+
+    if (open) {
+      try {
+        await showContainer(
+          open.dataset
+            .openContainer
+        );
+      } catch (error) {
+        alert(
+          error.message
+        );
+      }
+
+      return;
+    }
+
+    const historyButton =
+      event.target.closest(
+        '[data-history-entry]'
+      );
+
+    if (!historyButton) {
+      return;
+    }
+
+    const container =
+      containers.find(
+        item =>
+          item.id ===
+          selectedId
+      );
+
+    const entry =
+      container?.historial[
+        Number(
+          historyButton
+            .dataset
+            .historyEntry
+        )
+      ];
+
+    if (!entry) return;
+
+    if (
+      $('containerHistoryModalTitle')
+    ) {
+      $('containerHistoryModalTitle')
+        .textContent =
+        `${entry.tipo} · ${formatDate(
+          entry.fecha
+        )}`;
+    }
+
+    if (
+      $('containerHistoryCard')
+    ) {
+      $('containerHistoryCard')
+        .innerHTML = `
+          <div class="incident-card-head">
+            <div>
+              <span class="truck-kicker">
+                ${escapeHtml(
+                  container.codigo
+                )}
+              </span>
+
+              <h3>
+                ${escapeHtml(
+                  entry.tipo
+                )}
+              </h3>
+            </div>
+
+            <span class="truck-status">
+              ${escapeHtml(
+                entry.estado
+              )}
+            </span>
+          </div>
+
+          <div class="incident-description">
+            <span>
+              Detalle
+            </span>
+
+            <p>
+              ${escapeHtml(
+                entry.detalle
+              )}
+            </p>
+          </div>
+        `;
+    }
+
     historyModal.show();
   }
-});
+);
 
-renderCircuitOverview();
-renderTable();
+async function iniciarContenedores() {
+  try {
+    await cargarCatalogos();
+
+    prepararCatalogosForm();
+    prepararFiltrosCircuitos();
+    prepararFiltrosContenedores();
+    prepararBotonExpansionCircuitos();
+    prepararBotonExpansion();
+
+    await recargarDatos();
+
+    renderTable();
+  } catch (error) {
+    console.error(
+      error
+    );
+
+    if (tableBody) {
+      tableBody.innerHTML = `
+        <tr>
+          <td
+            colspan="9"
+            class="text-center py-4 text-muted-custom"
+          >
+            ${escapeHtml(
+              error.message ||
+              'No se pudieron cargar los contenedores.'
+            )}
+          </td>
+        </tr>
+      `;
+    }
+  }
+}
+
+iniciarContenedores();

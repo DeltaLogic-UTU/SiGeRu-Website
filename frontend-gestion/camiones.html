@@ -15,7 +15,7 @@
    <nav class="navbar navbar-expand-xl">
     <div class="container-fluid px-3">
      <a aria-label="Inicio de Gestión SiGeRU" class="navbar-brand logo-link" href="administrador.html">
-      <img alt="Logo de SiGeRU" class="brand-logo" src="../resources/logo.png"/>
+      <img alt="Logo de SiGeRu" class="brand-logo" src="../resources/logo.png"/>
      </a>
      <button aria-controls="gestionNav" aria-expanded="false" aria-label="Abrir navegación" class="navbar-toggler" data-bs-target="#gestionNav" data-bs-toggle="collapse" type="button">
       <span class="navbar-toggler-icon">
@@ -63,7 +63,8 @@
         </a>
        </li>
        <li class="nav-item"><a class="nav-link" href="instalaciones.html"><i class="bi bi-buildings"></i> Instalaciones</a></li>
-       <li class="nav-item"><button class="nav-link" data-open-requests type="button"><i class="bi bi-person-check"></i> Solicitudes</button></li><li class="nav-item ms-xl-2">
+       <li class="nav-item"><button class="nav-link" data-open-requests type="button"><i class="bi bi-person-check"></i> Solicitudes</button></li>
+       <li class="nav-item ms-xl-2">
         <a class="nav-link profile-nav-link" href="perfil.html" aria-label="Editar mi usuario" title="Mi usuario">
          <i class="bi bi-person-circle"></i><span class="visually-hidden">Mi usuario</span>
         </a>
@@ -80,6 +81,7 @@
     </div>
    </nav>
   </header>
+
   <main class="truck-page container-fluid px-3 py-3">
    <div class="truck-heading">
     <div>
@@ -104,6 +106,7 @@
      </button>
     </div>
    </div>
+
    <section aria-labelledby="flotaTitulo" class="truck-panel">
     <div class="truck-panel-head">
      <div>
@@ -150,6 +153,7 @@
      </table>
     </div>
    </section>
+
    <section aria-labelledby="detalleCamionTitulo" class="truck-panel truck-detail-panel d-none" id="truckDetailPanel">
     <div class="truck-panel-head">
      <div>
@@ -157,11 +161,11 @@
        Camión seleccionado
       </span>
       <h2 id="detalleCamionTitulo">
-       SBK-3265
+       Camión
       </h2>
      </div>
      <span class="truck-status" id="truckStatus">
-      Recolectando
+      —
      </span>
     </div>
     <div class="truck-detail-layout">
@@ -171,26 +175,29 @@
       </div>
       <div class="truck-map-card">
        <img alt="Ubicación aproximada del camión" class="truck-map-image" src="../resources/mapa-camiones.png"/>
-<div class="truck-driver-bar">
-        <span id="truckMapDriver">Chofer asignado: Albert Einstein</span>
+       <div class="truck-driver-bar">
+        <span id="truckMapDriver">Chofer: sin asignar</span>
         <div class="truck-driver-actions">
          <button class="btn btn-primary btn-sm" id="assignDriverBtn" type="button">
-          Editar chofer
+          Asignar chofer
          </button>
          <button class="btn btn-outline btn-sm" id="assignCompanionBtn" type="button">
-          Agregar acompañante
+          Asignar cuadrilla
          </button>
         </div>
        </div>
       </div>
      </div>
+
      <div class="truck-data-grid" id="truckDataGrid"></div>
+
      <div class="truck-operational">
       <h3>Operación actual</h3>
       <div class="truck-data-grid compact" id="truckOperationGrid"></div>
      </div>
     </div>
    </section>
+
    <section aria-labelledby="historialTitulo" class="truck-panel d-none" id="truckHistoryPanel">
     <div class="truck-panel-head">
      <div>
@@ -209,7 +216,6 @@
         <th>Fecha</th>
         <th>Tipo</th>
         <th>Detalle</th>
-        <th>Kilometraje</th>
         <th>Estado</th>
         <th>Ver</th>
        </tr>
@@ -236,42 +242,49 @@
       <div class="modal-body">
        <div class="truck-form-grid">
         <label>Matrícula<input class="form-control" name="matricula" required type="text"/></label>
+
         <label>Tipo
          <select class="form-select" name="tipo" required>
           <option value="">Seleccionar</option>
-          <option>General</option>
-          <option>Reciclaje</option>
-          <option>Mixto</option>
          </select>
         </label>
+
         <label>Marca<input class="form-control" name="marca" required type="text"/></label>
+
         <label>Modelo<input class="form-control" name="modelo" required type="text"/></label>
+
         <label>Chasis<input class="form-control" name="chasis" required type="text"/></label>
+
         <label>Estado
          <select class="form-select" name="estado" required>
-          <option>En base</option>
-          <option>En taller</option>
-          <option>Disponible</option>
-          <option>Recolectando</option>
-          <option>En circuito</option>
+          <option value="">Seleccionar</option>
          </select>
         </label>
+
         <label>Km totales<input class="form-control" min="0" name="km_total" required type="number"/></label>
-        <label>Última carga de combustible<input class="form-control" name="ultima_carga" type="date"/></label>
+
+        <label>Última carga de combustible<input class="form-control" name="ult_carga_combustible" type="date"/></label>
+
         <label>GPS / ubicación<input class="form-control" name="gps" placeholder="Ej.: CH_102" type="text"/></label>
-        <label>Capacidad (kg)<input class="form-control" min="0" name="capacidad" type="number" value="8000"/></label>
+
+        <label>Capacidad (kg)<input class="form-control" min="0" name="capacidad_kg" type="number" value="8000"/></label>
+
         <label>Turno
          <select class="form-select" name="turno">
-          <option>Diurno</option>
-          <option selected>Nocturno</option>
+          <option value="">Sin turno</option>
          </select>
         </label>
+
         <label>Chofer asignado <span class="text-muted-custom">(opcional)</span>
-         <input class="form-control" name="chofer" placeholder="Puede asignarse después" type="text"/>
+         <select class="form-select" name="id_chofer">
+          <option value="">Sin asignar</option>
+         </select>
         </label>
        </div>
+
        <div class="form-message mt-3" id="agregarCamionMensaje" role="status"></div>
       </div>
+
       <div class="modal-footer">
        <button class="btn btn-outline" data-bs-dismiss="modal" type="button">Cancelar</button>
        <button class="btn btn-primary" type="submit">Agregar camión</button>
@@ -280,6 +293,7 @@
     </div>
    </div>
   </div>
+
 
   <div aria-hidden="true" aria-labelledby="quitarCamionTitulo" class="modal fade" id="quitarCamionModal" tabindex="-1">
    <div class="modal-dialog modal-dialog-centered">
@@ -292,15 +306,19 @@
        </div>
        <button aria-label="Cerrar" class="btn-close" data-bs-dismiss="modal" type="button"></button>
       </div>
+
       <div class="modal-body">
        <label>Camión
         <select class="form-select" id="quitarCamionSelect" required></select>
        </label>
+
        <p class="text-muted-custom mt-3 mb-0">
-        El camión quedará dado de baja del prototipo de Gestión.
+        El camión quedará dado de baja de la flota.
        </p>
+
        <div class="form-message mt-3" id="quitarCamionMensaje" role="status"></div>
       </div>
+
       <div class="modal-footer">
        <button class="btn btn-outline" data-bs-dismiss="modal" type="button">Cancelar</button>
        <button class="btn btn-primary" type="submit">Confirmar baja</button>
@@ -309,6 +327,7 @@
     </div>
    </div>
   </div>
+
 
   <div aria-hidden="true" aria-labelledby="asignarChoferTitulo" class="modal fade" id="asignarChoferModal" tabindex="-1">
    <div class="modal-dialog modal-dialog-centered">
@@ -321,13 +340,19 @@
        </div>
        <button aria-label="Cerrar" class="btn-close" data-bs-dismiss="modal" type="button"></button>
       </div>
+
       <div class="modal-body">
        <p class="text-muted-custom" id="asignarChoferCamion"></p>
-       <label>Nombre del chofer
-        <input class="form-control" id="asignarChoferNombre" required type="text"/>
+
+       <label>Chofer
+        <select class="form-select" id="asignarChoferNombre">
+         <option value="">Sin asignar</option>
+        </select>
        </label>
+
        <div class="form-message mt-3" id="asignarChoferMensaje" role="status"></div>
       </div>
+
       <div class="modal-footer">
        <button class="btn btn-outline" data-bs-dismiss="modal" type="button">Cancelar</button>
        <button class="btn btn-primary" id="guardarChoferBtn" type="submit">Guardar</button>
@@ -337,6 +362,7 @@
    </div>
   </div>
 
+
   <div aria-hidden="true" aria-labelledby="asignarAcompananteTitulo" class="modal fade" id="asignarAcompananteModal" tabindex="-1">
    <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content admin-modal">
@@ -344,32 +370,32 @@
       <div class="modal-header">
        <div>
         <span class="modal-kicker">Asignación operativa</span>
-        <h2 class="modal-title fs-5" id="asignarAcompananteTitulo">Agregar acompañante</h2>
+        <h2 class="modal-title fs-5" id="asignarAcompananteTitulo">Gestionar cuadrilla</h2>
        </div>
        <button aria-label="Cerrar" class="btn-close" data-bs-dismiss="modal" type="button"></button>
       </div>
+
       <div class="modal-body">
        <p class="text-muted-custom" id="asignarAcompananteCamion"></p>
+
        <label>Cuadrilla acompañante
-        <select class="form-select" id="asignarAcompananteCuadrilla" required>
-         <option value="">Seleccionar cuadrilla</option>
-         <option value="B-02">B-02 · Diego Forlán</option>
-         <option value="B-03">B-03 · Luis Suárez</option>
-         <option value="CH_03">CH_03 · Juana de Ibarbourou</option>
-         <option value="CH_01">CH_01 · China Zorrilla</option>
-         <option value="CH_02">CH_02 · Natalia Oreiro</option>
+        <select class="form-select" id="asignarAcompananteCuadrilla">
+         <option value="">Sin asignar</option>
         </select>
        </label>
+
        <div class="form-message mt-3" id="asignarAcompananteMensaje" role="status"></div>
       </div>
+
       <div class="modal-footer">
        <button class="btn btn-outline" data-bs-dismiss="modal" type="button">Cancelar</button>
-       <button class="btn btn-primary" type="submit">Guardar acompañante</button>
+       <button class="btn btn-primary" type="submit">Guardar</button>
       </div>
      </form>
     </div>
    </div>
   </div>
+
 
   <div aria-hidden="true" aria-labelledby="incidenciaModalTitulo" class="modal fade" id="incidenciaModal" tabindex="-1">
    <div class="modal-dialog modal-dialog-centered">
@@ -377,10 +403,11 @@
      <div class="modal-header">
       <div>
        <span class="truck-kicker">Historial del camión</span>
-       <h2 class="modal-title fs-5" id="incidenciaModalTitulo">Detalle de incidencia</h2>
+       <h2 class="modal-title fs-5" id="incidenciaModalTitulo">Detalle del registro</h2>
       </div>
       <button aria-label="Cerrar" class="btn-close" data-bs-dismiss="modal" type="button"></button>
      </div>
+
      <div class="modal-body">
       <div class="incident-card" id="incidentCard"></div>
      </div>
@@ -388,40 +415,44 @@
    </div>
   </div>
 
-  
+
   <div class="modal fade" id="solicitudesModal" tabindex="-1" aria-labelledby="solicitudesModalTitulo" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content admin-modal">
-        <div class="modal-header">
-          <div>
-            <span class="modal-kicker">Gestión de accesos</span>
-            <h2 class="modal-title fs-5" id="solicitudesModalTitulo">Solicitudes de acceso</h2>
-          </div>
-          <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-          <div class="request-functions">
-            <div><i class="bi bi-check-circle"></i><span><strong>Aprobar</strong> habilita el acceso y registra al trabajador cuando corresponde.</span></div>
-            <div><i class="bi bi-x-circle"></i><span><strong>Rechazar</strong> cierra la solicitud sin crear una cuenta.</span></div>
-          </div>
-                    <div class="table-responsive">
-            <table class="table truck-table align-middle mb-0">
-              <thead>
-                <tr><th>Persona</th><th>Perfil</th><th>Documento</th><th>Correo</th><th>Fecha</th><th>Acciones</th></tr>
-              </thead>
-              <tbody id="solicitudesTableBody"></tbody>
-            </table>
-          </div>
-          <p class="text-muted-custom mt-3 mb-0" id="solicitudesEstado"></p>
-        </div>
+   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content admin-modal">
+     <div class="modal-header">
+      <div>
+       <span class="modal-kicker">Gestión de accesos</span>
+       <h2 class="modal-title fs-5" id="solicitudesModalTitulo">Solicitudes de acceso</h2>
       </div>
+      <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="Cerrar"></button>
+     </div>
+
+     <div class="modal-body">
+      <div class="request-functions">
+       <div><i class="bi bi-check-circle"></i><span><strong>Aprobar</strong> habilita el acceso y registra al trabajador cuando corresponde.</span></div>
+       <div><i class="bi bi-x-circle"></i><span><strong>Rechazar</strong> cierra la solicitud sin crear una cuenta.</span></div>
+      </div>
+
+      <div class="table-responsive">
+       <table class="table truck-table align-middle mb-0">
+        <thead>
+         <tr><th>Persona</th><th>Perfil</th><th>Documento</th><th>Correo</th><th>Fecha</th><th>Acciones</th></tr>
+        </thead>
+        <tbody id="solicitudesTableBody"></tbody>
+       </table>
+      </div>
+
+      <p class="text-muted-custom mt-3 mb-0" id="solicitudesEstado"></p>
+     </div>
     </div>
+   </div>
   </div>
+
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
   </script>
   <script src="assets/base.js"></script>
   <script src="assets/camiones.js"></script>
-   <script src="assets/solicitudes.js"></script>
-</body>
+  <script src="assets/solicitudes.js"></script>
+ </body>
 </html>
