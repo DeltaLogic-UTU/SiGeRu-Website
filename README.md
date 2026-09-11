@@ -58,7 +58,7 @@ SiGeRU/
 │   └── assets/
 │
 ├── resources/
-├── gitflow.md
+├── .gitignore
 └── README.md
 ```
 
