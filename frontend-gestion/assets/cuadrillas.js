@@ -88,29 +88,8 @@ function obtenerData(result) {
   return [];
 }
 
-async function obtenerCsrfToken() {
-  const response = await fetch(
-    `${API_GESTION}/csrf-token`,
-    {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json'
-      }
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      'No se pudo obtener el token de seguridad.'
-    );
-  }
-
-  const result =
-    await response.json();
-
-  return result.token;
-}
+// [CAMBIO JWT - Paso 0]: Se eliminó obtenerCsrfToken() y el header 'X-CSRF-TOKEN'
+// porque la API ya no utiliza tokens CSRF.
 
 async function requestGestion(
   url,
@@ -149,17 +128,11 @@ async function requestGestion(
       settings.method
     )
   ) {
-    const token =
-      await obtenerCsrfToken();
-
     settings.headers = {
       ...settings.headers,
 
       'Content-Type':
-        'application/json',
-
-      'X-CSRF-TOKEN':
-        token
+        'application/json'
     };
   }
 

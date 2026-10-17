@@ -108,27 +108,8 @@ function detailField(label, value) {
   `;
 }
 
-async function obtenerCsrfPersonal() {
-  const response = await fetch(
-    `${API_USUARIOS_PERSONAL}/csrf-token`,
-    {
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json'
-      }
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      'No se pudo obtener el token CSRF.'
-    );
-  }
-
-  const result = await response.json();
-
-  return result.token;
-}
+// [CAMBIO JWT - Paso 0]: Se eliminó obtenerCsrfPersonal() y el header 'X-CSRF-TOKEN'
+// porque la API de Usuarios ya no utiliza protección CSRF.
 
 async function requestUsuarios(
   path,
@@ -142,16 +123,6 @@ async function requestUsuarios(
   if (body !== null) {
     headers['Content-Type'] =
       'application/json';
-  }
-
-  if (
-    method === 'POST' ||
-    method === 'PUT' ||
-    method === 'PATCH' ||
-    method === 'DELETE'
-  ) {
-    headers['X-CSRF-TOKEN'] =
-      await obtenerCsrfPersonal();
   }
 
   const options = {

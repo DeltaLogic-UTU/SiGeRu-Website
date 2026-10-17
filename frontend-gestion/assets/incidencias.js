@@ -10,7 +10,7 @@ const $ =
 let incidencias = [];
 let cuadrillas = [];
 
-let csrfToken = '';
+// [CAMBIO JWT - Paso 0]: Se eliminó la variable csrfToken porque ya no se usa CSRF.
 let incidentBusy = false;
 
 const state = {
@@ -138,64 +138,8 @@ function responseError(
 }
 
 
-async function getCsrfToken(
-  force = false
-) {
-  if (force) {
-    csrfToken = '';
-  }
-
-  if (csrfToken) {
-    return csrfToken;
-  }
-
-  let response;
-
-  try {
-    response =
-      await fetch(
-        `${API_GESTION}/csrf-token`,
-        {
-          headers: {
-            Accept:
-              'application/json'
-          },
-
-          credentials:
-            'include'
-        }
-      );
-  } catch {
-    throw new Error(
-      'No se pudo conectar con Laravel.'
-    );
-  }
-
-  let data;
-
-  try {
-    data =
-      await response.json();
-  } catch {
-    throw new Error(
-      'Laravel no devolvió una respuesta válida.'
-    );
-  }
-
-  if (
-    !response.ok ||
-    !data.token
-  ) {
-    throw new Error(
-      'No se pudo obtener el token CSRF.'
-    );
-  }
-
-  csrfToken =
-    data.token;
-
-  return csrfToken;
-}
+// [CAMBIO JWT - Paso 0]: Se eliminó getCsrfToken(), el header 'X-CSRF-TOKEN' y el
+// reintento por HTTP 419 porque la API ya no utiliza tokens CSRF.
 
 
 async function requestJson(
@@ -203,22 +147,12 @@ async function requestJson(
   {
     method = 'GET',
     body
-  } = {},
-  retry = true
+  } = {}
 ) {
   const headers = {
     Accept:
       'application/json'
   };
-
-  if (
-    method !== 'GET'
-  ) {
-    headers[
-      'X-CSRF-TOKEN'
-    ] =
-      await getCsrfToken();
-  }
 
   if (
     body !== undefined
@@ -258,26 +192,6 @@ async function requestJson(
   } catch {
     throw new Error(
       'No se pudo conectar con Laravel.'
-    );
-  }
-
-  if (
-    response.status ===
-      419 &&
-    method !== 'GET' &&
-    retry
-  ) {
-    await getCsrfToken(
-      true
-    );
-
-    return requestJson(
-      url,
-      {
-        method,
-        body
-      },
-      false
     );
   }
 

@@ -116,41 +116,8 @@ function captchaCompleted(form) {
 }
 
 
-async function getCsrfToken() {
-  const response =
-    await fetch(
-      `${API_USUARIOS}/csrf-token`,
-      {
-        method: 'GET',
-
-        credentials:
-          'include',
-
-        headers: {
-          Accept:
-            'application/json'
-        }
-      }
-    );
-
-  if (!response.ok) {
-    throw new Error(
-      'No se pudo obtener el token de seguridad.'
-    );
-  }
-
-  const result =
-    await response.json();
-
-  if (!result.token) {
-    throw new Error(
-      'No se pudo obtener el token de seguridad.'
-    );
-  }
-
-  return result.token;
-}
-
+// [CAMBIO JWT - Paso 0]: Se eliminó la función getCsrfToken() y el envío del header
+// 'X-CSRF-TOKEN'. La API ya no usa protección CSRF por cookies, sino que pasará a usar JWT.
 
 async function apiRequest(
   path,
@@ -165,16 +132,6 @@ async function apiRequest(
   if (body !== null) {
     headers['Content-Type'] =
       'application/json';
-  }
-
-  if (
-    method === 'POST' ||
-    method === 'PUT' ||
-    method === 'PATCH' ||
-    method === 'DELETE'
-  ) {
-    headers['X-CSRF-TOKEN'] =
-      await getCsrfToken();
   }
 
   const options = {

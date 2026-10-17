@@ -40,7 +40,7 @@ let workerFacilityId = null;
 let editWorkerId = null;
 let availableUsers = [];
 
-let csrfToken = '';
+// [CAMBIO JWT - Paso 0]: Se eliminó la variable csrfToken porque ya no se usa CSRF.
 
 const ui = {};
 const modals = {};
@@ -164,48 +164,16 @@ function responseError(data, status) {
   return `No se pudo completar la solicitud (HTTP ${status}).`;
 }
 
-async function getCsrfToken(force = false) {
-  if (force) csrfToken = '';
-  if (csrfToken) return csrfToken;
-
-  let response;
-
-  try {
-    response = await fetch(
-      `${API_GESTION}/csrf-token`,
-      {
-        headers: {
-          Accept: 'application/json'
-        },
-        credentials: 'include'
-      }
-    );
-  } catch {
-    throw new Error('No se pudo conectar con Laravel.');
-  }
-
-  const data = await response.json();
-
-  if (!response.ok || !data.token) {
-    throw new Error('No se pudo obtener el token CSRF.');
-  }
-
-  csrfToken = data.token;
-  return csrfToken;
-}
+// [CAMBIO JWT - Paso 0]: Se eliminó getCsrfToken(), el header 'X-CSRF-TOKEN' y el
+// reintento por HTTP 419 porque la API ya no utiliza tokens CSRF.
 
 async function requestJson(
   url,
-  { method = 'GET', body } = {},
-  retry = true
+  { method = 'GET', body } = {}
 ) {
   const headers = {
     Accept: 'application/json'
   };
-
-  if (method !== 'GET') {
-    headers['X-CSRF-TOKEN'] = await getCsrfToken();
-  }
 
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
@@ -224,20 +192,6 @@ async function requestJson(
     });
   } catch {
     throw new Error('No se pudo conectar con Laravel.');
-  }
-
-  if (
-    response.status === 419 &&
-    method !== 'GET' &&
-    retry
-  ) {
-    await getCsrfToken(true);
-
-    return requestJson(
-      url,
-      { method, body },
-      false
-    );
   }
 
   let data;

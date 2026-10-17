@@ -19,41 +19,13 @@ function escapeRequestValue(value) {
   })[character]);
 }
 
-async function obtenerCsrfSolicitudes() {
-  const response = await fetch(
-    `${API_SOLICITUDES}/csrf-token`,
-    {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Accept': 'application/json'
-      }
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error('No se pudo obtener el token CSRF.');
-  }
-
-  const result = await response.json();
-
-  return result.token;
-}
+// [CAMBIO JWT - Paso 0]: Se eliminó obtenerCsrfSolicitudes() y el header 'X-CSRF-TOKEN'
+// porque la API de Usuarios ya no utiliza protección CSRF.
 
 async function apiSolicitudes(path, method = 'GET') {
   const headers = {
     'Accept': 'application/json'
   };
-
-  if (
-    method === 'POST' ||
-    method === 'PUT' ||
-    method === 'PATCH' ||
-    method === 'DELETE'
-  ) {
-    headers['X-CSRF-TOKEN'] =
-      await obtenerCsrfSolicitudes();
-  }
 
   const response = await fetch(
     `${API_SOLICITUDES}${path}`,

@@ -54,26 +54,8 @@ function showMessage(element, text, isError = false) {
   element.classList.toggle('error', isError);
 }
 
-async function obtenerCsrfSesion() {
-  const response = await fetch(
-    `${API_SESION_USUARIOS}/csrf-token`,
-    {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Accept': 'application/json'
-      }
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error('No se pudo obtener el token CSRF.');
-  }
-
-  const result = await response.json();
-
-  return result.token;
-}
+// [CAMBIO JWT - Paso 0]: Se eliminó obtenerCsrfSesion() y el header 'X-CSRF-TOKEN'
+// al cerrar sesión porque la API ya no utiliza tokens CSRF.
 
 async function obtenerSesion() {
   const response = await fetch(
@@ -104,16 +86,13 @@ async function obtenerSesion() {
 }
 
 async function cerrarSesion() {
-  const token = await obtenerCsrfSesion();
-
   return fetch(
     `${API_SESION_USUARIOS}/api/logout`,
     {
       method: 'POST',
       credentials: 'include',
       headers: {
-        'Accept': 'application/json',
-        'X-CSRF-TOKEN': token
+        'Accept': 'application/json'
       }
     }
   );

@@ -22,26 +22,8 @@ function rolPermitido(rol) {
     );
 }
 
-async function getCsrfPerfilGestion() {
-    const response = await fetch(
-        `${API_PERFIL_GESTION}/csrf-token`,
-        {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json'
-            }
-        }
-    );
-
-    if (!response.ok) {
-        throw new Error('No se pudo obtener el token CSRF.');
-    }
-
-    const result = await response.json();
-
-    return result.token;
-}
+// [CAMBIO JWT - Paso 0]: Se eliminó getCsrfPerfilGestion() y el header 'X-CSRF-TOKEN'
+// porque las peticiones a la API ya no utilizan protección CSRF.
 
 async function requestPerfilGestion(
     path,
@@ -54,16 +36,6 @@ async function requestPerfilGestion(
 
     if (body !== null) {
         headers['Content-Type'] = 'application/json';
-    }
-
-    if (
-        method === 'POST' ||
-        method === 'PUT' ||
-        method === 'PATCH' ||
-        method === 'DELETE'
-    ) {
-        headers['X-CSRF-TOKEN'] =
-            await getCsrfPerfilGestion();
     }
 
     const options = {

@@ -65,7 +65,7 @@ let resumenCircuitos = [];
 let reclamos = [];
 
 let currentOperation = null;
-let csrfToken = '';
+// [CAMBIO JWT - Paso 0]: Se eliminó la variable csrfToken porque ya no se usa CSRF.
 
 const escapeHtml = value =>
   String(value ?? '').replace(
@@ -115,75 +115,21 @@ function responseError(data, status) {
   return `No se pudo completar la solicitud (HTTP ${status}).`;
 }
 
-async function getCsrfToken(force = false) {
-  if (force) {
-    csrfToken = '';
-  }
-
-  if (csrfToken) {
-    return csrfToken;
-  }
-
-  let response;
-
-  try {
-    response = await fetch(
-      `${API_GESTION}/csrf-token`,
-      {
-        headers: {
-          Accept: 'application/json'
-        },
-        credentials: 'include'
-      }
-    );
-  } catch {
-    throw new Error(
-      'No se pudo conectar con Laravel.'
-    );
-  }
-
-  let data;
-
-  try {
-    data = await response.json();
-  } catch {
-    throw new Error(
-      'Laravel no devolvió una respuesta válida.'
-    );
-  }
-
-  if (
-    !response.ok ||
-    !data.token
-  ) {
-    throw new Error(
-      'No se pudo obtener el token CSRF.'
-    );
-  }
-
-  csrfToken = data.token;
-
-  return csrfToken;
-}
+// [CAMBIO JWT - Paso 0]: Se eliminó getCsrfToken(), el header 'X-CSRF-TOKEN' y el
+// reintento por HTTP 419 (CSRF mismatch) porque la API ya no usa protección CSRF.
 
 async function requestGestion(
   path,
   {
     method = 'GET',
     body
-  } = {},
-  retry = true
+  } = {}
 ) {
   method = method.toUpperCase();
 
   const headers = {
     Accept: 'application/json'
   };
-
-  if (method !== 'GET') {
-    headers['X-CSRF-TOKEN'] =
-      await getCsrfToken();
-  }
 
   if (body !== undefined) {
     headers['Content-Type'] =
@@ -211,23 +157,6 @@ async function requestGestion(
   } catch {
     throw new Error(
       'No se pudo conectar con Laravel.'
-    );
-  }
-
-  if (
-    response.status === 419 &&
-    method !== 'GET' &&
-    retry
-  ) {
-    await getCsrfToken(true);
-
-    return requestGestion(
-      path,
-      {
-        method,
-        body
-      },
-      false
     );
   }
 

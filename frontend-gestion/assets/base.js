@@ -33,22 +33,8 @@ document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
     });
 });
 
-async function obtenerCsrfGestion() {
-    const response = await fetch(`${API_GESTION_AUTH}/csrf-token`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-            'Accept': 'application/json'
-        }
-    });
-
-    if (!response.ok) {
-        throw new Error('No se pudo obtener el token CSRF.');
-    }
-
-    const result = await response.json();
-    return result.token;
-}
+// [CAMBIO JWT - Paso 0]: Se eliminó obtenerCsrfGestion() y el header 'X-CSRF-TOKEN'
+// al cerrar sesión porque la API ya no utiliza tokens CSRF.
 
 async function obtenerSesionGestion() {
     const response = await fetch(`${API_GESTION_AUTH}/api/session`, {
@@ -71,14 +57,11 @@ async function obtenerSesionGestion() {
 }
 
 async function cerrarSesionGestion() {
-    const token = await obtenerCsrfGestion();
-
     return fetch(`${API_GESTION_AUTH}/api/logout`, {
         method: 'POST',
         credentials: 'include',
         headers: {
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': token
+            'Accept': 'application/json'
         }
     });
 }
