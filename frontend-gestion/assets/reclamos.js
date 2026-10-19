@@ -7,7 +7,7 @@ const $ =
 
 let claims = [];
 let cuadrillas = [];
-// [CAMBIO JWT - Paso 0]: Se eliminó la variable csrfToken porque ya no se usa CSRF.
+// Se eliminó la variable csrfToken porque ya no se usa CSRF.
 let busy = false;
 
 const state = {
@@ -86,10 +86,7 @@ function formatDate(value) {
 }
 
 
-// [CAMBIO JWT - Paso 0]: Se eliminó getCsrfToken(), el header 'X-CSRF-TOKEN' y el
-// reintento por HTTP 419 porque la API ya no utiliza tokens CSRF.
-
-
+// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
 async function requestJson(
   url,
   options = {}
@@ -104,6 +101,11 @@ async function requestJson(
     Accept:
       'application/json'
   };
+
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   if (method !== 'GET') {
     headers[
@@ -121,9 +123,7 @@ async function requestJson(
         {
           ...options,
           method,
-          headers,
-          credentials:
-            'include'
+          headers
         }
       );
   } catch {

@@ -116,8 +116,20 @@ function captchaCompleted(form) {
 }
 
 
-// [CAMBIO JWT - Paso 0]: Se eliminó la función getCsrfToken() y el envío del header
-// 'X-CSRF-TOKEN'. La API ya no usa protección CSRF por cookies, sino que pasará a usar JWT.
+// Funciones para leer, guardar y eliminar el token JWT en localStorage.
+const TOKEN_KEY = 'access_token';
+
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+function saveToken(accessToken) {
+  localStorage.setItem(TOKEN_KEY, accessToken);
+}
+
+function removeToken() {
+  localStorage.removeItem(TOKEN_KEY);
+}
 
 async function apiRequest(
   path,
@@ -129,6 +141,12 @@ async function apiRequest(
       'application/json'
   };
 
+  // Si existe un token JWT guardado, se envía en el header Authorization: Bearer
+  const token = getToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   if (body !== null) {
     headers['Content-Type'] =
       'application/json';
@@ -136,8 +154,6 @@ async function apiRequest(
 
   const options = {
     method,
-    credentials:
-      'include',
     headers
   };
 
@@ -151,6 +167,11 @@ async function apiRequest(
       `${API_USUARIOS}${path}`,
       options
     );
+
+  // Si la API responde 401 en una ruta autenticada, se limpia el token vencido o inválido
+  if (response.status === 401 && path !== '/api/login') {
+    removeToken();
+  }
 
   let result;
 
@@ -308,6 +329,11 @@ if (loginForm) {
           );
 
           return;
+        }
+
+        // Guardamos el JWT recibido desde Laravel en localStorage
+        if (result.data?.access_token) {
+          saveToken(result.data.access_token);
         }
 
         if (
@@ -816,6 +842,8 @@ document
           );
 
         } finally {
+          // Al cerrar sesión se elimina el token JWT guardado en el navegador
+          removeToken();
           window.location.href =
             destination;
         }

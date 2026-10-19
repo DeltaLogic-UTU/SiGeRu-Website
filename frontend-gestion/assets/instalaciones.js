@@ -40,7 +40,7 @@ let workerFacilityId = null;
 let editWorkerId = null;
 let availableUsers = [];
 
-// [CAMBIO JWT - Paso 0]: Se eliminó la variable csrfToken porque ya no se usa CSRF.
+// Se eliminó la variable csrfToken porque ya no se usa CSRF.
 
 const ui = {};
 const modals = {};
@@ -164,9 +164,7 @@ function responseError(data, status) {
   return `No se pudo completar la solicitud (HTTP ${status}).`;
 }
 
-// [CAMBIO JWT - Paso 0]: Se eliminó getCsrfToken(), el header 'X-CSRF-TOKEN' y el
-// reintento por HTTP 419 porque la API ya no utiliza tokens CSRF.
-
+// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
 async function requestJson(
   url,
   { method = 'GET', body } = {}
@@ -174,6 +172,11 @@ async function requestJson(
   const headers = {
     Accept: 'application/json'
   };
+
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
@@ -185,7 +188,6 @@ async function requestJson(
     response = await fetch(url, {
       method,
       headers,
-      credentials: 'include',
       ...(body !== undefined
         ? { body: JSON.stringify(body) }
         : {})

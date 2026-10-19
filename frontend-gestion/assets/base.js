@@ -33,17 +33,35 @@ document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
     });
 });
 
-// [CAMBIO JWT - Paso 0]: Se eliminó obtenerCsrfGestion() y el header 'X-CSRF-TOKEN'
-// al cerrar sesión porque la API ya no utiliza tokens CSRF.
+// Funciones para leer y borrar el token JWT en localStorage (disponibles en todas las vistas de Gestión).
+const TOKEN_KEY = 'access_token';
+
+function getToken() {
+    return localStorage.getItem(TOKEN_KEY);
+}
+
+function removeToken() {
+    localStorage.removeItem(TOKEN_KEY);
+}
 
 async function obtenerSesionGestion() {
+    const token = getToken();
+    const headers = {
+        'Accept': 'application/json'
+    };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_GESTION_AUTH}/api/session`, {
         method: 'GET',
-        credentials: 'include',
-        headers: {
-            'Accept': 'application/json'
-        }
+        headers
     });
+
+    if (response.status === 401) {
+        removeToken();
+    }
 
     let result = {};
 
@@ -57,13 +75,23 @@ async function obtenerSesionGestion() {
 }
 
 async function cerrarSesionGestion() {
-    return fetch(`${API_GESTION_AUTH}/api/logout`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-            'Accept': 'application/json'
-        }
-    });
+    const token = getToken();
+    const headers = {
+        'Accept': 'application/json'
+    };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+        return await fetch(`${API_GESTION_AUTH}/api/logout`, {
+            method: 'POST',
+            headers
+        });
+    } finally {
+        removeToken();
+    }
 }
 
 function rolGestionPermitido(rol) {

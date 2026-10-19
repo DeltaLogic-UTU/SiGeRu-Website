@@ -22,9 +22,7 @@ function rolPermitido(rol) {
     );
 }
 
-// [CAMBIO JWT - Paso 0]: Se eliminó getCsrfPerfilGestion() y el header 'X-CSRF-TOKEN'
-// porque las peticiones a la API ya no utilizan protección CSRF.
-
+// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
 async function requestPerfilGestion(
     path,
     method = 'GET',
@@ -34,13 +32,17 @@ async function requestPerfilGestion(
         'Accept': 'application/json'
     };
 
+    const token = localStorage.getItem('access_token');
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
     if (body !== null) {
         headers['Content-Type'] = 'application/json';
     }
 
     const options = {
         method,
-        credentials: 'include',
         headers
     };
 

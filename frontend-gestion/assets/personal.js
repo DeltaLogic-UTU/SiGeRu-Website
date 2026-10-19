@@ -108,9 +108,7 @@ function detailField(label, value) {
   `;
 }
 
-// [CAMBIO JWT - Paso 0]: Se eliminó obtenerCsrfPersonal() y el header 'X-CSRF-TOKEN'
-// porque la API de Usuarios ya no utiliza protección CSRF.
-
+// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
 async function requestUsuarios(
   path,
   method = 'GET',
@@ -120,6 +118,11 @@ async function requestUsuarios(
     Accept: 'application/json'
   };
 
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   if (body !== null) {
     headers['Content-Type'] =
       'application/json';
@@ -127,7 +130,6 @@ async function requestUsuarios(
 
   const options = {
     method,
-    credentials: 'include',
     headers
   };
 

@@ -11,13 +11,16 @@ function showProfileMessage(text, error = false) {
     message.style.display = 'block';
 }
 
-// [CAMBIO JWT - Paso 0]: Se eliminó getCsrfToken() y el header 'X-CSRF-TOKEN'
-// ya que las peticiones a la API no utilizan CSRF.
-
+// Se envía el token JWT guardado en localStorage mediante el header Authorization: Bearer.
 async function apiRequest(path, method = 'GET', body = null) {
     const headers = {
         'Accept': 'application/json'
     };
+
+    const token = localStorage.getItem('access_token');
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
 
     if (body !== null) {
         headers['Content-Type'] = 'application/json';
@@ -25,7 +28,6 @@ async function apiRequest(path, method = 'GET', body = null) {
 
     const options = {
         method,
-        credentials: 'include',
         headers
     };
 
@@ -37,6 +39,10 @@ async function apiRequest(path, method = 'GET', body = null) {
         `${API_USUARIOS}${path}`,
         options
     );
+
+    if (response.status === 401) {
+        localStorage.removeItem('access_token');
+    }
 
     let result = {};
 

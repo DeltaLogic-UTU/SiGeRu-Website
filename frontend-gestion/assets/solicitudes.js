@@ -19,19 +19,21 @@ function escapeRequestValue(value) {
   })[character]);
 }
 
-// [CAMBIO JWT - Paso 0]: Se eliminó obtenerCsrfSolicitudes() y el header 'X-CSRF-TOKEN'
-// porque la API de Usuarios ya no utiliza protección CSRF.
-
+// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
 async function apiSolicitudes(path, method = 'GET') {
   const headers = {
     'Accept': 'application/json'
   };
 
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const response = await fetch(
     `${API_SOLICITUDES}${path}`,
     {
       method,
-      credentials: 'include',
       headers
     }
   );

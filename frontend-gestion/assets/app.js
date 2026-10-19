@@ -65,7 +65,7 @@ let resumenCircuitos = [];
 let reclamos = [];
 
 let currentOperation = null;
-// [CAMBIO JWT - Paso 0]: Se eliminó la variable csrfToken porque ya no se usa CSRF.
+// Se eliminó la variable csrfToken porque ya no se usa CSRF.
 
 const escapeHtml = value =>
   String(value ?? '').replace(
@@ -115,9 +115,7 @@ function responseError(data, status) {
   return `No se pudo completar la solicitud (HTTP ${status}).`;
 }
 
-// [CAMBIO JWT - Paso 0]: Se eliminó getCsrfToken(), el header 'X-CSRF-TOKEN' y el
-// reintento por HTTP 419 (CSRF mismatch) porque la API ya no usa protección CSRF.
-
+// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API de Gestión.
 async function requestGestion(
   path,
   {
@@ -130,6 +128,11 @@ async function requestGestion(
   const headers = {
     Accept: 'application/json'
   };
+
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   if (body !== undefined) {
     headers['Content-Type'] =
@@ -144,7 +147,6 @@ async function requestGestion(
       {
         method,
         headers,
-        credentials: 'include',
 
         ...(body !== undefined
           ? {

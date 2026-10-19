@@ -59,7 +59,7 @@ let selectedTruckId = null;
 let selectedTruck = null;
 let truckHistory = [];
 
-// [CAMBIO JWT - Paso 0]: Se eliminó la variable csrfToken porque ya no se usa CSRF.
+// Se eliminó la variable csrfToken porque ya no se usa CSRF.
 
 let truckBusy = false;
 let driverBusy = false;
@@ -228,10 +228,7 @@ function responseError(
 }
 
 
-// [CAMBIO JWT - Paso 0]: Se eliminó getCsrfToken(), el header 'X-CSRF-TOKEN' y el
-// reintento por HTTP 419 porque la API ya no utiliza tokens CSRF.
-
-
+// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
 async function requestJson(
   url,
   {
@@ -242,6 +239,11 @@ async function requestJson(
   const headers = {
     Accept: 'application/json'
   };
+
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   if (body !== undefined) {
     headers['Content-Type'] =
@@ -256,7 +258,6 @@ async function requestJson(
       {
         method,
         headers,
-        credentials: 'include',
         ...(body !== undefined
           ? {
               body:

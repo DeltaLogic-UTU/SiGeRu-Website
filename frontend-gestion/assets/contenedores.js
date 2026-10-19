@@ -114,9 +114,7 @@ const field = (name, value) => `
   </div>
 `;
 
-// [CAMBIO JWT - Paso 0]: Se eliminó obtenerCsrfToken() y el header 'X-CSRF-TOKEN'
-// porque las peticiones a la API ya no usan protección CSRF.
-
+// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
 async function requestGestion(
   url,
   options = {}
@@ -129,6 +127,11 @@ async function requestGestion(
     Accept: 'application/json',
     ...(options.headers || {})
   };
+
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   if (
     [
@@ -146,8 +149,7 @@ async function requestGestion(
     {
       ...options,
       method,
-      headers,
-      credentials: 'include'
+      headers
     }
   );
 
