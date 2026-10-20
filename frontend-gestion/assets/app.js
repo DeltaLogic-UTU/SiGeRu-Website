@@ -2904,11 +2904,140 @@ document
 
 
 /* ==========================================================================
-   MAPA OPERATIVO EN PANEL DE ADMINISTRADOR
+   MAPA OPERATIVO Y HERRAMIENTA "CREAR CONTENEDOR" EN PANEL DE ADMINISTRADOR
    ========================================================================== */
 
-// Guardamos la instancia del mapa del administrador para usarla en todo el panel
+// Variables simples para manejar el mapa y el modo de creación de contenedores
 let adminMapInstance = null;
+let capaContenedoresMapa = null;
+let modoEdicionContenedor = false;
+let puntoTemporalMapa = null;
+let latitudElegida = null;
+let longitudElegida = null;
+
+// Elementos del botón y de la pestaña flotante en el HTML
+const btnCrearContenedorMapa = $('btnCrearContenedorMapa');
+const formContenedorMapaWrap = $('formContenedorMapaWrap');
+const formContenedorMapa = $('formContenedorMapa');
+const btnCancelarContMapa = $('btnCancelarContMapa');
+const mapContCircuitoBadge = $('mapContCircuitoBadge');
+const mapContAviso = $('mapContAviso');
+
+// Devuelve el color del contenedor según los días sin recolección
+function obtenerColorContenedor(dias) {
+  const cantidadDias = Number(dias || 1);
+
+  if (cantidadDias <= 2) {
+    return '#22c55e'; // Verde: hasta 2 días
+  }
+  if (cantidadDias === 3) {
+    return '#eab308'; // Amarillo: 3er día
+  }
+  if (cantidadDias === 4) {
+    return '#f97316'; // Naranja: 4to día
+  }
+  if (cantidadDias === 5) {
+    return '#ef4444'; // Rojo: 5to día
+  }
+  return '#18181b'; // Negro: 6 o más días
+}
+
+// Calcula de forma simple el circuito según la zona del mapa donde se hizo clic
+function detectarCircuitoSimple(lat, lng) {
+  if (lng < -56.20) return 'A_101';
+  if (lat > -34.84 && lng < -56.17) return 'G_101';
+  if (lat > -34.86 && lng >= -56.14) return 'F_101';
+  if (lat > -34.875 && lng >= -56.175) return 'D_101';
+  if (lat > -34.89 && lng < -56.175) return 'C_102';
+  if (lng >= -56.125) return 'E_102';
+  if (lng >= -56.168) return 'CH_102';
+  return 'B_01';
+}
+
+// Dibuja un contenedor guardado como un punto de color en el mapa
+function dibujarContenedorEnMapa(contenedor) {
+  if (!capaContenedoresMapa || contenedor.latitud === null || contenedor.longitud === null) {
+    return;
+  }
+
+  const colorPunto = obtenerColorContenedor(contenedor.dias_sin_recoleccion);
+  const textoEstado = contenedor.estado === 'funcional' ? 'Funcionando' : contenedor.estado;
+
+  const marcador = window.L.circleMarker(
+    [Number(contenedor.latitud), Number(contenedor.longitud)],
+    {
+      radius: 8,
+      fillColor: colorPunto,
+      color: '#ffffff',
+      weight: 2,
+      fillOpacity: 0.95
+    }
+  );
+
+  // Al hacer clic sobre el punto, muestra los datos del contenedor
+  marcador.bindPopup(
+    `<strong>Contenedor #${escapeHtml(contenedor.id_contenedor)}</strong><br>` +
+    `Código: <b>${escapeHtml(contenedor.codigo)}</b><br>` +
+    `Tipo: ${escapeHtml(contenedor.tipo)}<br>` +
+    `Capacidad: ${escapeHtml(contenedor.capacidad)} L<br>` +
+    `Estado: ${escapeHtml(textoEstado)}<br>` +
+    `Circuito: ${escapeHtml(contenedor.circuito)}<br>` +
+    `Días sin recolección: ${escapeHtml(contenedor.dias_sin_recoleccion)}`
+  );
+
+  marcador.addTo(capaContenedoresMapa);
+}
+
+// Pide los contenedores a la API de Gestión y dibuja los que tienen coordenadas en el mapa
+async function cargarContenedoresEnMapa() {
+  if (!capaContenedoresMapa) {
+    return;
+  }
+
+  try {
+    const respuesta = await requestGestion('/api/contenedores');
+    const lista = listData(respuesta);
+
+    capaContenedoresMapa.clearLayers();
+
+    lista.forEach(contenedor => {
+      if (contenedor.latitud !== null && contenedor.longitud !== null) {
+        dibujarContenedorEnMapa(contenedor);
+      }
+    });
+  } catch (error) {
+    console.error('No se pudieron cargar los contenedores en el mapa:', error);
+  }
+}
+
+// Función para salir del modo edición y limpiar el punto temporal y el formulario
+function cerrarEdicionContenedor() {
+  const mapCanvas = $('adminMapCanvas');
+
+  modoEdicionContenedor = false;
+  latitudElegida = null;
+  longitudElegida = null;
+
+  // Volvemos el botón a color verde y con el texto original
+  if (btnCrearContenedorMapa) {
+    btnCrearContenedorMapa.classList.remove('btn-map-red');
+    btnCrearContenedorMapa.classList.add('btn-map-green');
+    btnCrearContenedorMapa.innerHTML = '<i class="bi bi-plus-circle"></i> <span>Crear contenedor</span>';
+  }
+
+  // Quitamos el cursor especial del mapa
+  mapCanvas?.classList.remove('modo-crear-contenedor');
+
+  // Escondemos la pestaña flotante y limpiamos el formulario
+  formContenedorMapaWrap?.classList.add('d-none');
+  formContenedorMapa?.reset();
+
+  // Si había un punto temporal sin guardar, lo borramos del mapa
+  if (puntoTemporalMapa && adminMapInstance) {
+    adminMapInstance.removeLayer(puntoTemporalMapa);
+    puntoTemporalMapa = null;
+  }
+}
 
 // Inicializa el mapa base de Leaflet dentro de #adminMapCanvas centrado en Montevideo
 function initAdminMap() {
@@ -2928,6 +3057,47 @@ function initAdminMap() {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(adminMapInstance);
 
+  // Creamos una capa para agrupar los puntos de los contenedores
+  capaContenedoresMapa = window.L.layerGroup().addTo(adminMapInstance);
+
+  // Cuando el administrador hace clic en el mapa mientras está activo "Crear contenedor"
+  adminMapInstance.on('click', evento => {
+    if (!modoEdicionContenedor) {
+      return;
+    }
+
+    // Guardamos las coordenadas donde hizo clic
+    latitudElegida = Number(evento.latlng.lat.toFixed(6));
+    longitudElegida = Number(evento.latlng.lng.toFixed(6));
+
+    // Si ya había puesto un punto temporal antes, lo quitamos
+    if (puntoTemporalMapa) {
+      adminMapInstance.removeLayer(puntoTemporalMapa);
+    }
+
+    // Colocamos el punto verde en el lugar elegido
+    puntoTemporalMapa = window.L.circleMarker([latitudElegida, longitudElegida], {
+      radius: 9,
+      fillColor: '#22c55e',
+      color: '#ffffff',
+      weight: 2,
+      fillOpacity: 1
+    }).addTo(adminMapInstance);
+
+    // Mostramos el circuito automático que corresponde a esa ubicación
+    const circuitoAuto = detectarCircuitoSimple(latitudElegida, longitudElegida);
+    if (mapContCircuitoBadge) {
+      mapContCircuitoBadge.textContent = `Circuito: ${circuitoAuto}`;
+    }
+    if (mapContAviso) {
+      mapContAviso.textContent = 'ID automático · Día 1 (Verde) · Circuito ' + circuitoAuto;
+    }
+
+    // Abrimos la pestaña flotante para completar los datos del contenedor
+    formContenedorMapaWrap?.classList.remove('d-none');
+    $('mapContCodigo')?.focus();
+  });
+
   // Aseguramos que el tamaño del lienzo se calcule bien al cargar y al redimensionar la pantalla
   setTimeout(() => {
     adminMapInstance?.invalidateSize();
@@ -2939,7 +3109,82 @@ function initAdminMap() {
     });
     observer.observe(mapCanvas);
   }
+
+  // Cargamos los contenedores que ya están guardados en la base de datos
+  cargarContenedoresEnMapa();
 }
+
+// Al hacer clic en el botón "Crear contenedor" / "Cerrar edición"
+btnCrearContenedorMapa?.addEventListener('click', () => {
+  const mapCanvas = $('adminMapCanvas');
+
+  if (!modoEdicionContenedor) {
+    // Activamos el modo edición: botón pasa a rojo y cambia el cursor del mapa
+    modoEdicionContenedor = true;
+    btnCrearContenedorMapa.classList.remove('btn-map-green');
+    btnCrearContenedorMapa.classList.add('btn-map-red');
+    btnCrearContenedorMapa.innerHTML = '<i class="bi bi-x-circle"></i> <span>Cerrar edición</span>';
+    mapCanvas?.classList.add('modo-crear-contenedor');
+  } else {
+    // Si ya estaba en modo edición, lo cerramos
+    cerrarEdicionContenedor();
+  }
+});
+
+// Botón "Cancelar" dentro de la pestaña flotante
+btnCancelarContMapa?.addEventListener('click', () => {
+  formContenedorMapaWrap?.classList.add('d-none');
+  formContenedorMapa?.reset();
+
+  if (puntoTemporalMapa && adminMapInstance) {
+    adminMapInstance.removeLayer(puntoTemporalMapa);
+    puntoTemporalMapa = null;
+  }
+});
+
+// Al enviar el formulario flotante para guardar el contenedor en la API de Gestión
+formContenedorMapa?.addEventListener('submit', async evento => {
+  evento.preventDefault();
+
+  if (latitudElegida === null || longitudElegida === null) {
+    return;
+  }
+
+  const btnGuardar = $('btnGuardarContMapa');
+  if (btnGuardar) {
+    btnGuardar.disabled = true;
+  }
+
+  try {
+    // Enviamos los datos a la API de Gestión (ID, día 1 y circuito se asignan automáticamente)
+    const respuesta = await requestGestion('/api/contenedores', {
+      method: 'POST',
+      body: {
+        codigo: $('mapContCodigo')?.value,
+        tipo: $('mapContTipo')?.value,
+        capacidad: Number($('mapContCapacidad')?.value),
+        estado: $('mapContEstado')?.value,
+        latitud: latitudElegida,
+        longitud: longitudElegida
+      }
+    });
+
+    // Dibujamos el contenedor recién creado en el mapa y salimos del modo edición
+    if (respuesta?.data) {
+      dibujarContenedorEnMapa(respuesta.data);
+    }
+
+    cerrarEdicionContenedor();
+  } catch (error) {
+    if (mapContAviso) {
+      mapContAviso.textContent = error.message;
+    }
+  } finally {
+    if (btnGuardar) {
+      btnGuardar.disabled = false;
+    }
+  }
+});
 
 initAdminMap();
 

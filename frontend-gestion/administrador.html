@@ -312,6 +312,85 @@
           aria-label="Mapa operativo interactivo de SiGeRU"
         ></div>
 
+        <!-- Botón chico arriba a la derecha para activar o cerrar la creación de contenedores -->
+        <button
+          id="btnCrearContenedorMapa"
+          class="btn-map-tool btn-map-green"
+          type="button"
+        >
+          <i class="bi bi-plus-circle"></i>
+          <span>Crear contenedor</span>
+        </button>
+
+        <!-- Pestaña flotante que se abre al hacer clic en el mapa para cargar el nuevo contenedor -->
+        <div
+          id="formContenedorMapaWrap"
+          class="map-floating-form d-none"
+          aria-label="Formulario para crear contenedor en el mapa"
+        >
+          <div class="map-floating-head">
+            <strong>Nuevo contenedor</strong>
+            <span id="mapContCircuitoBadge" class="badge-circuito-auto">Circuito: auto</span>
+          </div>
+
+          <form id="formContenedorMapa">
+            <label>
+              Código del contenedor
+              <input
+                type="text"
+                id="mapContCodigo"
+                class="form-control form-control-sm"
+                placeholder="Ej: CONT-101"
+                required
+              >
+            </label>
+
+            <label>
+              Tipo de residuo
+              <select id="mapContTipo" class="form-select form-select-sm" required>
+                <option value="general">General</option>
+                <option value="reciclaje">Reciclaje</option>
+                <option value="mixto">Mixto</option>
+              </select>
+            </label>
+
+            <label>
+              Capacidad (en litros)
+              <input
+                type="number"
+                id="mapContCapacidad"
+                class="form-control form-control-sm"
+                placeholder="Ej: 1100"
+                min="1"
+                step="any"
+                required
+              >
+            </label>
+
+            <label>
+              Estado del contenedor
+              <select id="mapContEstado" class="form-select form-select-sm" required>
+                <option value="funcional">Funcionando</option>
+                <option value="roto">Roto</option>
+                <option value="desbordado">Desbordado</option>
+              </select>
+            </label>
+
+            <small id="mapContAviso" class="map-floating-note">
+              ID automático · Día 1 (Verde) · Circuito automático
+            </small>
+
+            <div class="map-floating-actions">
+              <button type="submit" id="btnGuardarContMapa" class="btn btn-primary btn-sm">
+                Guardar
+              </button>
+              <button type="button" id="btnCancelarContMapa" class="btn btn-outline btn-sm">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+
         <!-- Leyenda con la escala de 5 colores de contenedores, incidencias y reclamos -->
         <div
           class="map-legend"
