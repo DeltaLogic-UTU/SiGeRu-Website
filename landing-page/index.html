@@ -9,6 +9,8 @@
   <meta content="Página pública de SiGeRU para informar, orientar y facilitar la comunicación vecinal." name="description"/>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+  <!-- Estilos de Leaflet para renderizar el mapa interactivo cuando el usuario lo amplíe -->
+  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
   <link href="assets/style.css" rel="stylesheet"/>
  </head>
  <body>
@@ -32,6 +34,12 @@
        <li class="nav-item">
         <a class="nav-link" href="#que-soluciona">
          Qué soluciona
+        </a>
+       </li>
+       <!-- Enlace directo en el menú hacia la sección del mapa ciudadano -->
+       <li class="nav-item">
+        <a class="nav-link" href="#mapa-ciudadano">
+         Mapa en vivo
         </a>
        </li>
        <li class="nav-item">
@@ -79,8 +87,10 @@
        <a class="btn btn-primary" href="#que-soluciona">
         Conocer qué soluciona
        </a>
-       <a class="btn btn-outline" href="#que-soluciona">
-        Ver situaciones frecuentes
+       <!-- Acceso rápido desde la portada para ir a la sección del mapa -->
+       <a class="btn btn-outline" href="#mapa-ciudadano">
+        <i aria-hidden="true" class="bi bi-map"></i>
+        Ver mapa de recolección
        </a>
       </div>
       <p class="hero-note">
@@ -219,6 +229,105 @@
      </div>
     </div>
    </section>
+
+   <!-- Sección del Mapa Ciudadano: inicia contraída para que la página cargue rápido
+        y solo inicializa el mapa interactivo cuando el usuario hace clic en "Ampliar mapa interactivo" -->
+   <section id="mapa-ciudadano">
+    <div class="container">
+     <div class="panel map-showcase-card">
+      <div class="map-showcase-header">
+       <div>
+        <span class="tag">
+         <i aria-hidden="true" class="bi bi-broadcast me-1"></i>
+         Monitoreo abierto a la comunidad
+        </span>
+        <h2>
+         Mapa de cobertura y estado de recolección en vivo
+        </h2>
+        <p class="mb-0 text-muted">
+         Consultá las zonas operativas, la ubicación GPS de los camiones recolectores y el nivel de cada contenedor según los días transcurridos desde la última recolección.
+        </p>
+       </div>
+       <div class="map-showcase-actions">
+        <!-- Botón principal que despliega y carga el mapa bajo demanda -->
+        <button aria-controls="landingMapCollapse" aria-expanded="false" class="btn btn-primary" id="btnToggleLandingMap" type="button">
+         <i aria-hidden="true" class="bi bi-arrows-angle-expand"></i>
+         <span>Ampliar mapa interactivo</span>
+        </button>
+       </div>
+      </div>
+
+      <!-- Leyenda explicativa de los 5 niveles de colores de los contenedores por días sin recolección -->
+      <div aria-label="Escala de colores por días sin recolección" class="map-color-scale">
+       <div class="scale-item">
+        <span class="scale-dot level-verde"></span>
+        <div>
+         <strong>Verde · Al día</strong>
+         <small>Hasta 2 días sin recolección</small>
+        </div>
+       </div>
+       <div class="scale-item">
+        <span class="scale-dot level-amarillo"></span>
+        <div>
+         <strong>Amarillo · Atención</strong>
+         <small>3 días sin recolección</small>
+        </div>
+       </div>
+       <div class="scale-item">
+        <span class="scale-dot level-naranja"></span>
+        <div>
+         <strong>Naranja · Demora</strong>
+         <small>4 días sin recolección</small>
+        </div>
+       </div>
+       <div class="scale-item">
+        <span class="scale-dot level-rojo"></span>
+        <div>
+         <strong>Rojo · Prioridad alta</strong>
+         <small>5 días sin recolección</small>
+        </div>
+       </div>
+       <div class="scale-item">
+        <span class="scale-dot level-negro"></span>
+        <div>
+         <strong>Negro · Crítico</strong>
+         <small>6 o más días sin pasar el camión</small>
+        </div>
+       </div>
+      </div>
+
+      <!-- Referencias adicionales de zonas y GPS de camiones -->
+      <div class="map-extra-badges">
+       <span class="map-badge">
+        <i aria-hidden="true" class="bi bi-bounding-box-circles"></i>
+        Zonas y circuitos delimitados
+       </span>
+       <span class="map-badge">
+        <i aria-hidden="true" class="bi bi-truck"></i>
+        Posición GPS de camiones en turno
+       </span>
+      </div>
+
+      <!-- Contenedor oculto por defecto: solo se muestra cuando el usuario toca "Ampliar mapa interactivo" -->
+      <div class="landing-map-collapse" hidden="" id="landingMapCollapse">
+       <div class="landing-map-toolbar">
+        <span class="landing-map-status" id="landingMapStatus">
+         Hacé clic en un contenedor, zona o camión para ver su detalle.
+        </span>
+        <div class="landing-map-toolbar-btns">
+         <button class="btn btn-outline btn-sm" id="btnFullscreenLandingMap" type="button">
+          <i aria-hidden="true" class="bi bi-fullscreen"></i>
+          <span>Pantalla completa</span>
+         </button>
+        </div>
+       </div>
+       <!-- Lienzo donde Leaflet dibuja el mapa, las zonas, los contenedores y los camiones -->
+       <div aria-label="Mapa interactivo de recolección" class="landing-map-canvas" id="landingMapCanvas"></div>
+      </div>
+     </div>
+    </div>
+   </section>
+
    <section id="contacto">
     <div class="container contact-grid">
      <div class="panel">
@@ -352,6 +461,9 @@
      <a href="#que-soluciona">
       Qué soluciona
      </a>
+     <a href="#mapa-ciudadano">
+      Mapa en vivo
+     </a>
      <a href="#contacto">
       Contacto
      </a>
@@ -360,8 +472,10 @@
   </footer>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
   </script>
+  <!-- Librería Leaflet para renderizar el mapa interactivo -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+  </script>
   <script src="assets/app.js">
   </script>
  </body>
 </html>
-

@@ -16,10 +16,16 @@
     rel="stylesheet"
   >
 
+  <!-- Estilos de Leaflet para el mapa interactivo del administrador -->
+  <link
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    rel="stylesheet"
+  >
+
   <link href="assets/style.css" rel="stylesheet">
 </head>
 
-<body>
+<body class="admin-dashboard-body">
 
   <header class="site-header">
     <nav class="navbar navbar-expand-xl">
@@ -299,30 +305,42 @@
 
       <div class="map-panel">
 
-        <img
-          src="../resources/mapa-gestion.png"
-          class="gestion-map-img"
-          alt="Mapa operativo de referencia de SiGeRU"
-        >
+        <!-- Lienzo donde Leaflet dibuja el mapa operativo interactivo -->
+        <div
+          id="adminMapCanvas"
+          class="admin-map-canvas"
+          aria-label="Mapa operativo interactivo de SiGeRU"
+        ></div>
 
+        <!-- Leyenda con la escala de 5 colores de contenedores, incidencias y reclamos -->
         <div
           class="map-legend"
           aria-label="Leyenda del mapa"
         >
 
           <span>
-            <i class="legend-dot ok"></i>
-            2 días
+            <i class="legend-dot level-verde"></i>
+            Verde: hasta 2 días
           </span>
 
           <span>
-            <i class="legend-dot warning"></i>
-            4 días
+            <i class="legend-dot level-amarillo"></i>
+            Amarillo: 3er día
           </span>
 
           <span>
-            <i class="legend-dot danger"></i>
-            6 o más días
+            <i class="legend-dot level-naranja"></i>
+            Naranja: 4to día
+          </span>
+
+          <span>
+            <i class="legend-dot level-rojo"></i>
+            Rojo: 5to día
+          </span>
+
+          <span>
+            <i class="legend-dot level-negro"></i>
+            Negro: 6 o más días
           </span>
 
           <span>
@@ -340,6 +358,7 @@
       </div>
 
 
+      <!-- Panel inferior compacto: datos del camión organizados en columnas de hasta 3 filas -->
       <section
         class="vehicle-detail"
         id="vehicleDetail"
@@ -348,6 +367,7 @@
 
         <div class="detail-grid">
 
+          <!-- Columna 1: identificación y estado (3 filas) -->
           <div class="detail-group">
 
             <label>
@@ -380,6 +400,12 @@
               >
             </label>
 
+          </div>
+
+
+          <!-- Columna 2: ubicación, turno y circuito (3 filas) -->
+          <div class="detail-group">
+
             <label>
               Ubicación
               <input
@@ -394,15 +420,11 @@
               Turno
               <input
                 class="form-control form-control-sm"
+                id="detailTurn"
                 readonly
                 value="—"
               >
             </label>
-
-          </div>
-
-
-          <div class="detail-group">
 
             <label>
               Circuito asignado
@@ -414,10 +436,17 @@
               >
             </label>
 
+          </div>
+
+
+          <!-- Columna 3: progreso de contenedores (3 filas) -->
+          <div class="detail-group">
+
             <label>
               Cantidad de contenedores
               <input
                 class="form-control form-control-sm"
+                id="detailAssigned"
                 readonly
                 value="0"
               >
@@ -427,6 +456,7 @@
               Contenedores recolectados
               <input
                 class="form-control form-control-sm"
+                id="detailCollected"
                 readonly
                 value="0"
               >
@@ -436,23 +466,16 @@
               Contenedores faltantes
               <input
                 class="form-control form-control-sm"
+                id="detailPending"
                 readonly
                 value="0"
-              >
-            </label>
-
-            <label>
-              Hora inicio turno
-              <input
-                class="form-control form-control-sm"
-                readonly
-                value="—"
               >
             </label>
 
           </div>
 
 
+          <!-- Columna 4: carga y kilometraje (3 filas) -->
           <div class="detail-group">
 
             <label>
@@ -485,10 +508,27 @@
               >
             </label>
 
+          </div>
+
+
+          <!-- Columna 5: horarios del turno -->
+          <div class="detail-group">
+
+            <label>
+              Hora inicio turno
+              <input
+                class="form-control form-control-sm"
+                id="detailStart"
+                readonly
+                value="—"
+              >
+            </label>
+
             <label>
               Hora final turno
               <input
                 class="form-control form-control-sm"
+                id="detailEnd"
                 readonly
                 value="—"
               >
@@ -497,6 +537,7 @@
           </div>
 
 
+          <!-- Columna de acompañantes -->
           <div class="detail-group companions">
 
             <span class="detail-label">
@@ -510,6 +551,7 @@
           </div>
 
 
+          <!-- Acciones sobre el camión -->
           <div class="detail-actions">
 
             <button
@@ -551,6 +593,7 @@
 
         <div class="crew-detail-grid">
 
+          <!-- Columna 1 de cuadrilla (3 filas) -->
           <div class="detail-group">
 
             <label>
@@ -583,6 +626,12 @@
               >
             </label>
 
+          </div>
+
+
+          <!-- Columna 2 de cuadrilla (3 filas) -->
+          <div class="detail-group">
+
             <label>
               Estado
               <input
@@ -602,7 +651,6 @@
                 value="—"
               >
             </label>
-
 
             <div class="time-row">
 
@@ -872,6 +920,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+  <!-- Librería Leaflet para renderizar el mapa operativo -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="assets/base.js"></script>
   <script src="assets/app.js"></script>
   <script src="assets/solicitudes.js"></script>

@@ -956,3 +956,79 @@ perfilSolicitud?.addEventListener(
 
 
 updateLicenseField();
+
+
+/* ==========================================================================
+   MAPA INTERACTIVO EN LANDING PAGE (CARGA BAJO DEMANDA)
+   ========================================================================== */
+
+// Referencias a los botones y al contenedor del mapa en el HTML
+const btnToggleLandingMap = document.getElementById('btnToggleLandingMap');
+const landingMapCollapse = document.getElementById('landingMapCollapse');
+const btnFullscreenLandingMap = document.getElementById('btnFullscreenLandingMap');
+
+// Guardamos la instancia de Leaflet para crearla solo una vez cuando el usuario abra el mapa
+let landingMapInstance = null;
+
+// Inicializa el mapa base de Leaflet centrado en Montevideo
+function initLandingMap() {
+  // Si el mapa ya fue creado o no está disponible la librería Leaflet, no volvemos a crearlo
+  if (landingMapInstance || typeof window.L === 'undefined') {
+    return;
+  }
+
+  // Creamos el mapa dentro del div #landingMapCanvas centrado en Montevideo
+  landingMapInstance = window.L.map('landingMapCanvas').setView([-34.9011, -56.1645], 13);
+
+  // Agregamos la capa visual de calles gratuita de OpenStreetMap
+  window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(landingMapInstance);
+}
+
+// Evento para mostrar u ocultar el mapa al presionar el botón principal
+btnToggleLandingMap?.addEventListener('click', () => {
+  if (!landingMapCollapse) return;
+
+  const isHidden = landingMapCollapse.hasAttribute('hidden');
+
+  if (isHidden) {
+    // Mostramos el contenedor del mapa
+    landingMapCollapse.removeAttribute('hidden');
+    btnToggleLandingMap.setAttribute('aria-expanded', 'true');
+    btnToggleLandingMap.innerHTML = '<i aria-hidden="true" class="bi bi-chevron-up"></i> <span>Ocultar mapa</span>';
+
+    // Inicializamos el mapa recién cuando se abre por primera vez para no sobrecargar la página
+    initLandingMap();
+
+    // Ajustamos el tamaño del lienzo para que las cuadrículas del mapa se dibujen bien
+    setTimeout(() => {
+      landingMapInstance?.invalidateSize();
+    }, 150);
+  } else {
+    // Si estaba en pantalla completa, salimos antes de ocultarlo
+    landingMapCollapse.classList.remove('is-fullscreen');
+    landingMapCollapse.setAttribute('hidden', '');
+    btnToggleLandingMap.setAttribute('aria-expanded', 'false');
+    btnToggleLandingMap.innerHTML = '<i aria-hidden="true" class="bi bi-arrows-angle-expand"></i> <span>Ampliar mapa interactivo</span>';
+  }
+});
+
+// Evento para alternar el modo de pantalla completa dentro del mapa
+btnFullscreenLandingMap?.addEventListener('click', () => {
+  if (!landingMapCollapse) return;
+
+  const isFullscreen = landingMapCollapse.classList.toggle('is-fullscreen');
+
+  if (isFullscreen) {
+    btnFullscreenLandingMap.innerHTML = '<i aria-hidden="true" class="bi bi-fullscreen-exit"></i> <span>Salir de pantalla completa</span>';
+  } else {
+    btnFullscreenLandingMap.innerHTML = '<i aria-hidden="true" class="bi bi-fullscreen"></i> <span>Pantalla completa</span>';
+  }
+
+  // Recalculamos el tamaño del mapa al cambiar el contenedor
+  setTimeout(() => {
+    landingMapInstance?.invalidateSize();
+  }, 150);
+});

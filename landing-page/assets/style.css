@@ -449,3 +449,189 @@ html[data-theme="light"] .btn-outline.active {
 #recuperacionMensaje[hidden] {
   display: none !important;
 }
+
+
+/* =========================================================================
+   Mapa Ciudadano en Landing Page (carga bajo demanda y escala de 5 colores)
+   ========================================================================= */
+.map-showcase-card {
+  display: grid;
+  gap: 1.35rem;
+}
+
+.map-showcase-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.map-showcase-header h2 {
+  margin-bottom: .45rem;
+  font-size: clamp(1.75rem, 3.2vw, 2.55rem);
+  line-height: 1.08;
+}
+
+.map-showcase-header p {
+  max-width: 720px;
+}
+
+.map-showcase-actions {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+
+/* Grilla con los 5 niveles de colores (Verde, Amarillo, Naranja, Rojo, Negro) */
+.map-color-scale {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.scale-item {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .85rem .95rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--soft);
+}
+
+.scale-item strong {
+  display: block;
+  font-size: .92rem;
+  line-height: 1.2;
+}
+
+.scale-item small {
+  display: block;
+  margin-top: .15rem;
+  color: var(--muted);
+  font-size: .8rem;
+}
+
+.scale-dot {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .75);
+  box-shadow: 0 0 12px rgba(0, 0, 0, .35);
+}
+
+/* Colores oficiales por días sin recolección */
+.scale-dot.level-verde   { background: #22c55e; } /* Hasta 2 días */
+.scale-dot.level-amarillo{ background: #eab308; } /* 3 días */
+.scale-dot.level-naranja { background: #f97316; } /* 4 días */
+.scale-dot.level-rojo    { background: #ef4444; } /* 5 días */
+.scale-dot.level-negro   { background: #111827; border-color: #9ca3af; } /* 6 o más días */
+
+.map-extra-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem;
+}
+
+.map-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .45rem .85rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: .86rem;
+  font-weight: 700;
+}
+
+.map-badge i {
+  color: var(--secondary);
+}
+
+/* Visor desplegable del mapa */
+.landing-map-collapse {
+  display: grid;
+  gap: .85rem;
+  padding-top: .5rem;
+  border-top: 1px solid var(--line);
+}
+
+.landing-map-collapse[hidden] {
+  display: none !important;
+}
+
+.landing-map-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+
+.landing-map-status {
+  color: var(--muted);
+  font-size: .9rem;
+  font-weight: 700;
+}
+
+.landing-map-canvas {
+  width: 100%;
+  height: 520px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  background: #0b1d16;
+}
+
+/* Modo pantalla completa del mapa */
+.landing-map-collapse.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 2050;
+  padding: 1rem;
+  background: var(--bg);
+  grid-template-rows: auto 1fr;
+}
+
+.landing-map-collapse.is-fullscreen .landing-map-canvas {
+  height: 100%;
+}
+
+/* Marcador visual de camión GPS dentro de Leaflet */
+.truck-gps-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .28rem .55rem;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #0284c7;
+  color: #fff;
+  font-size: .75rem;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .4);
+}
+
+@media (max-width: 991.98px) {
+  .map-color-scale {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .landing-map-canvas {
+    height: 420px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .map-color-scale {
+    grid-template-columns: 1fr;
+  }
+  .map-showcase-actions,
+  .map-showcase-actions .btn {
+    width: 100%;
+  }
+}

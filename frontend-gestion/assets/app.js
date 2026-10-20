@@ -31,17 +31,14 @@ const crewFields = {
   end: $('crewEnd')
 };
 
-const vehicleGroups = vehicleDetail
-  ? vehicleDetail.querySelectorAll('.detail-group')
-  : [];
-
+// Referencias a los campos adicionales del camión por su ID en las columnas de 3 filas
 const vehicleExtraFields = {
-  turn: vehicleGroups[0]?.querySelectorAll('input')?.[4] || null,
-  assigned: vehicleGroups[1]?.querySelectorAll('input')?.[1] || null,
-  collected: vehicleGroups[1]?.querySelectorAll('input')?.[2] || null,
-  pending: vehicleGroups[1]?.querySelectorAll('input')?.[3] || null,
-  start: vehicleGroups[1]?.querySelectorAll('input')?.[4] || null,
-  end: vehicleGroups[2]?.querySelectorAll('input')?.[3] || null,
+  turn: $('detailTurn'),
+  assigned: $('detailAssigned'),
+  collected: $('detailCollected'),
+  pending: $('detailPending'),
+  start: $('detailStart'),
+  end: $('detailEnd'),
   companions:
     vehicleDetail?.querySelector('.companions ul') || null
 };
@@ -2904,5 +2901,46 @@ document
         });
     }
   );
+
+
+/* ==========================================================================
+   MAPA OPERATIVO EN PANEL DE ADMINISTRADOR
+   ========================================================================== */
+
+// Guardamos la instancia del mapa del administrador para usarla en todo el panel
+let adminMapInstance = null;
+
+// Inicializa el mapa base de Leaflet dentro de #adminMapCanvas centrado en Montevideo
+function initAdminMap() {
+  const mapCanvas = $('adminMapCanvas');
+
+  // Si no existe el contenedor en esta página o ya fue creado el mapa, salimos
+  if (!mapCanvas || adminMapInstance || typeof window.L === 'undefined') {
+    return;
+  }
+
+  // Creamos el mapa centrado en Montevideo
+  adminMapInstance = window.L.map('adminMapCanvas').setView([-34.9011, -56.1645], 13);
+
+  // Agregamos la capa de calles de OpenStreetMap
+  window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(adminMapInstance);
+
+  // Aseguramos que el tamaño del lienzo se calcule bien al cargar y al redimensionar la pantalla
+  setTimeout(() => {
+    adminMapInstance?.invalidateSize();
+  }, 150);
+
+  if (typeof ResizeObserver !== 'undefined') {
+    const observer = new ResizeObserver(() => {
+      adminMapInstance?.invalidateSize();
+    });
+    observer.observe(mapCanvas);
+  }
+}
+
+initAdminMap();
 
 init();
