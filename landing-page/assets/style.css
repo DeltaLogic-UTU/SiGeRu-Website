@@ -587,6 +587,18 @@ html[data-theme="light"] .btn-outline.active {
   background: #0b1d16;
 }
 
+/* Evita que la regla global max-width: 100% recorte las cuadrículas o puntos SVG de Leaflet */
+.leaflet-container img,
+.leaflet-container svg {
+  max-width: none !important;
+}
+
+/* Mantiene el texto oscuro y legible dentro de las tarjetas emergentes de Leaflet */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-content {
+  color: #10251b;
+}
+
 /* Modo pantalla completa del mapa */
 .landing-map-collapse.is-fullscreen {
   position: fixed;

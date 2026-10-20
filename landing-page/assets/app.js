@@ -969,11 +969,79 @@ const btnFullscreenLandingMap = document.getElementById('btnFullscreenLandingMap
 
 // Guardamos la instancia de Leaflet para crearla solo una vez cuando el usuario abra el mapa
 let landingMapInstance = null;
+let capaContenedoresLanding = null;
+
+// Devuelve el color según los días sin recolección (escala de 5 colores)
+function colorContenedorLanding(dias) {
+  const cantidad = Number(dias || 1);
+  if (cantidad <= 2) return '#22c55e'; // Verde
+  if (cantidad === 3) return '#eab308'; // Amarillo
+  if (cantidad === 4) return '#f97316'; // Naranja
+  if (cantidad === 5) return '#ef4444'; // Rojo
+  return '#18181b'; // Negro (6 o más días)
+}
+
+// Carga los contenedores desde la API de Gestión y los dibuja en el mapa público
+async function cargarContenedoresLanding() {
+  if (!capaContenedoresLanding) return;
+
+  const statusText = document.getElementById('landingMapStatus');
+
+  try {
+    const respuesta = await fetch('http://127.0.0.1:8001/api/mapa/contenedores');
+    const json = await respuesta.json();
+    const lista = Array.isArray(json?.data) ? json.data : [];
+
+    capaContenedoresLanding.clearLayers();
+    let dibujados = 0;
+
+    lista.forEach(item => {
+      if (item.latitud === null || item.longitud === null) return;
+
+      const color = colorContenedorLanding(item.dias_sin_recoleccion);
+      const estadoTexto = item.estado === 'funcional' ? 'Funcionando' : item.estado;
+
+      const punto = window.L.circleMarker([Number(item.latitud), Number(item.longitud)], {
+        radius: 7,
+        fillColor: color,
+        color: '#ffffff',
+        weight: 2,
+        fillOpacity: 0.95
+      });
+
+      punto.bindPopup(
+        `<strong>Contenedor ${item.codigo}</strong><br>` +
+        `Tipo: ${item.tipo}<br>` +
+        `Capacidad: ${item.capacidad} L<br>` +
+        `Estado: ${estadoTexto}<br>` +
+        `Circuito: ${item.circuito}<br>` +
+        `Días sin recolección: ${item.dias_sin_recoleccion}`
+      );
+
+      punto.addTo(capaContenedoresLanding);
+      dibujados++;
+    });
+
+    if (statusText) {
+      statusText.textContent = `Mostrando ${dibujados} contenedores activos en el mapa. Hacé clic en un punto para ver su detalle.`;
+    }
+  } catch (error) {
+    console.error('Error al cargar contenedores en la landing page:', error);
+    if (statusText) {
+      statusText.textContent = 'No se pudieron cargar los contenedores desde la API de Gestión.';
+    }
+  }
+}
 
 // Inicializa el mapa base de Leaflet centrado en Montevideo
 function initLandingMap() {
-  // Si el mapa ya fue creado o no está disponible la librería Leaflet, no volvemos a crearlo
-  if (landingMapInstance || typeof window.L === 'undefined') {
+  // Si el mapa ya fue creado o no está disponible la librería Leaflet, solo recargamos los contenedores
+  if (landingMapInstance) {
+    cargarContenedoresLanding();
+    return;
+  }
+
+  if (typeof window.L === 'undefined') {
     return;
   }
 
@@ -985,6 +1053,10 @@ function initLandingMap() {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(landingMapInstance);
+
+  // Capa para dibujar los contenedores y carga inicial desde la API
+  capaContenedoresLanding = window.L.layerGroup().addTo(landingMapInstance);
+  cargarContenedoresLanding();
 }
 
 // Evento para mostrar u ocultar el mapa al presionar el botón principal
