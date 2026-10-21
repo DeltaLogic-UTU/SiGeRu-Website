@@ -2904,18 +2904,29 @@ document
 
 
 /* ==========================================================================
-   MAPA OPERATIVO Y HERRAMIENTA "CREAR CONTENEDOR" EN PANEL DE ADMINISTRADOR
+   MAPA OPERATIVO: CONTENEDORES, CIRCUITOS Y MUNICIPIOS DE MONTEVIDEO
    ========================================================================== */
 
-// Variables simples para manejar el mapa y el modo de creación de contenedores
+// Variables principales para manejar las capas del mapa
 let adminMapInstance = null;
+let capaMunicipiosMapa = null;
+let capaCircuitosMapa = null;
 let capaContenedoresMapa = null;
+
+// Variables para la creación de contenedores
 let modoEdicionContenedor = false;
 let puntoTemporalMapa = null;
 let latitudElegida = null;
 let longitudElegida = null;
 
-// Elementos del botón y de la pestaña flotante en el HTML
+// Variables para la delimitación y creación de circuitos por puntos
+let modoEdicionCircuito = false;
+let puntosCircuitoEnDibujo = [];
+let marcadoresPuntosCircuito = [];
+let poligonoPreviewCircuito = null;
+let listaCircuitosCargados = [];
+
+// Elementos del HTML para contenedores
 const btnCrearContenedorMapa = $('btnCrearContenedorMapa');
 const formContenedorMapaWrap = $('formContenedorMapaWrap');
 const formContenedorMapa = $('formContenedorMapa');
@@ -2923,7 +2934,23 @@ const btnCancelarContMapa = $('btnCancelarContMapa');
 const mapContCircuitoBadge = $('mapContCircuitoBadge');
 const mapContAviso = $('mapContAviso');
 
-// Devuelve el color del contenedor según los días sin recolección
+// Elementos del HTML para circuitos
+const btnCrearCircuitoMapa = $('btnCrearCircuitoMapa');
+const circuitoDrawingBar = $('circuitoDrawingBar');
+const circuitoPuntosCount = $('circuitoPuntosCount');
+const btnFinalizarPoligono = $('btnFinalizarPoligono');
+const btnDeshacerPunto = $('btnDeshacerPunto');
+const btnCancelarCircuito = $('btnCancelarCircuito');
+const formCircuitoMapaWrap = $('formCircuitoMapaWrap');
+const formCircuitoMapa = $('formCircuitoMapa');
+const formCircuitoMunicipioBadge = $('formCircuitoMunicipioBadge');
+const mapCircuitoMunicipio = $('mapCircuitoMunicipio');
+const mapCircuitoCodigo = $('mapCircuitoCodigo');
+const mapCircuitoZona = $('mapCircuitoZona');
+const mapCircuitoDesc = $('mapCircuitoDesc');
+const btnCancelarCircuitoMapa = $('btnCancelarCircuitoMapa');
+
+// Devuelve el color del contenedor según los días sin recolección (escala de 5 colores)
 function obtenerColorContenedor(dias) {
   const cantidadDias = Number(dias || 1);
 
@@ -2942,16 +2969,134 @@ function obtenerColorContenedor(dias) {
   return '#18181b'; // Negro: 6 o más días
 }
 
-// Calcula de forma simple el circuito según la zona del mapa donde se hizo clic
-function detectarCircuitoSimple(lat, lng) {
-  if (lng < -56.20) return 'A_101';
-  if (lat > -34.84 && lng < -56.17) return 'G_101';
-  if (lat > -34.86 && lng >= -56.14) return 'F_101';
-  if (lat > -34.875 && lng >= -56.175) return 'D_101';
-  if (lat > -34.89 && lng < -56.175) return 'C_102';
-  if (lng >= -56.125) return 'E_102';
-  if (lng >= -56.168) return 'CH_102';
-  return 'B_01';
+// Dibuja los límites de los 8 municipios de Montevideo con colores suaves pero bien visibles
+function dibujarMunicipiosEnMapa() {
+  if (!capaMunicipiosMapa || typeof MUNICIPIOS_MONTEVIDEO === 'undefined') {
+    return;
+  }
+
+  capaMunicipiosMapa.clearLayers();
+
+  MUNICIPIOS_MONTEVIDEO.forEach(m => {
+    // Polígono de delimitación de cada municipio con color suave y borde visible
+    const poligono = window.L.polygon(m.coordenadas, {
+      color: m.color,
+      weight: 2,
+      dashArray: '4, 4',
+      fillColor: m.color,
+      fillOpacity: 0.20,
+      interactive: false
+    });
+
+    poligono.addTo(capaMunicipiosMapa);
+
+    // Calculamos el centro aproximado para colocar una etiqueta clara del municipio
+    let sumaLat = 0;
+    let sumaLng = 0;
+    m.coordenadas.forEach(p => {
+      sumaLat += p[0];
+      sumaLng += p[1];
+    });
+    const centroLat = sumaLat / m.coordenadas.length;
+    const centroLng = sumaLng / m.coordenadas.length;
+
+    const iconoMunicipio = window.L.divIcon({
+      className: '',
+      html: `
+        <div class="municipio-map-badge" style="border-color: ${m.color}">
+          <span class="mun-letra">${escapeHtml(m.id)}</span>
+          <span>Municipio ${escapeHtml(m.id)}</span>
+        </div>
+      `,
+      iconSize: [115, 26],
+      iconAnchor: [57, 13]
+    });
+
+    window.L.marker([centroLat, centroLng], {
+      icon: iconoMunicipio,
+      interactive: false
+    }).addTo(capaMunicipiosMapa);
+  });
+}
+
+// Dibuja un circuito delimitado en el mapa con bordes bien oscuros
+function dibujarCircuitoEnMapa(circuito) {
+  if (!capaCircuitosMapa || !Array.isArray(circuito.coordenadas) || circuito.coordenadas.length < 3) {
+    return;
+  }
+
+  // Polígono con bordes bien oscuros y marcados como solicitó el usuario
+  const poligono = window.L.polygon(circuito.coordenadas, {
+    color: '#0f172a', // Borde bien oscuro (azul marino casi negro)
+    weight: 3,        // Borde grueso y visible
+    fillColor: '#0284c7', // Relleno azul
+    fillOpacity: 0.28
+  });
+
+  const totalCont = Number(circuito.total_contenedores || 0);
+
+  // Popup con los datos del circuito al hacer clic
+  poligono.bindPopup(
+    `<strong>Circuito ${escapeHtml(circuito.id_circuito)}</strong><br>` +
+    `Municipio: <b>${escapeHtml(circuito.municipio)}</b><br>` +
+    `Zona: ${escapeHtml(circuito.zona || '—')}<br>` +
+    `Contenedores en el circuito: <b>${totalCont}</b>`
+  );
+
+  // Si estamos en modo de dibujo o creación de contenedor, un clic sobre el circuito se procesa como punto
+  poligono.on('click', evento => {
+    if (modoEdicionContenedor || modoEdicionCircuito) {
+      poligono.closePopup();
+      if (evento.originalEvent) {
+        evento.originalEvent.stopPropagation();
+      }
+      procesarClicEnMapa(evento.latlng);
+    }
+  });
+
+  poligono.addTo(capaCircuitosMapa);
+
+  // Colocamos una etiqueta en el centro del circuito con su código (ej: CH_102)
+  let sumaLat = 0;
+  let sumaLng = 0;
+  circuito.coordenadas.forEach(p => {
+    sumaLat += Number(p[0]);
+    sumaLng += Number(p[1]);
+  });
+  const centroLat = sumaLat / circuito.coordenadas.length;
+  const centroLng = sumaLng / circuito.coordenadas.length;
+
+  const iconoEtiqueta = window.L.divIcon({
+    className: 'circuito-map-label',
+    html: `<span>${escapeHtml(circuito.id_circuito)}</span>`,
+    iconSize: [56, 22],
+    iconAnchor: [28, 11]
+  });
+
+  window.L.marker([centroLat, centroLng], {
+    icon: iconoEtiqueta,
+    interactive: false
+  }).addTo(capaCircuitosMapa);
+}
+
+// Carga los circuitos desde la API de Gestión y los dibuja en el mapa
+async function cargarCircuitosEnMapa() {
+  if (!capaCircuitosMapa) {
+    return;
+  }
+
+  try {
+    const respuesta = await requestGestion('/api/circuitos');
+    listaCircuitosCargados = listData(respuesta);
+
+    capaCircuitosMapa.clearLayers();
+
+    listaCircuitosCargados.forEach(c => {
+      dibujarCircuitoEnMapa(c);
+    });
+  } catch (error) {
+    console.error('No se pudieron cargar los circuitos en el mapa:', error);
+  }
 }
 
 // Dibuja un contenedor guardado como un punto de color en el mapa
@@ -3010,7 +3155,7 @@ async function cargarContenedoresEnMapa() {
   }
 }
 
-// Función para salir del modo edición y limpiar el punto temporal y el formulario
+// Cierra el modo de creación de contenedor y limpia formulario
 function cerrarEdicionContenedor() {
   const mapCanvas = $('adminMapCanvas');
 
@@ -3018,24 +3163,285 @@ function cerrarEdicionContenedor() {
   latitudElegida = null;
   longitudElegida = null;
 
-  // Volvemos el botón a color verde y con el texto original
   if (btnCrearContenedorMapa) {
     btnCrearContenedorMapa.classList.remove('btn-map-red');
     btnCrearContenedorMapa.classList.add('btn-map-green');
     btnCrearContenedorMapa.innerHTML = '<i class="bi bi-plus-circle"></i> <span>Crear contenedor</span>';
   }
 
-  // Quitamos el cursor especial del mapa
   mapCanvas?.classList.remove('modo-crear-contenedor');
-
-  // Escondemos la pestaña flotante y limpiamos el formulario
   formContenedorMapaWrap?.classList.add('d-none');
   formContenedorMapa?.reset();
 
-  // Si había un punto temporal sin guardar, lo borramos del mapa
   if (puntoTemporalMapa && adminMapInstance) {
     adminMapInstance.removeLayer(puntoTemporalMapa);
     puntoTemporalMapa = null;
+  }
+}
+
+// Cierra el modo de dibujo de circuito y limpia los puntos y líneas temporales
+function cerrarEdicionCircuito() {
+  const mapCanvas = $('adminMapCanvas');
+  const mapPanel = document.querySelector('.map-panel');
+
+  modoEdicionCircuito = false;
+  puntosCircuitoEnDibujo = [];
+
+  // Volvemos el botón a su estado azul original
+  if (btnCrearCircuitoMapa) {
+    btnCrearCircuitoMapa.classList.remove('btn-map-red');
+    btnCrearCircuitoMapa.classList.add('btn-map-blue');
+    btnCrearCircuitoMapa.innerHTML = '<i class="bi bi-bounding-box"></i> <span>Crear circuito</span>';
+  }
+
+  // Quitamos la clase y el cursor de dibujo
+  mapCanvas?.classList.remove('modo-crear-circuito');
+  mapPanel?.classList.remove('modo-crear-circuito');
+  if (mapCanvas) {
+    mapCanvas.style.cursor = '';
+  }
+
+  // Ocultamos la barra superior de ayuda y el formulario flotante
+  circuitoDrawingBar?.classList.add('d-none');
+  formCircuitoMapaWrap?.classList.add('d-none');
+  formCircuitoMapa?.reset();
+
+  // Quitamos los marcadores de puntos dibujados en el mapa
+  marcadoresPuntosCircuito.forEach(marcador => {
+    if (adminMapInstance) {
+      adminMapInstance.removeLayer(marcador);
+    }
+  });
+  marcadoresPuntosCircuito = [];
+
+  // Quitamos la vista previa del polígono
+  if (poligonoPreviewCircuito && adminMapInstance) {
+    adminMapInstance.removeLayer(poligonoPreviewCircuito);
+    poligonoPreviewCircuito = null;
+  }
+}
+
+// Abre la ventana flotante para completar el nombre y municipio del circuito cerrado
+function abrirVentanaGuardarCircuito() {
+  if (puntosCircuitoEnDibujo.length < 3) {
+    return;
+  }
+
+  // Calculamos el centro aproximado de los puntos marcados
+  let sumaLat = 0;
+  let sumaLng = 0;
+  puntosCircuitoEnDibujo.forEach(p => {
+    sumaLat += p[0];
+    sumaLng += p[1];
+  });
+  const centroLat = sumaLat / puntosCircuitoEnDibujo.length;
+  const centroLng = sumaLng / puntosCircuitoEnDibujo.length;
+
+  // Identificamos automáticamente en qué municipio cae la zona delimitada
+  const mun = typeof identificarMunicipioPorPunto === 'function'
+    ? identificarMunicipioPorPunto(centroLat, centroLng)
+    : null;
+  const letraMun = mun ? mun.id : 'CH';
+
+  // Asignamos el municipio en el selector del formulario
+  if (mapCircuitoMunicipio) {
+    mapCircuitoMunicipio.value = letraMun;
+  }
+  if (formCircuitoMunicipioBadge) {
+    formCircuitoMunicipioBadge.textContent = `Municipio: ${letraMun}`;
+  }
+
+  // Sugerimos automáticamente el siguiente código libre (ej: CH_101, A_101)
+  if (mapCircuitoCodigo) {
+    mapCircuitoCodigo.value = sugerirCodigoCircuito(letraMun);
+  }
+
+  // Ocultamos la barra de dibujo y mostramos la ventana flotante para guardar
+  circuitoDrawingBar?.classList.add('d-none');
+  formCircuitoMapaWrap?.classList.remove('d-none');
+  mapCircuitoCodigo?.focus();
+}
+
+// Actualiza las líneas o el polígono en tiempo real mientras el usuario marca puntos
+function actualizarPreviewCircuito() {
+  if (!adminMapInstance) return;
+
+  const cantidad = puntosCircuitoEnDibujo.length;
+  if (circuitoPuntosCount) {
+    circuitoPuntosCount.textContent = cantidad;
+  }
+
+  // Texto explicativo que va guiando al usuario
+  const guia = $('circuitoGuiaTexto');
+  if (guia) {
+    if (cantidad === 0) {
+      guia.innerHTML = 'Haz clic en el mapa para marcar el punto de inicio';
+    } else if (cantidad < 3) {
+      guia.innerHTML = `Marcando circuito: <strong>${cantidad}</strong> puntos (marca al menos 3)`;
+    } else {
+      guia.innerHTML = `Marcando circuito: <strong>${cantidad}</strong> puntos <span class="text-warning">· Clic en el punto verde para cerrar</span>`;
+    }
+  }
+
+  // Botón directo para cerrar el circuito si ya tiene 3 o más puntos
+  if (btnFinalizarPoligono) {
+    if (cantidad >= 3) {
+      btnFinalizarPoligono.classList.remove('d-none');
+      btnFinalizarPoligono.disabled = false;
+    } else {
+      btnFinalizarPoligono.classList.add('d-none');
+      btnFinalizarPoligono.disabled = true;
+    }
+  }
+
+  if (btnDeshacerPunto) {
+    btnDeshacerPunto.disabled = cantidad === 0;
+  }
+
+  // Si había una línea o polígono previo, lo quitamos para volver a dibujarlo
+  if (poligonoPreviewCircuito) {
+    adminMapInstance.removeLayer(poligonoPreviewCircuito);
+    poligonoPreviewCircuito = null;
+  }
+
+  // Si tenemos 3 o más puntos dibujamos el polígono con bordes oscuros
+  if (cantidad >= 3) {
+    poligonoPreviewCircuito = window.L.polygon(puntosCircuitoEnDibujo, {
+      color: '#0f172a',    // Borde bien oscuro
+      weight: 3,           // Borde grueso
+      fillColor: '#0284c7', // Relleno azul
+      fillOpacity: 0.32
+    }).addTo(adminMapInstance);
+  } else if (cantidad === 2) {
+    // Si tenemos solo 2 puntos dibujamos una línea que los une
+    poligonoPreviewCircuito = window.L.polyline(puntosCircuitoEnDibujo, {
+      color: '#0f172a',
+      weight: 3,
+      dashArray: '5, 5'
+    }).addTo(adminMapInstance);
+  }
+}
+
+// Genera una sugerencia del siguiente código de circuito para un municipio (ej: CH_101)
+function sugerirCodigoCircuito(municipioLetra) {
+  const m = String(municipioLetra || 'CH').toUpperCase();
+  const existentesDelMunicipio = listaCircuitosCargados
+    .map(c => String(c.id_circuito || ''))
+    .filter(codigo => codigo.startsWith(m + '_') || codigo.startsWith(m + '-'));
+
+  if (m === 'B') {
+    let num = 1;
+    while (existentesDelMunicipio.includes(`B_${num < 10 ? '0' + num : num}`)) {
+      num++;
+    }
+    return `B_${num < 10 ? '0' + num : num}`;
+  }
+
+  let num = 101;
+  while (existentesDelMunicipio.includes(`${m}_${num}`)) {
+    num++;
+  }
+  return `${m}_${num}`;
+}
+
+// Procesa clics del usuario sobre el mapa o sobre elementos existentes
+function procesarClicEnMapa(latlng) {
+  if (!latlng) return;
+
+  const lat = Number(latlng.lat.toFixed(6));
+  const lng = Number(latlng.lng.toFixed(6));
+
+  // Modo 1: Creación de contenedor
+  if (modoEdicionContenedor) {
+    latitudElegida = lat;
+    longitudElegida = lng;
+
+    if (puntoTemporalMapa) {
+      adminMapInstance.removeLayer(puntoTemporalMapa);
+    }
+
+    puntoTemporalMapa = window.L.circleMarker([latitudElegida, longitudElegida], {
+      radius: 9,
+      fillColor: '#22c55e',
+      color: '#ffffff',
+      weight: 2,
+      fillOpacity: 1
+    }).addTo(adminMapInstance);
+
+    const munDetectado = typeof identificarMunicipioPorPunto === 'function'
+      ? identificarMunicipioPorPunto(latitudElegida, longitudElegida)
+      : null;
+    const letraMun = munDetectado ? munDetectado.id : 'CH';
+    const circuitoAuto = sugerirCodigoCircuito(letraMun);
+
+    if (mapContCircuitoBadge) {
+      mapContCircuitoBadge.textContent = `Circuito: ${circuitoAuto}`;
+    }
+    if (mapContAviso) {
+      mapContAviso.textContent = `ID automático · Día 1 (Verde) · Municipio ${letraMun}`;
+    }
+
+    formContenedorMapaWrap?.classList.remove('d-none');
+    $('mapContCodigo')?.focus();
+    return;
+  }
+
+  // Modo 2: Creación de circuito por puntos
+  if (modoEdicionCircuito) {
+    // Si ya tenemos al menos 3 puntos, verificamos si el usuario hizo clic cerca del inicio para cerrar el circuito
+    if (puntosCircuitoEnDibujo.length >= 3) {
+      const pInicio = adminMapInstance.latLngToContainerPoint(puntosCircuitoEnDibujo[0]);
+      const pActual = adminMapInstance.latLngToContainerPoint([lat, lng]);
+      const distanciaPx = Math.hypot(pActual.x - pInicio.x, pActual.y - pInicio.y);
+
+      // Si el clic fue a menos de 30 píxeles del punto de inicio, cerramos el círculo
+      if (distanciaPx <= 30) {
+        abrirVentanaGuardarCircuito();
+        return;
+      }
+    }
+
+    // Agregamos el nuevo punto a la lista
+    puntosCircuitoEnDibujo.push([lat, lng]);
+
+    // Si es el primer punto, le colocamos un estilo verde especial de inicio
+    if (puntosCircuitoEnDibujo.length === 1) {
+      const puntoInicio = window.L.circleMarker([lat, lng], {
+        radius: 9,
+        fillColor: '#22c55e', // Verde para identificar el inicio
+        color: '#ffffff',
+        weight: 3,
+        fillOpacity: 1
+      }).addTo(adminMapInstance);
+
+      puntoInicio.bindTooltip('Inicio (haz clic aquí para cerrar)', {
+        permanent: false,
+        direction: 'top'
+      });
+
+      // Al hacer clic directo sobre el punto de inicio con 3 o más puntos, cierra el circuito
+      puntoInicio.on('click', evento => {
+        if (modoEdicionCircuito && puntosCircuitoEnDibujo.length >= 3) {
+          if (evento.originalEvent) evento.originalEvent.stopPropagation();
+          abrirVentanaGuardarCircuito();
+        }
+      });
+
+      marcadoresPuntosCircuito.push(puntoInicio);
+    } else {
+      // Puntos normales del polígono
+      const puntoMarcador = window.L.circleMarker([lat, lng], {
+        radius: 5,
+        fillColor: '#38bdf8',
+        color: '#ffffff',
+        weight: 2,
+        fillOpacity: 1
+      }).addTo(adminMapInstance);
+
+      marcadoresPuntosCircuito.push(puntoMarcador);
+    }
+
+    actualizarPreviewCircuito();
   }
 }
 
@@ -3048,8 +3454,8 @@ function initAdminMap() {
     return;
   }
 
-  // Creamos el mapa centrado en Montevideo
-  adminMapInstance = window.L.map('adminMapCanvas').setView([-34.9011, -56.1645], 13);
+  // Centramos el mapa en Montevideo a nivel departamental abarcando los 8 municipios
+  adminMapInstance = window.L.map('adminMapCanvas').setView([-34.86, -56.17], 12);
 
   // Agregamos la capa de calles de OpenStreetMap
   window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -3057,48 +3463,28 @@ function initAdminMap() {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(adminMapInstance);
 
-  // Creamos una capa para agrupar los puntos de los contenedores
+  // Capas organizadas en orden: Municipios abajo, luego Circuitos, luego Contenedores
+  capaMunicipiosMapa = window.L.layerGroup().addTo(adminMapInstance);
+  capaCircuitosMapa = window.L.layerGroup().addTo(adminMapInstance);
   capaContenedoresMapa = window.L.layerGroup().addTo(adminMapInstance);
 
-  // Cuando el administrador hace clic en el mapa mientras está activo "Crear contenedor"
+  // Dibujamos los límites de los municipios
+  dibujarMunicipiosEnMapa();
+
+  // Evento cuando el administrador hace clic en el mapa
   adminMapInstance.on('click', evento => {
-    if (!modoEdicionContenedor) {
-      return;
-    }
-
-    // Guardamos las coordenadas donde hizo clic
-    latitudElegida = Number(evento.latlng.lat.toFixed(6));
-    longitudElegida = Number(evento.latlng.lng.toFixed(6));
-
-    // Si ya había puesto un punto temporal antes, lo quitamos
-    if (puntoTemporalMapa) {
-      adminMapInstance.removeLayer(puntoTemporalMapa);
-    }
-
-    // Colocamos el punto verde en el lugar elegido
-    puntoTemporalMapa = window.L.circleMarker([latitudElegida, longitudElegida], {
-      radius: 9,
-      fillColor: '#22c55e',
-      color: '#ffffff',
-      weight: 2,
-      fillOpacity: 1
-    }).addTo(adminMapInstance);
-
-    // Mostramos el circuito automático que corresponde a esa ubicación
-    const circuitoAuto = detectarCircuitoSimple(latitudElegida, longitudElegida);
-    if (mapContCircuitoBadge) {
-      mapContCircuitoBadge.textContent = `Circuito: ${circuitoAuto}`;
-    }
-    if (mapContAviso) {
-      mapContAviso.textContent = 'ID automático · Día 1 (Verde) · Circuito ' + circuitoAuto;
-    }
-
-    // Abrimos la pestaña flotante para completar los datos del contenedor
-    formContenedorMapaWrap?.classList.remove('d-none');
-    $('mapContCodigo')?.focus();
+    procesarClicEnMapa(evento.latlng);
   });
 
-  // Aseguramos que el tamaño del lienzo se calcule bien al cargar y al redimensionar la pantalla
+  // Doble clic sobre el mapa para cerrar el circuito si ya tiene 3 o más puntos
+  adminMapInstance.on('dblclick', evento => {
+    if (modoEdicionCircuito && puntosCircuitoEnDibujo.length >= 3) {
+      if (evento.originalEvent) evento.originalEvent.stopPropagation();
+      abrirVentanaGuardarCircuito();
+    }
+  });
+
+  // Aseguramos que el tamaño del lienzo se calcule bien
   setTimeout(() => {
     adminMapInstance?.invalidateSize();
   }, 150);
@@ -3110,28 +3496,28 @@ function initAdminMap() {
     observer.observe(mapCanvas);
   }
 
-  // Cargamos los contenedores que ya están guardados en la base de datos
+  // Cargamos los circuitos y los contenedores
+  cargarCircuitosEnMapa();
   cargarContenedoresEnMapa();
 }
 
-// Al hacer clic en el botón "Crear contenedor" / "Cerrar edición"
+// Botón "Crear contenedor" / "Cerrar edición"
 btnCrearContenedorMapa?.addEventListener('click', () => {
   const mapCanvas = $('adminMapCanvas');
 
   if (!modoEdicionContenedor) {
-    // Activamos el modo edición: botón pasa a rojo y cambia el cursor del mapa
+    cerrarEdicionCircuito();
     modoEdicionContenedor = true;
     btnCrearContenedorMapa.classList.remove('btn-map-green');
     btnCrearContenedorMapa.classList.add('btn-map-red');
     btnCrearContenedorMapa.innerHTML = '<i class="bi bi-x-circle"></i> <span>Cerrar edición</span>';
     mapCanvas?.classList.add('modo-crear-contenedor');
   } else {
-    // Si ya estaba en modo edición, lo cerramos
     cerrarEdicionContenedor();
   }
 });
 
-// Botón "Cancelar" dentro de la pestaña flotante
+// Botón "Cancelar" dentro de la pestaña flotante de contenedor
 btnCancelarContMapa?.addEventListener('click', () => {
   formContenedorMapaWrap?.classList.add('d-none');
   formContenedorMapa?.reset();
@@ -3142,7 +3528,7 @@ btnCancelarContMapa?.addEventListener('click', () => {
   }
 });
 
-// Al enviar el formulario flotante para guardar el contenedor en la API de Gestión
+// Guardar contenedor en la API de Gestión
 formContenedorMapa?.addEventListener('submit', async evento => {
   evento.preventDefault();
 
@@ -3156,7 +3542,6 @@ formContenedorMapa?.addEventListener('submit', async evento => {
   }
 
   try {
-    // Enviamos los datos a la API de Gestión (ID, día 1 y circuito se asignan automáticamente)
     const respuesta = await requestGestion('/api/contenedores', {
       method: 'POST',
       body: {
@@ -3169,7 +3554,6 @@ formContenedorMapa?.addEventListener('submit', async evento => {
       }
     });
 
-    // Dibujamos el contenedor recién creado en el mapa y salimos del modo edición
     if (respuesta?.data) {
       dibujarContenedorEnMapa(respuesta.data);
     }
@@ -3178,6 +3562,114 @@ formContenedorMapa?.addEventListener('submit', async evento => {
   } catch (error) {
     if (mapContAviso) {
       mapContAviso.textContent = error.message;
+    }
+  } finally {
+    if (btnGuardar) {
+      btnGuardar.disabled = false;
+    }
+  }
+});
+
+// Botón "Crear circuito" / "Cerrar edición"
+btnCrearCircuitoMapa?.addEventListener('click', () => {
+  const mapCanvas = $('adminMapCanvas');
+  const mapPanel = document.querySelector('.map-panel');
+
+  if (!modoEdicionCircuito) {
+    cerrarEdicionContenedor();
+    modoEdicionCircuito = true;
+
+    // Cambiamos el botón a rojo
+    btnCrearCircuitoMapa.classList.remove('btn-map-blue');
+    btnCrearCircuitoMapa.classList.add('btn-map-red');
+    btnCrearCircuitoMapa.innerHTML = '<i class="bi bi-x-circle"></i> <span>Cerrar edición</span>';
+
+    // Cambiamos la forma y color del cursor en el mapa
+    mapCanvas?.classList.add('modo-crear-circuito');
+    mapPanel?.classList.add('modo-crear-circuito');
+    if (mapCanvas) mapCanvas.style.cursor = 'crosshair';
+
+    // Mostramos la barra superior de guía
+    circuitoDrawingBar?.classList.remove('d-none');
+    actualizarPreviewCircuito();
+  } else {
+    cerrarEdicionCircuito();
+  }
+});
+
+// Deshacer el último punto marcado en el circuito
+btnDeshacerPunto?.addEventListener('click', () => {
+  if (puntosCircuitoEnDibujo.length === 0) return;
+
+  puntosCircuitoEnDibujo.pop();
+  const marcador = marcadoresPuntosCircuito.pop();
+  if (marcador && adminMapInstance) {
+    adminMapInstance.removeLayer(marcador);
+  }
+  actualizarPreviewCircuito();
+});
+
+// Cancelar dibujo desde la barra flotante
+btnCancelarCircuito?.addEventListener('click', () => {
+  cerrarEdicionCircuito();
+});
+
+// Botón para cerrar el circuito y abrir el formulario
+btnFinalizarPoligono?.addEventListener('click', () => {
+  abrirVentanaGuardarCircuito();
+});
+
+// Cuando el usuario cambia manualmente el municipio en el formulario
+mapCircuitoMunicipio?.addEventListener('change', () => {
+  const m = mapCircuitoMunicipio.value;
+  if (formCircuitoMunicipioBadge) {
+    formCircuitoMunicipioBadge.textContent = `Municipio: ${m}`;
+  }
+  if (mapCircuitoCodigo) {
+    mapCircuitoCodigo.value = sugerirCodigoCircuito(m);
+  }
+});
+
+// Cancelar guardado del circuito desde el formulario flotante
+btnCancelarCircuitoMapa?.addEventListener('click', () => {
+  cerrarEdicionCircuito();
+});
+
+// Guardar el nuevo circuito en la API de Gestión
+formCircuitoMapa?.addEventListener('submit', async evento => {
+  evento.preventDefault();
+
+  if (puntosCircuitoEnDibujo.length < 3) {
+    return;
+  }
+
+  const btnGuardar = $('btnGuardarCircuitoMapa');
+  if (btnGuardar) {
+    btnGuardar.disabled = true;
+  }
+
+  try {
+    const respuesta = await requestGestion('/api/circuitos', {
+      method: 'POST',
+      body: {
+        id_circuito: mapCircuitoCodigo?.value,
+        municipio: mapCircuitoMunicipio?.value,
+        zona: mapCircuitoZona?.value,
+        descripcion: mapCircuitoDesc?.value,
+        coordenadas: puntosCircuitoEnDibujo
+      }
+    });
+
+    if (respuesta?.data) {
+      dibujarCircuitoEnMapa(respuesta.data);
+      listaCircuitosCargados.push(respuesta.data);
+    }
+
+    cerrarEdicionCircuito();
+  } catch (error) {
+    const aviso = $('mapCircuitoAviso');
+    if (aviso) {
+      aviso.textContent = error.message;
     }
   } finally {
     if (btnGuardar) {

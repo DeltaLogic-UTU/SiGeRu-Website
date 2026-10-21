@@ -312,15 +312,43 @@
           aria-label="Mapa operativo interactivo de SiGeRU"
         ></div>
 
-        <!-- Botón chico arriba a la derecha para activar o cerrar la creación de contenedores -->
-        <button
-          id="btnCrearContenedorMapa"
-          class="btn-map-tool btn-map-green"
-          type="button"
-        >
-          <i class="bi bi-plus-circle"></i>
-          <span>Crear contenedor</span>
-        </button>
+        <!-- Barra de herramientas superior derecha del mapa -->
+        <div class="map-top-tools">
+          <button
+            id="btnCrearContenedorMapa"
+            class="btn-map-tool btn-map-green"
+            type="button"
+          >
+            <i class="bi bi-plus-circle"></i>
+            <span>Crear contenedor</span>
+          </button>
+
+          <button
+            id="btnCrearCircuitoMapa"
+            class="btn-map-tool btn-map-blue"
+            type="button"
+          >
+            <i class="bi bi-bounding-box"></i>
+            <span>Crear circuito</span>
+          </button>
+        </div>
+
+        <!-- Barra flotante central que guía mientras se marcan los puntos del circuito -->
+        <div id="circuitoDrawingBar" class="circuito-drawing-bar d-none">
+          <span class="drawing-info">
+            <i class="bi bi-pin-map-fill"></i>
+            <span id="circuitoGuiaTexto">Marcando circuito: <strong id="circuitoPuntosCount">0</strong> puntos</span>
+          </span>
+          <button id="btnFinalizarPoligono" class="btn btn-primary btn-sm d-none" type="button">
+            <i class="bi bi-check-circle"></i> Cerrar circuito
+          </button>
+          <button id="btnDeshacerPunto" class="btn btn-outline btn-sm" type="button" disabled>
+            Deshacer
+          </button>
+          <button id="btnCancelarCircuito" class="btn btn-outline btn-sm" type="button">
+            Cancelar
+          </button>
+        </div>
 
         <!-- Pestaña flotante que se abre al hacer clic en el mapa para cargar el nuevo contenedor -->
         <div
@@ -386,6 +414,78 @@
               </button>
               <button type="button" id="btnCancelarContMapa" class="btn btn-outline btn-sm">
                 Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Pestaña flotante para guardar el circuito delimitado -->
+        <div
+          id="formCircuitoMapaWrap"
+          class="map-floating-form d-none"
+          aria-label="Formulario para delimitar circuito en el mapa"
+        >
+          <div class="map-floating-head">
+            <strong>Nuevo circuito</strong>
+            <span id="formCircuitoMunicipioBadge" class="badge-circuito-auto">Municipio: auto</span>
+          </div>
+
+          <form id="formCircuitoMapa">
+            <label>
+              Municipio
+              <select id="mapCircuitoMunicipio" class="form-select form-select-sm" required>
+                <option value="A">Municipio A</option>
+                <option value="B">Municipio B</option>
+                <option value="C">Municipio C</option>
+                <option value="CH">Municipio CH</option>
+                <option value="D">Municipio D</option>
+                <option value="E">Municipio E</option>
+                <option value="F">Municipio F</option>
+                <option value="G">Municipio G</option>
+              </select>
+            </label>
+
+            <label>
+              Código del circuito
+              <input
+                type="text"
+                id="mapCircuitoCodigo"
+                class="form-control form-control-sm"
+                placeholder="Ej: CH_101"
+                required
+              >
+            </label>
+
+            <label>
+              Zona o barrio de referencia
+              <input
+                type="text"
+                id="mapCircuitoZona"
+                class="form-control form-control-sm"
+                placeholder="Ej: Pocitos Central"
+              >
+            </label>
+
+            <label>
+              Descripción (opcional)
+              <input
+                type="text"
+                id="mapCircuitoDesc"
+                class="form-control form-control-sm"
+                placeholder="Ej: Delimitación de ruta y recolección"
+              >
+            </label>
+
+            <small id="mapCircuitoAviso" class="map-floating-note">
+              Se creará la zona y se vinculará a los contenedores que queden dentro.
+            </small>
+
+            <div class="map-floating-actions">
+              <button type="submit" id="btnGuardarCircuitoMapa" class="btn btn-primary btn-sm">
+                Guardar zona
+              </button>
+              <button type="button" id="btnCancelarCircuitoMapa" class="btn btn-outline btn-sm">
+                Descartar
               </button>
             </div>
           </form>
@@ -1002,6 +1102,7 @@
   <!-- Librería Leaflet para renderizar el mapa operativo -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="assets/base.js"></script>
+  <script src="assets/municipios.js"></script>
   <script src="assets/app.js"></script>
   <script src="assets/solicitudes.js"></script>
 

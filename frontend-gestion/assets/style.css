@@ -179,48 +179,156 @@ html[data-theme="light"] .navbar-toggler-icon { filter: none; }
 /* Contenedor del mapa interactivo Leaflet ocupando todo el panel con position: absolute */
 .admin-map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
 
-/* Cuando el modo crear contenedor está activo, el cursor cambia a una cruz de color llamativo */
+/* Cuando el modo crear contenedor está activo, el cursor cambia a una cruz */
 .admin-map-canvas.modo-crear-contenedor,
-.admin-map-canvas.modo-crear-contenedor * {
-  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><circle cx='14' cy='14' r='9' fill='rgba(34,197,94,0.28)' stroke='%23ef4444' stroke-width='2.5'/><line x1='14' y1='2' x2='14' y2='26' stroke='%23ef4444' stroke-width='2.5'/><line x1='2' y1='14' x2='26' y2='14' stroke='%23ef4444' stroke-width='2.5'/></svg>") 14 14, crosshair !important;
+.admin-map-canvas.modo-crear-contenedor *,
+.map-panel.modo-crear-contenedor,
+.map-panel.modo-crear-contenedor * {
+  cursor: crosshair !important;
 }
 
-/* Botón chico arriba a la derecha del mapa para activar o cerrar la edición */
-.btn-map-tool {
+/* Cuando el modo delimitar circuito está activo, el cursor cambia de forma y color a una mira azul con centro rojo */
+.modo-crear-circuito,
+.modo-crear-circuito *,
+.map-panel.modo-crear-circuito,
+.map-panel.modo-crear-circuito *,
+.admin-map-canvas.modo-crear-circuito,
+.admin-map-canvas.modo-crear-circuito * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Ccircle cx='14' cy='14' r='8' fill='rgba(2,132,199,0.25)' stroke='%230284c7' stroke-width='2'/%3E%3Cline x1='14' y1='1' x2='14' y2='27' stroke='%230284c7' stroke-width='2'/%3E%3Cline x1='1' y1='14' x2='27' y2='14' stroke='%230284c7' stroke-width='2'/%3E%3Ccircle cx='14' cy='14' r='2.5' fill='%23ef4444'/%3E%3C/svg%3E") 14 14, crosshair !important;
+}
+
+/* Grupo de botones de herramientas arriba a la derecha del mapa (z-index alto para quedar sobre Leaflet) */
+.map-top-tools {
   position: absolute;
   top: .6rem;
   right: .6rem;
-  z-index: 500;
+  z-index: 1500 !important;
+  display: flex;
+  gap: .45rem;
+  align-items: center;
+  pointer-events: auto !important;
+}
+
+/* Botones chicos de herramientas en el mapa */
+.btn-map-tool {
+  position: relative;
+  z-index: 1501 !important;
   display: inline-flex;
   align-items: center;
   gap: .35rem;
-  padding: .32rem .7rem;
+  padding: .38rem .7rem;
   border: 0;
   border-radius: 8px;
-  font-size: .72rem;
+  font-size: .75rem;
   font-weight: 800;
   color: #fff;
-  box-shadow: 0 6px 16px rgba(0,0,0,.35);
-  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0,0,0,.45);
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  white-space: nowrap;
+  transition: transform .15s ease, background-color .15s ease;
+}
+.btn-map-tool:active {
+  transform: scale(0.96);
 }
 .btn-map-green { background: #16a34a; }
 .btn-map-green:hover { background: #15803d; }
+.btn-map-blue { background: #0284c7; }
+.btn-map-blue:hover { background: #0369a1; }
 .btn-map-red { background: #dc2626; }
 .btn-map-red:hover { background: #b91c1c; }
 
-/* Pestaña flotante para completar los datos del contenedor elegido en el mapa */
+/* Barra flotante mientras se dibujan los puntos del circuito */
+.circuito-drawing-bar {
+  position: absolute;
+  top: .6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1500 !important;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .35rem .75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  font-size: .72rem;
+  pointer-events: auto !important;
+}
+.drawing-info {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  color: var(--secondary);
+  font-weight: 700;
+}
+.circuito-drawing-bar .btn {
+  padding: .2rem .55rem;
+  font-size: .68rem;
+  border-radius: 7px;
+}
+
+/* Etiquetas flotantes en el mapa para circuitos (con bordes oscuros) */
+.circuito-map-label {
+  display: inline-block;
+  padding: .18rem .4rem;
+  border-radius: 6px;
+  background: #0f172a;
+  border: 1.5px solid #38bdf8;
+  color: #ffffff;
+  font-size: .68rem;
+  font-weight: 800;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 3px 8px rgba(0,0,0,.45);
+}
+
+/* Insignias para diferenciar claramente los 8 municipios de Montevideo */
+.municipio-map-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .2rem .55rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .03em;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(0,0,0,.4);
+}
+.municipio-map-badge .mun-letra {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: .65rem;
+  font-weight: 900;
+}
+
+/* Pestaña flotante para completar los datos del contenedor o circuito elegido en el mapa */
 .map-floating-form {
   position: absolute;
   top: 2.7rem;
   right: .6rem;
-  z-index: 500;
-  width: 245px;
+  z-index: 1500 !important;
+  width: 250px;
   padding: .65rem .75rem;
   border: 1px solid var(--line);
   border-radius: 11px;
   background: color-mix(in srgb, var(--panel) 96%, transparent);
   backdrop-filter: blur(8px);
-  box-shadow: var(--shadow);
+  box-shadow: 0 10px 30px rgba(0,0,0,.4);
+  pointer-events: auto !important;
 }
 .map-floating-head {
   display: flex;
