@@ -2904,12 +2904,11 @@ document
 
 
 /* ==========================================================================
-   MAPA OPERATIVO: CONTENEDORES, CIRCUITOS Y MUNICIPIOS DE MONTEVIDEO
+   MAPA OPERATIVO: CONTENEDORES Y CIRCUITOS
    ========================================================================== */
 
 // Variables principales para manejar las capas del mapa
 let adminMapInstance = null;
-let capaMunicipiosMapa = null;
 let capaCircuitosMapa = null;
 let capaContenedoresMapa = null;
 
@@ -2943,8 +2942,6 @@ const btnDeshacerPunto = $('btnDeshacerPunto');
 const btnCancelarCircuito = $('btnCancelarCircuito');
 const formCircuitoMapaWrap = $('formCircuitoMapaWrap');
 const formCircuitoMapa = $('formCircuitoMapa');
-const formCircuitoMunicipioBadge = $('formCircuitoMunicipioBadge');
-const mapCircuitoMunicipio = $('mapCircuitoMunicipio');
 const mapCircuitoCodigo = $('mapCircuitoCodigo');
 const mapCircuitoZona = $('mapCircuitoZona');
 const mapCircuitoDesc = $('mapCircuitoDesc');
@@ -2969,56 +2966,6 @@ function obtenerColorContenedor(dias) {
   return '#18181b'; // Negro: 6 o más días
 }
 
-// Dibuja los límites de los 8 municipios de Montevideo con colores suaves pero bien visibles
-function dibujarMunicipiosEnMapa() {
-  if (!capaMunicipiosMapa || typeof MUNICIPIOS_MONTEVIDEO === 'undefined') {
-    return;
-  }
-
-  capaMunicipiosMapa.clearLayers();
-
-  MUNICIPIOS_MONTEVIDEO.forEach(m => {
-    // Polígono de delimitación de cada municipio con color suave y borde visible
-    const poligono = window.L.polygon(m.coordenadas, {
-      color: m.color,
-      weight: 2,
-      dashArray: '4, 4',
-      fillColor: m.color,
-      fillOpacity: 0.20,
-      interactive: false
-    });
-
-    poligono.addTo(capaMunicipiosMapa);
-
-    // Calculamos el centro aproximado para colocar una etiqueta clara del municipio
-    let sumaLat = 0;
-    let sumaLng = 0;
-    m.coordenadas.forEach(p => {
-      sumaLat += p[0];
-      sumaLng += p[1];
-    });
-    const centroLat = sumaLat / m.coordenadas.length;
-    const centroLng = sumaLng / m.coordenadas.length;
-
-    const iconoMunicipio = window.L.divIcon({
-      className: '',
-      html: `
-        <div class="municipio-map-badge" style="border-color: ${m.color}">
-          <span class="mun-letra">${escapeHtml(m.id)}</span>
-          <span>Municipio ${escapeHtml(m.id)}</span>
-        </div>
-      `,
-      iconSize: [115, 26],
-      iconAnchor: [57, 13]
-    });
-
-    window.L.marker([centroLat, centroLng], {
-      icon: iconoMunicipio,
-      interactive: false
-    }).addTo(capaMunicipiosMapa);
-  });
-}
-
 // Dibuja un circuito delimitado en el mapa con bordes bien oscuros
 function dibujarCircuitoEnMapa(circuito) {
   if (!capaCircuitosMapa || !Array.isArray(circuito.coordenadas) || circuito.coordenadas.length < 3) {
@@ -3038,8 +2985,7 @@ function dibujarCircuitoEnMapa(circuito) {
   // Popup con los datos del circuito al hacer clic
   poligono.bindPopup(
     `<strong>Circuito ${escapeHtml(circuito.id_circuito)}</strong><br>` +
-    `Municipio: <b>${escapeHtml(circuito.municipio)}</b><br>` +
-    `Zona: ${escapeHtml(circuito.zona || '—')}<br>` +
+    (circuito.zona ? `Zona: ${escapeHtml(circuito.zona)}<br>` : '') +
     `Contenedores en el circuito: <b>${totalCont}</b>`
   );
 
@@ -3221,39 +3167,15 @@ function cerrarEdicionCircuito() {
   }
 }
 
-// Abre la ventana flotante para completar el nombre y municipio del circuito cerrado
+// Abre la ventana flotante para completar el código y la zona del circuito cerrado
 function abrirVentanaGuardarCircuito() {
   if (puntosCircuitoEnDibujo.length < 3) {
     return;
   }
 
-  // Calculamos el centro aproximado de los puntos marcados
-  let sumaLat = 0;
-  let sumaLng = 0;
-  puntosCircuitoEnDibujo.forEach(p => {
-    sumaLat += p[0];
-    sumaLng += p[1];
-  });
-  const centroLat = sumaLat / puntosCircuitoEnDibujo.length;
-  const centroLng = sumaLng / puntosCircuitoEnDibujo.length;
-
-  // Identificamos automáticamente en qué municipio cae la zona delimitada
-  const mun = typeof identificarMunicipioPorPunto === 'function'
-    ? identificarMunicipioPorPunto(centroLat, centroLng)
-    : null;
-  const letraMun = mun ? mun.id : 'CH';
-
-  // Asignamos el municipio en el selector del formulario
-  if (mapCircuitoMunicipio) {
-    mapCircuitoMunicipio.value = letraMun;
-  }
-  if (formCircuitoMunicipioBadge) {
-    formCircuitoMunicipioBadge.textContent = `Municipio: ${letraMun}`;
-  }
-
-  // Sugerimos automáticamente el siguiente código libre (ej: CH_101, A_101)
+  // Sugerimos automáticamente el siguiente código libre (ej: CIR_101)
   if (mapCircuitoCodigo) {
-    mapCircuitoCodigo.value = sugerirCodigoCircuito(letraMun);
+    mapCircuitoCodigo.value = sugerirCodigoCircuito();
   }
 
   // Ocultamos la barra de dibujo y mostramos la ventana flotante para guardar
@@ -3322,26 +3244,14 @@ function actualizarPreviewCircuito() {
   }
 }
 
-// Genera una sugerencia del siguiente código de circuito para un municipio (ej: CH_101)
-function sugerirCodigoCircuito(municipioLetra) {
-  const m = String(municipioLetra || 'CH').toUpperCase();
-  const existentesDelMunicipio = listaCircuitosCargados
-    .map(c => String(c.id_circuito || ''))
-    .filter(codigo => codigo.startsWith(m + '_') || codigo.startsWith(m + '-'));
-
-  if (m === 'B') {
-    let num = 1;
-    while (existentesDelMunicipio.includes(`B_${num < 10 ? '0' + num : num}`)) {
-      num++;
-    }
-    return `B_${num < 10 ? '0' + num : num}`;
-  }
-
+// Genera una sugerencia del siguiente código correlativo de circuito (ej: CIR_101, CIR_102)
+function sugerirCodigoCircuito() {
+  const existentes = listaCircuitosCargados.map(c => String(c.id_circuito || ''));
   let num = 101;
-  while (existentesDelMunicipio.includes(`${m}_${num}`)) {
+  while (existentes.includes(`CIR_${num}`) || existentes.includes(`C_${num}`)) {
     num++;
   }
-  return `${m}_${num}`;
+  return `CIR_${num}`;
 }
 
 // Procesa clics del usuario sobre el mapa o sobre elementos existentes
@@ -3368,17 +3278,13 @@ function procesarClicEnMapa(latlng) {
       fillOpacity: 1
     }).addTo(adminMapInstance);
 
-    const munDetectado = typeof identificarMunicipioPorPunto === 'function'
-      ? identificarMunicipioPorPunto(latitudElegida, longitudElegida)
-      : null;
-    const letraMun = munDetectado ? munDetectado.id : 'CH';
-    const circuitoAuto = sugerirCodigoCircuito(letraMun);
+    const circuitoAuto = sugerirCodigoCircuito();
 
     if (mapContCircuitoBadge) {
       mapContCircuitoBadge.textContent = `Circuito: ${circuitoAuto}`;
     }
     if (mapContAviso) {
-      mapContAviso.textContent = `ID automático · Día 1 (Verde) · Municipio ${letraMun}`;
+      mapContAviso.textContent = 'ID automático · Día 1 (Verde)';
     }
 
     formContenedorMapaWrap?.classList.remove('d-none');
@@ -3454,8 +3360,8 @@ function initAdminMap() {
     return;
   }
 
-  // Centramos el mapa en Montevideo a nivel departamental abarcando los 8 municipios
-  adminMapInstance = window.L.map('adminMapCanvas').setView([-34.86, -56.17], 12);
+  // Centramos el mapa en Montevideo
+  adminMapInstance = window.L.map('adminMapCanvas').setView([-34.88, -56.17], 13);
 
   // Agregamos la capa de calles de OpenStreetMap
   window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -3463,13 +3369,9 @@ function initAdminMap() {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(adminMapInstance);
 
-  // Capas organizadas en orden: Municipios abajo, luego Circuitos, luego Contenedores
-  capaMunicipiosMapa = window.L.layerGroup().addTo(adminMapInstance);
+  // Capas organizadas: Circuitos abajo, luego Contenedores encima
   capaCircuitosMapa = window.L.layerGroup().addTo(adminMapInstance);
   capaContenedoresMapa = window.L.layerGroup().addTo(adminMapInstance);
-
-  // Dibujamos los límites de los municipios
-  dibujarMunicipiosEnMapa();
 
   // Evento cuando el administrador hace clic en el mapa
   adminMapInstance.on('click', evento => {
@@ -3619,17 +3521,6 @@ btnFinalizarPoligono?.addEventListener('click', () => {
   abrirVentanaGuardarCircuito();
 });
 
-// Cuando el usuario cambia manualmente el municipio en el formulario
-mapCircuitoMunicipio?.addEventListener('change', () => {
-  const m = mapCircuitoMunicipio.value;
-  if (formCircuitoMunicipioBadge) {
-    formCircuitoMunicipioBadge.textContent = `Municipio: ${m}`;
-  }
-  if (mapCircuitoCodigo) {
-    mapCircuitoCodigo.value = sugerirCodigoCircuito(m);
-  }
-});
-
 // Cancelar guardado del circuito desde el formulario flotante
 btnCancelarCircuitoMapa?.addEventListener('click', () => {
   cerrarEdicionCircuito();
@@ -3653,7 +3544,6 @@ formCircuitoMapa?.addEventListener('submit', async evento => {
       method: 'POST',
       body: {
         id_circuito: mapCircuitoCodigo?.value,
-        municipio: mapCircuitoMunicipio?.value,
         zona: mapCircuitoZona?.value,
         descripcion: mapCircuitoDesc?.value,
         coordenadas: puntosCircuitoEnDibujo
@@ -3678,6 +3568,65 @@ formCircuitoMapa?.addEventListener('submit', async evento => {
   }
 });
 
+
+// COLORES SUAVES PARA DIFERENCIAR LOS MUNICIPIOS EN EL MAPA
+const colores_municipios = [
+   '#3b82f6', // A (azul)
+  '#10b981', // B (verde)
+  '#8b5cf6', // C (violeta)
+  '#06b6d4', // CH (cian)
+  '#f59e0b', // D (amarillo)
+  '#ec4899', // E (rosa)
+  '#14b8a6', // F (turquesa)
+  '#6366f1'  // G (índigo)
+];
+
+const letras_municipios = ['A', 'B', 'C', 'CH', 'D', 'E', 'F', 'G'];
+
+async function cargarMunicipiosDesdeJson() {
+  try {
+    // se trae a la ap el archivo municipios
+    const respuesta = await fetch('../municipios/sig_municipios.json');
+    const datos = await respuesta.json();
+
+    // se define la proyección del mapa (EPSG:4326)
+    proj4.defs("EPSG:32721", "+proj=utm +zone=21 +south +datum=WGS84 +units=m +no_defs");
+
+    // se recorre las 8 geometrias que estan en el archivo de municipios 
+    datos.geometries.forEach((geometria, indice) =>{
+      const letra = letras_municipios[indice];
+      const color = colores_municipios[indice];
+
+      //convertimos cada coordenada [X, Y] a Latitud y longitud, 
+      
+      const puntosLeaflet = [];
+      const puntosOriginales = geometria.coordinates[0];
+
+      for(let i = 0; i < puntosOriginales.length; i += 4){
+        const [x, y] = puntosOriginales[i];
+        const [lon, lat] = proj4("EPSG:32721", "EPSG:4326", [x, y]);
+        puntosLeaflet.push([lat, lon]);
+      }
+
+      //Se dibuja los poligonos representado cada municipio dentro del mapa leaflet
+      const poligono = L.polygon(puntosLeaflet, {
+        color: color,
+        weight: 1, //borde del poligono
+        opacity: 0.5, //opacidad del borde
+        fillColor: color,
+        fillOpacity: 0.08,//transparencia del relleno
+        interactive: false // para que no interfiera al hacer clic en el mapa
+      });
+
+      poligono.addTo(adminMapInstance);
+    });
+    
+  } catch (error) {
+    console.error('Error al cargar los municipios:', error);
+  }
+}
+
 initAdminMap();
+cargarMunicipiosDesdeJson();
 
 init();

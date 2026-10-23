@@ -286,35 +286,6 @@ html[data-theme="light"] .navbar-toggler-icon { filter: none; }
   box-shadow: 0 3px 8px rgba(0,0,0,.45);
 }
 
-/* Insignias para diferenciar claramente los 8 municipios de Montevideo */
-.municipio-map-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: .3rem;
-  padding: .2rem .55rem;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.88);
-  border: 1.5px solid rgba(255, 255, 255, 0.4);
-  color: #ffffff;
-  font-size: .72rem;
-  font-weight: 800;
-  letter-spacing: .03em;
-  pointer-events: none;
-  white-space: nowrap;
-  box-shadow: 0 3px 10px rgba(0,0,0,.4);
-}
-.municipio-map-badge .mun-letra {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  font-size: .65rem;
-  font-weight: 900;
-}
-
 /* Pestaña flotante para completar los datos del contenedor o circuito elegido en el mapa */
 .map-floating-form {
   position: absolute;

@@ -427,31 +427,16 @@
         >
           <div class="map-floating-head">
             <strong>Nuevo circuito</strong>
-            <span id="formCircuitoMunicipioBadge" class="badge-circuito-auto">Municipio: auto</span>
           </div>
 
           <form id="formCircuitoMapa">
-            <label>
-              Municipio
-              <select id="mapCircuitoMunicipio" class="form-select form-select-sm" required>
-                <option value="A">Municipio A</option>
-                <option value="B">Municipio B</option>
-                <option value="C">Municipio C</option>
-                <option value="CH">Municipio CH</option>
-                <option value="D">Municipio D</option>
-                <option value="E">Municipio E</option>
-                <option value="F">Municipio F</option>
-                <option value="G">Municipio G</option>
-              </select>
-            </label>
-
             <label>
               Código del circuito
               <input
                 type="text"
                 id="mapCircuitoCodigo"
                 class="form-control form-control-sm"
-                placeholder="Ej: CH_101"
+                placeholder="Ej: CIR_101"
                 required
               >
             </label>
@@ -1101,8 +1086,12 @@
 
   <!-- Librería Leaflet para renderizar el mapa operativo -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+   <!-- Libreria para convertir coordenadas UTM de montevideo a latitud/longitud -->
+   <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js"> 
+  </script>
+
   <script src="assets/base.js"></script>
-  <script src="assets/municipios.js"></script>
   <script src="assets/app.js"></script>
   <script src="assets/solicitudes.js"></script>
 
