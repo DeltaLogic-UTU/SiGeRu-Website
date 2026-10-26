@@ -3019,10 +3019,18 @@ function dibujarCircuitoEnMapa(circuito) {
     iconAnchor: [28, 11]
   });
 
-  window.L.marker([centroLat, centroLng], {
+  const marcadorEtiqueta = window.L.marker([centroLat, centroLng], {
     icon: iconoEtiqueta,
     interactive: false
   }).addTo(capaCircuitosMapa);
+
+  // Si el mapa está alejado (zoom < 14), ocultamos la etiqueta para no saturar la vista
+  if (adminMapInstance && adminMapInstance.getZoom() < 14) {
+    setTimeout(() => {
+      const el = marcadorEtiqueta.getElement();
+      if (el) el.style.display = 'none';
+    }, 0);
+  }
 }
 
 // Carga los circuitos desde la API de Gestión y los dibuja en el mapa
@@ -3378,6 +3386,15 @@ function initAdminMap() {
     procesarClicEnMapa(evento.latlng);
   });
 
+  // Muestra u oculta los nombres de los circuitos según el nivel de zoom (se ven al acercarse con zoom >= 14)
+  adminMapInstance.on('zoomend', () => {
+    const zoomActual = adminMapInstance.getZoom();
+    const etiquetas = document.querySelectorAll('.circuito-map-label');
+    etiquetas.forEach(et => {
+      et.style.display = zoomActual >= 14 ? 'inline-block' : 'none';
+    });
+  });
+
   // Doble clic sobre el mapa para cerrar el circuito si ya tiene 3 o más puntos
   adminMapInstance.on('dblclick', evento => {
     if (modoEdicionCircuito && puntosCircuitoEnDibujo.length >= 3) {
@@ -3571,7 +3588,7 @@ formCircuitoMapa?.addEventListener('submit', async evento => {
 
 // COLORES SUAVES PARA DIFERENCIAR LOS MUNICIPIOS EN EL MAPA
 const colores_municipios = [
-   '#3b82f6', // A (azul)
+  '#f6483b', // A (azul)
   '#10b981', // B (verde)
   '#8b5cf6', // C (violeta)
   '#06b6d4', // CH (cian)

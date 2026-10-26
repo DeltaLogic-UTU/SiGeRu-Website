@@ -272,18 +272,17 @@ html[data-theme="light"] .navbar-toggler-icon { filter: none; }
 
 /* Etiquetas flotantes en el mapa para circuitos (con bordes oscuros) */
 .circuito-map-label {
-  display: inline-block;
-  padding: .18rem .4rem;
-  border-radius: 6px;
-  background: #0f172a;
-  border: 1.5px solid #38bdf8;
-  color: #ffffff;
-  font-size: .68rem;
+  background: transparent;     /* Sin caja ni fondo */
+  border: none;                /* Sin bordes */
+  box-shadow: none;            /* Sin sombra de caja */
+  color: #000000;              /* Letras negras */
+  font-size: .75rem;
   font-weight: 800;
   text-align: center;
   white-space: nowrap;
   pointer-events: none;
-  box-shadow: 0 3px 8px rgba(0,0,0,.45);
+  /* Halo blanco sutil alrededor de las letras para que se lean perfecto sobre cualquier calle */
+  text-shadow: 1px 1px 2px #ffffff, -1px -1px 2px #ffffff, 0 0 4px #ffffff;
 }
 
 /* Pestaña flotante para completar los datos del contenedor o circuito elegido en el mapa */
