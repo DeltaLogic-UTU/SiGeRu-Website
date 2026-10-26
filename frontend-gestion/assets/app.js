@@ -2917,6 +2917,9 @@ let modoEdicionContenedor = false;
 let puntoTemporalMapa = null;
 let latitudElegida = null;
 let longitudElegida = null;
+let listaContenedoresMapa = [];
+let poligonosMunicipios = [];
+let contenedorEditandoId = null;
 
 // Variables para la delimitación y creación de circuitos por puntos
 let modoEdicionCircuito = false;
@@ -3072,7 +3075,6 @@ function dibujarContenedorEnMapa(contenedor) {
       fillOpacity: 0.95
     }
   );
-
   // Al hacer clic sobre el punto, muestra los datos del contenedor
   marcador.bindPopup(
     `<strong>Contenedor #${escapeHtml(contenedor.id_contenedor)}</strong><br>` +
@@ -3083,6 +3085,32 @@ function dibujarContenedorEnMapa(contenedor) {
     `Circuito: ${escapeHtml(contenedor.circuito)}<br>` +
     `Días sin recolección: ${escapeHtml(contenedor.dias_sin_recoleccion)}`
   );
+
+  // Si estamos en modo edición y tocamos este contenedor, abrimos sus datos para cambiar estado o reubicarlo
+  marcador.on('click', evento => {
+    if (!modoEdicionContenedor) return;
+
+    marcador.closePopup();
+    window.L.DomEvent.stopPropagation(evento);
+
+    contenedorEditandoId = contenedor.id_contenedor;
+    latitudElegida = Number(contenedor.latitud);
+    longitudElegida = Number(contenedor.longitud);
+
+    if ($('mapContCodigo')) $('mapContCodigo').value = contenedor.codigo || '';
+    if ($('mapContTipo')) $('mapContTipo').value = contenedor.tipo || 'general';
+    if ($('mapContCapacidad')) $('mapContCapacidad').value = String(contenedor.capacidad || '2000');
+    if ($('mapContEstado')) $('mapContEstado').value = contenedor.estado || 'funcional';
+
+    if (mapContCircuitoBadge) {
+      mapContCircuitoBadge.textContent = `Editando #${contenedor.id_contenedor}`;
+    }
+    if (mapContAviso) {
+      mapContAviso.textContent = 'Cambiá el estado o hacé clic en el mapa para reubicarlo';
+    }
+
+    formContenedorMapaWrap?.classList.remove('d-none');
+  });
 
   marcador.addTo(capaContenedoresMapa);
 }
@@ -3096,6 +3124,7 @@ async function cargarContenedoresEnMapa() {
   try {
     const respuesta = await requestGestion('/api/contenedores');
     const lista = listData(respuesta);
+    listaContenedoresMapa = lista;
 
     capaContenedoresMapa.clearLayers();
 
@@ -3116,6 +3145,7 @@ function cerrarEdicionContenedor() {
   modoEdicionContenedor = false;
   latitudElegida = null;
   longitudElegida = null;
+  contenedorEditandoId = null;
 
   if (btnCrearContenedorMapa) {
     btnCrearContenedorMapa.classList.remove('btn-map-red');
@@ -3262,6 +3292,41 @@ function sugerirCodigoCircuito() {
   return `CIR_${num}`;
 }
 
+// Comprueba si un punto [lat, lng] está dentro de un polígono
+function puntoDentroDePoligono(lat, lng, puntos) {
+  let dentro = false;
+  for (let i = 0, j = puntos.length - 1; i < puntos.length; j = i++) {
+    const latI = puntos[i][0], lngI = puntos[i][1];
+    const latJ = puntos[j][0], lngJ = puntos[j][1];
+    const cruza = ((lngI > lng) !== (lngJ > lng)) &&
+      (lat < (latJ - latI) * (lng - lngI) / ((lngJ - lngI) || 0.0000001) + latI);
+    if (cruza) dentro = !dentro;
+  }
+  return dentro;
+}
+
+// Genera el código automático según el municipio donde se hizo clic y el último número (ej: CH-CONT-111)
+function sugerirCodigoContenedor(lat, lng) {
+  let municipio = 'CH';
+  for (const m of poligonosMunicipios) {
+    if (puntoDentroDePoligono(lat, lng, m.puntos)) {
+      municipio = m.letra;
+      break;
+    }
+  }
+
+  let maxNum = 100;
+  listaContenedoresMapa.forEach(c => {
+    const partes = String(c.codigo || '').match(/(\d+)$/);
+    if (partes) {
+      const n = Number(partes[1]);
+      if (n > maxNum) maxNum = n;
+    }
+  });
+
+  return `${municipio}-CONT-${maxNum + 1}`;
+}
+
 // Procesa clics del usuario sobre el mapa o sobre elementos existentes
 function procesarClicEnMapa(latlng) {
   if (!latlng) return;
@@ -3286,13 +3351,21 @@ function procesarClicEnMapa(latlng) {
       fillOpacity: 1
     }).addTo(adminMapInstance);
 
-    const circuitoAuto = sugerirCodigoCircuito();
-
-    if (mapContCircuitoBadge) {
-      mapContCircuitoBadge.textContent = `Circuito: ${circuitoAuto}`;
-    }
-    if (mapContAviso) {
-      mapContAviso.textContent = 'ID automático · Día 1 (Verde)';
+    if (contenedorEditandoId !== null) {
+      if (mapContAviso) {
+        mapContAviso.textContent = 'Nueva ubicación marcada · Tocá Guardar para confirmar';
+      }
+    } else {
+      const circuitoAuto = sugerirCodigoCircuito();
+      if (mapContCircuitoBadge) {
+        mapContCircuitoBadge.textContent = `Circuito: ${circuitoAuto}`;
+      }
+      if (mapContAviso) {
+        mapContAviso.textContent = 'ID automático · Día 1 (Verde)';
+      }
+      if ($('mapContCodigo')) {
+        $('mapContCodigo').value = sugerirCodigoContenedor(lat, lng);
+      }
     }
 
     formContenedorMapaWrap?.classList.remove('d-none');
@@ -3440,6 +3513,7 @@ btnCrearContenedorMapa?.addEventListener('click', () => {
 btnCancelarContMapa?.addEventListener('click', () => {
   formContenedorMapaWrap?.classList.add('d-none');
   formContenedorMapa?.reset();
+  contenedorEditandoId = null;
 
   if (puntoTemporalMapa && adminMapInstance) {
     adminMapInstance.removeLayer(puntoTemporalMapa);
@@ -3461,8 +3535,14 @@ formContenedorMapa?.addEventListener('submit', async evento => {
   }
 
   try {
-    const respuesta = await requestGestion('/api/contenedores', {
-      method: 'POST',
+    const url = contenedorEditandoId !== null
+      ? `/api/contenedores/${contenedorEditandoId}`
+      : '/api/contenedores';
+
+    const metodo = contenedorEditandoId !== null ? 'PUT' : 'POST';
+
+    const respuesta = await requestGestion(url, {
+      method: metodo,
       body: {
         codigo: $('mapContCodigo')?.value,
         tipo: $('mapContTipo')?.value,
@@ -3473,11 +3553,23 @@ formContenedorMapa?.addEventListener('submit', async evento => {
       }
     });
 
-    if (respuesta?.data) {
+    if (contenedorEditandoId !== null) {
+      await cargarContenedoresEnMapa();
+    } else if (respuesta?.data) {
+      listaContenedoresMapa.push(respuesta.data);
       dibujarContenedorEnMapa(respuesta.data);
     }
 
-    cerrarEdicionContenedor();
+    contenedorEditandoId = null;
+
+    // Ocultamos la ventanita y el punto temporal, pero seguimos en modo edición para agregar más
+    formContenedorMapaWrap?.classList.add('d-none');
+    if (puntoTemporalMapa && adminMapInstance) {
+      adminMapInstance.removeLayer(puntoTemporalMapa);
+      puntoTemporalMapa = null;
+    }
+    latitudElegida = null;
+    longitudElegida = null;
   } catch (error) {
     if (mapContAviso) {
       mapContAviso.textContent = error.message;
@@ -3636,6 +3728,7 @@ async function cargarMunicipiosDesdeJson() {
       });
 
       poligono.addTo(adminMapInstance);
+      poligonosMunicipios.push({ letra: letra, puntos: puntosLeaflet});
     });
     
   } catch (error) {
