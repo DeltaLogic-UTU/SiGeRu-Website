@@ -54,6 +54,13 @@ const historyModal =
     $('containerHistoryModal')
   );
 
+const replaceContainerForm = $('replaceContainerForm');
+
+const replaceContainerModal =
+  bootstrap.Modal.getOrCreateInstance(
+    $('replaceContainerModal')
+  );
+
 const IMAGENES_RECICLAJE = [
   '../resources/contenedor1.png',
   '../resources/contenedor2.png'
@@ -281,6 +288,9 @@ function convertirContenedor(item) {
 
     estado:
       item.estado || '',
+
+    activo:
+      Number(item.activo) === 1,
 
     diasSinRecoleccion:
       dias,
@@ -1483,6 +1493,21 @@ async function showContainer(id) {
       );
   }
 
+  $('replaceContainerBtn')?.classList.toggle(
+  'd-none',
+  !item.activo || item.estado !== 'incendiado'
+);
+
+$('editContainerBtn')?.classList.toggle(
+  'd-none',
+  !item.activo
+);
+
+$('removeContainerBtn')?.classList.toggle(
+  'd-none',
+  !item.activo
+);
+
   if (dataGrid) {
     dataGrid.innerHTML = [
       field(
@@ -2023,6 +2048,99 @@ async function recargarDatos() {
     cargarResumenCircuitos()
   ]);
 }
+
+$('replaceContainerBtn')?.addEventListener('click', () => {
+  const item = containers.find(
+    container => container.id === selectedId
+  );
+
+  if (!item || !item.activo || item.estado !== 'incendiado') {
+    return;
+  }
+
+  replaceContainerForm.reset();
+
+  $('replaceOriginalCode').textContent = item.codigo;
+
+  const mensaje = $('replaceContainerMessage');
+  mensaje.textContent = '';
+  mensaje.classList.add('d-none');
+
+  const tipoSelect = replaceContainerForm.elements['tipo'];
+
+  tipoSelect.innerHTML = catalogos.tipos.map(tipo => `
+    <option value="${escapeHtml(tipo.tipo)}">
+      ${escapeHtml(label(tipo.tipo))}
+    </option>
+  `).join('');
+
+  tipoSelect.value = item.tipo;
+
+  replaceContainerForm.elements['modelo'].value = item.modelo;
+  replaceContainerForm.elements['capacidad'].value = item.capacidad;
+
+  replaceContainerModal.show();
+});
+
+replaceContainerForm?.addEventListener('submit', async event => {
+  event.preventDefault();
+
+  const item = containers.find(
+    container => container.id === selectedId
+  );
+
+  if (!item || !item.activo || item.estado !== 'incendiado') {
+    return;
+  }
+
+  const data = new FormData(replaceContainerForm);
+
+  const payload = {
+    codigo: String(data.get('codigo') || '').trim().toUpperCase(),
+    modelo: String(data.get('modelo') || '').trim(),
+    tipo: String(data.get('tipo') || '').trim(),
+    capacidad: Number(data.get('capacidad'))
+  };
+
+  const mensaje = $('replaceContainerMessage');
+
+  const submitButton = replaceContainerForm.querySelector(
+    '[type="submit"]'
+  );
+
+  submitButton.disabled = true;
+
+  try {
+    const result = await requestGestion(
+      `/api/contenedores/${item.id}/reemplazar`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }
+    );
+
+    replaceContainerModal.hide();
+
+    selectedId = null;
+
+    await recargarDatos();
+
+    const nuevoId = Number(result?.data?.id_contenedor);
+
+    if (nuevoId) {
+      await showContainer(nuevoId);
+    } else {
+      detailPanel?.classList.add('d-none');
+      historyPanel?.classList.add('d-none');
+    }
+
+  } catch (error) {
+    mensaje.textContent = error.message;
+    mensaje.classList.remove('d-none');
+  } finally {
+    submitButton.disabled = false;
+  }
+});
 
 $('addContainerBtn')
   ?.addEventListener(
