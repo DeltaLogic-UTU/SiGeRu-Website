@@ -93,6 +93,7 @@
         <div class="d-flex gap-2 flex-wrap">
           <span class="truck-status" id="containerStatus"></span>
           <button class="btn btn-outline btn-sm" type="button" id="editContainerBtn"><i class="bi bi-pencil"></i> Editar</button>
+          <button class="btn btn-primary btn-sm d-none" type="button" id="replaceContainerBtn"><i class="bi bi-arrow-repeat"></i> Reemplazar contenedor</button>
           <button class="btn btn-outline btn-sm" type="button" id="removeContainerBtn"><i class="bi bi-trash3"></i> Quitar</button>
         </div>
       </div>
@@ -182,6 +183,87 @@
       </div>
     </div>
   </div>
+
+  <div class="modal fade" id="replaceContainerModal"
+     tabindex="-1" aria-labelledby="replaceContainerModalTitle"
+     aria-hidden="true">
+
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content admin-modal">
+
+      <form id="replaceContainerForm">
+
+        <div class="modal-header">
+          <div>
+            <span class="modal-kicker">Gestión de contenedores</span>
+            <h2 class="modal-title fs-5" id="replaceContainerModalTitle">
+              Reemplazar contenedor incendiado
+            </h2>
+          </div>
+
+          <button class="btn-close" type="button"
+                  data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+
+          <p>
+            Se reemplazará el contenedor
+            <strong id="replaceOriginalCode"></strong>.
+          </p>
+
+          <p class="text-muted-custom">
+            El nuevo contenedor conservará la ubicación y el circuito
+            del anterior. El contenedor incendiado será dado de baja.
+          </p>
+
+          <div class="truck-form-grid">
+
+            <label>
+              Código del nuevo contenedor
+              <input class="form-control" name="codigo"
+                     maxlength="50" required>
+            </label>
+
+            <label>
+              Modelo
+              <input class="form-control" name="modelo" maxlength="100" required>
+            </label>
+
+            <label>
+              Tipo
+              <select class="form-select" name="tipo" required></select>
+            </label>
+
+            <label>
+              Capacidad (m³)
+              <input class="form-control" name="capacidad"
+                     type="number" min="0" step="0.25" required>
+            </label>
+
+          </div>
+
+          <div class="form-message mt-3 d-none"
+               id="replaceContainerMessage" role="alert"></div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-outline" type="button"
+                  data-bs-dismiss="modal">
+            Cancelar
+          </button>
+
+          <button class="btn btn-primary" type="submit">
+            Confirmar reemplazo
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+</div>
 
   <div class="modal fade" id="removeContainerModal" tabindex="-1" aria-labelledby="removeContainerTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
