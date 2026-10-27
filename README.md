@@ -18,11 +18,12 @@ Actualmente funciona como un prototipo web desarrollado con:
 
 La información del sistema se obtiene mediante APIs desarrolladas con Laravel y se almacena en una base de datos MariaDB/MySQL.
 
-SiGeRu está dividido en cuatro repositorios:
+SiGeRu está dividido en cinco repositorios:
 
 - `SiGeRu-Website`: frontend del sistema.
 - `SiGeRu-API-Usuarios`: autenticación y gestión de usuarios.
 - `SiGeRu-API-Gestion`: gestión operativa del sistema.
+- `SiGeRu-API-Recoleccion`: recorridos de recolección, seguimiento de camiones y vaciado de contenedores.
 - `SiGeRu-DumpSQL`: estructura y datos de la base de datos.
 
 ## Estructura de la página
@@ -243,7 +244,7 @@ Para ejecutar el sistema completo se necesitan:
 - Composer;
 - Laravel.
 
-Se pueden encontrar las dos APIs en sus repositorios correspondientes.
+Se pueden encontrar las tres APIs en sus repositorios correspondientes.
 
 ### 1. Base de datos
 
@@ -307,7 +308,30 @@ La API funciona en:
 http://127.0.0.1:8001
 ```
 
-### 4. Frontend
+### 4. API de Recolección
+
+Dentro del repositorio:
+
+```text
+SiGeRu-API-Recoleccion
+```
+
+ejecutar:
+
+```powershell
+composer install
+copy .env.example .env
+php artisan key:generate
+php artisan serve --port=8002
+```
+
+La API funciona en:
+
+```text
+http://127.0.0.1:8002
+```
+
+### 5. Frontend
 
 Colocar el repositorio:
 
