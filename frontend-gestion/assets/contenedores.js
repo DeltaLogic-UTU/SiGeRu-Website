@@ -25,6 +25,7 @@ let filtrosCircuitos = {
 let filtrosContenedores = {
   prioridad: '',
   municipio: '',
+  barrio: '',
   tipo: ''
 };
 
@@ -114,7 +115,6 @@ const field = (name, value) => `
   </div>
 `;
 
-// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
 async function requestGestion(
   url,
   options = {}
@@ -936,30 +936,25 @@ function aplicarLimiteFilasCircuitos() {
 }
 
 function filtrarContenedores() {
-  return containers.filter(
-    item => {
-      const prioridad =
-        !filtrosContenedores.prioridad ||
-        item.nivelRecoleccion ===
-          filtrosContenedores.prioridad;
+  return containers.filter(item => {
+    const prioridad =
+      !filtrosContenedores.prioridad ||
+      item.nivelRecoleccion === filtrosContenedores.prioridad;
 
-      const municipio =
-        !filtrosContenedores.municipio ||
-        item.municipio ===
-          filtrosContenedores.municipio;
+    const municipio =
+      !filtrosContenedores.municipio ||
+      item.municipio === filtrosContenedores.municipio;
 
-      const tipo =
-        !filtrosContenedores.tipo ||
-        item.tipo ===
-          filtrosContenedores.tipo;
+    const barrio =
+      !filtrosContenedores.barrio ||
+      item.barrio === filtrosContenedores.barrio;
 
-      return (
-        prioridad &&
-        municipio &&
-        tipo
-      );
-    }
-  );
+    const tipo =
+      !filtrosContenedores.tipo ||
+      item.tipo === filtrosContenedores.tipo;
+
+    return prioridad && municipio && barrio && tipo;
+  });
 }
 
 function renderTable() {
@@ -1116,6 +1111,14 @@ function prepararFiltrosContenedores() {
         )
   );
 
+  const barrios = [
+  ...new Set(
+    containers
+      .map(item => item.barrio)
+      .filter(Boolean)
+  )
+  ].sort((a, b) => a.localeCompare(b, 'es'));
+
   const filtros =
     document.createElement(
       'div'
@@ -1127,7 +1130,7 @@ function prepararFiltrosContenedores() {
   filtros.className =
     'd-flex flex-wrap gap-2 mb-3';
 
-  filtros.innerHTML = `
+    filtros.innerHTML = `
     <select
       id="containerPriorityFilter"
       class="form-select form-select-sm w-auto"
@@ -1169,6 +1172,32 @@ function prepararFiltrosContenedores() {
             >
               Municipio ${escapeHtml(
                 municipio
+              )}
+            </option>
+          `
+        )
+        .join('')}
+    </select>
+
+    <select
+      id="containerNeighborhoodFilter"
+      class="form-select form-select-sm w-auto"
+      aria-label="Filtrar por barrio"
+    >
+      <option value="">
+        Todos los barrios
+      </option>
+
+      ${barrios
+        .map(
+          barrio => `
+            <option
+              value="${escapeHtml(
+                barrio
+              )}"
+            >
+              ${escapeHtml(
+                barrio
               )}
             </option>
           `
@@ -1230,6 +1259,20 @@ function prepararFiltrosContenedores() {
       'change',
       event => {
         filtrosContenedores.municipio =
+          event.target.value;
+
+        listadoExpandido =
+          false;
+
+        renderTable();
+      }
+    );
+
+  $('containerNeighborhoodFilter')
+    ?.addEventListener(
+      'change',
+      event => {
+        filtrosContenedores.barrio =
           event.target.value;
 
         listadoExpandido =
@@ -2285,17 +2328,16 @@ async function iniciarContenedores() {
 
     prepararCatalogosForm();
     prepararFiltrosCircuitos();
-    prepararFiltrosContenedores();
     prepararBotonExpansionCircuitos();
     prepararBotonExpansion();
 
     await recargarDatos();
 
+    prepararFiltrosContenedores();
+
     renderTable();
   } catch (error) {
-    console.error(
-      error
-    );
+    console.error(error);
 
     if (tableBody) {
       tableBody.innerHTML = `
