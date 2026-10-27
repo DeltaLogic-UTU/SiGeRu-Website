@@ -350,6 +350,22 @@
           </button>
         </div>
 
+        <!-- Barra flotante para seleccionar uno o más circuitos y generar la ruta del camión -->
+        <div id="rutaBuilderBar" class="circuito-drawing-bar d-none">
+          <span class="drawing-info">
+            <i class="bi bi-sign-turn-right-fill"></i>
+            <span id="rutaBuilderTexto">
+              Tocá los circuitos en el mapa para sumarlos: <strong id="rutaCircuitosSeleccionados">Ninguno</strong>
+            </span>
+          </span>
+          <button id="btnGenerarRutaMapa" class="btn btn-primary btn-sm" type="button">
+            <i class="bi bi-geo-alt-fill"></i> Generar ruta
+          </button>
+          <button id="btnCerrarBuilderRuta" class="btn btn-outline btn-sm" type="button">
+            Cancelar
+          </button>
+        </div>
+
         <!-- Pestaña flotante que se abre al hacer clic en el mapa para cargar el nuevo contenedor -->
         <div
           id="formContenedorMapaWrap"
@@ -422,7 +438,7 @@
           aria-label="Formulario para delimitar circuito en el mapa"
         >
           <div class="map-floating-head">
-            <strong>Nuevo circuito</strong>
+            <strong id="mapCircuitoTitulo">Nuevo circuito</strong>
           </div>
 
           <form id="formCircuitoMapa">
@@ -432,13 +448,13 @@
                 type="text"
                 id="mapCircuitoCodigo"
                 class="form-control form-control-sm"
-                placeholder="Ej: CIR_101"
+                placeholder="Ej: CH_101"
                 required
               >
             </label>
 
             <label>
-              Zona o barrio de referencia
+              Zona o barrio de referencia (opcional)
               <input
                 type="text"
                 id="mapCircuitoZona"
@@ -464,6 +480,9 @@
             <div class="map-floating-actions">
               <button type="submit" id="btnGuardarCircuitoMapa" class="btn btn-primary btn-sm">
                 Guardar zona
+              </button>
+              <button type="button" id="btnRedibujarCircuitoMapa" class="btn btn-outline btn-sm d-none">
+                Redibujar
               </button>
               <button type="button" id="btnCancelarCircuitoMapa" class="btn btn-outline btn-sm">
                 Descartar
@@ -711,12 +730,12 @@
           </div>
 
 
-          <!-- Acciones sobre el camión -->
+            <!-- Acciones sobre el camión -->
           <div class="detail-actions">
 
             <button
               class="btn btn-primary btn-sm"
-              data-truck-action="crear_ruta"
+              id="btnAsignarRutaMapa"
               type="button"
             >
               Asignar ruta
@@ -724,25 +743,23 @@
 
             <button
               class="btn btn-outline btn-sm"
-              data-truck-action="editar_ruta"
+              id="btnEnviarRutaChofer"
               type="button"
             >
-              Editar estado
+              Enviar ruta a chofer
             </button>
 
             <button
               class="btn btn-outline btn-sm"
-              data-truck-action="eliminar_ruta"
+              id="btnQuitarRutaMapa"
               type="button"
             >
               Quitar ruta
             </button>
 
           </div>
-
-        </div>
-
-      </section>
+         </div>
+      </section>  
 
 
       <section

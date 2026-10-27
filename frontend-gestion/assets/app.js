@@ -639,6 +639,17 @@ function updateVehicleDetail(camion) {
               .join('')
           : '<li>Sin integrantes asignados</li>';
   }
+    // Si el camión ya tiene una ruta generada, el botón permite editarla y sumarle más circuitos
+  const rutaGuardada = rutasPorCamion[camion.id_camion];
+  if (btnAsignarRutaMapa) {
+    btnAsignarRutaMapa.textContent = rutaGuardada
+      ? 'Editar / Agregar circuitos'
+      : 'Asignar ruta';
+  }
+  // Mostramos en el mapa la ruta del camión seleccionado (o limpiamos si no tiene)
+  if (typeof dibujarRutaDeCamionEnMapa === 'function') {
+    dibujarRutaDeCamionEnMapa(rutaGuardada || null);
+  }
 }
 
 function selectVehicle(id) {
@@ -2927,6 +2938,7 @@ let puntosCircuitoEnDibujo = [];
 let marcadoresPuntosCircuito = [];
 let poligonoPreviewCircuito = null;
 let listaCircuitosCargados = [];
+let circuitoEditandoId = null;
 
 // Elementos del HTML para contenedores
 const btnCrearContenedorMapa = $('btnCrearContenedorMapa');
@@ -2945,10 +2957,27 @@ const btnDeshacerPunto = $('btnDeshacerPunto');
 const btnCancelarCircuito = $('btnCancelarCircuito');
 const formCircuitoMapaWrap = $('formCircuitoMapaWrap');
 const formCircuitoMapa = $('formCircuitoMapa');
+const mapCircuitoTitulo = $('mapCircuitoTitulo');
 const mapCircuitoCodigo = $('mapCircuitoCodigo');
 const mapCircuitoZona = $('mapCircuitoZona');
 const mapCircuitoDesc = $('mapCircuitoDesc');
+const btnRedibujarCircuitoMapa = $('btnRedibujarCircuitoMapa');
 const btnCancelarCircuitoMapa = $('btnCancelarCircuitoMapa');
+
+// Variables y elementos para armar y editar rutas de camiones
+let modoSeleccionRuta = false;
+let circuitosSeleccionadosRuta = [];
+let poligonosCircuitosMapa = {};
+let capaRutaGenerada = null;
+let rutasPorCamion = {};
+
+const btnAsignarRutaMapa = $('btnAsignarRutaMapa');
+const btnEnviarRutaChofer = $('btnEnviarRutaChofer');
+const btnQuitarRutaMapa = $('btnQuitarRutaMapa');
+const rutaBuilderBar = $('rutaBuilderBar');
+const rutaCircuitosSeleccionados = $('rutaCircuitosSeleccionados');
+const btnGenerarRutaMapa = $('btnGenerarRutaMapa');
+const btnCerrarBuilderRuta = $('btnCerrarBuilderRuta');
 
 // Devuelve el color del contenedor según los días sin recolección (escala de 5 colores)
 function obtenerColorContenedor(dias) {
@@ -2980,8 +3009,12 @@ function dibujarCircuitoEnMapa(circuito) {
     color: '#0f172a', // Borde bien oscuro (azul marino casi negro)
     weight: 3,        // Borde grueso y visible
     fillColor: '#0284c7', // Relleno azul
-    fillOpacity: 0.28
+    fillOpacity: 0.28  
   });
+
+  //cuando e seleciona un circuito cambia de color
+  poligonosCircuitosMapa[circuito.id_circuito] = poligono;
+
 
   const totalCont = Number(circuito.total_contenedores || 0);
 
@@ -2992,14 +3025,33 @@ function dibujarCircuitoEnMapa(circuito) {
     `Contenedores en el circuito: <b>${totalCont}</b>`
   );
 
-  // Si estamos en modo de dibujo o creación de contenedor, un clic sobre el circuito se procesa como punto
+  // Si estamos en modo de dibujo o creación de contenedor, procesamos el clic sobre el circuito
   poligono.on('click', evento => {
-    if (modoEdicionContenedor || modoEdicionCircuito) {
+    //para selecionar el cicuito para el evento de crear ruta para el camion
+    if (modoSeleccionRuta) {
       poligono.closePopup();
-      if (evento.originalEvent) {
-        evento.originalEvent.stopPropagation();
-      }
+      window.L.DomEvent.stopPropagation(evento);
+      alternarCircuitoEnRuta(circuito.id_circuito);
+      return;
+    }
+
+    if (modoEdicionContenedor) {
+      poligono.closePopup();
+      window.L.DomEvent.stopPropagation(evento);
       procesarClicEnMapa(evento.latlng);
+      return;
+    }
+
+    if (modoEdicionCircuito) {
+      poligono.closePopup();
+      window.L.DomEvent.stopPropagation(evento);
+
+      // Si no empezó a dibujar un circuito nuevo (o ya estaba editando uno), seleccionamos este circuito para editarlo
+      if (puntosCircuitoEnDibujo.length === 0 || circuitoEditandoId !== null) {
+        seleccionarCircuitoParaEditar(circuito);
+      } else {
+        procesarClicEnMapa(evento.latlng);
+      }
     }
   });
 
@@ -3163,13 +3215,94 @@ function cerrarEdicionContenedor() {
   }
 }
 
+// Limpia únicamente el dibujo o selección actual de circuito, pero mantiene el modo de edición abierto
+function limpiarDibujoActualCircuito() {
+  puntosCircuitoEnDibujo = [];
+  circuitoEditandoId = null;
+
+  formCircuitoMapaWrap?.classList.add('d-none');
+  formCircuitoMapa?.reset();
+  btnRedibujarCircuitoMapa?.classList.add('d-none');
+
+  if (mapCircuitoTitulo) {
+    mapCircuitoTitulo.textContent = 'Nuevo circuito';
+  }
+  const aviso = $('mapCircuitoAviso');
+  if (aviso) {
+    aviso.textContent = 'Se creará la zona y se vinculará a los contenedores que queden dentro.';
+  }
+
+  marcadoresPuntosCircuito.forEach(marcador => {
+    if (adminMapInstance) {
+      adminMapInstance.removeLayer(marcador);
+    }
+  });
+  marcadoresPuntosCircuito = [];
+
+  if (poligonoPreviewCircuito && adminMapInstance) {
+    adminMapInstance.removeLayer(poligonoPreviewCircuito);
+    poligonoPreviewCircuito = null;
+  }
+
+  if (modoEdicionCircuito) {
+    circuitoDrawingBar?.classList.remove('d-none');
+    actualizarPreviewCircuito();
+  } else {
+    circuitoDrawingBar?.classList.add('d-none');
+  }
+}
+
+// Selecciona un circuito existente al hacerle clic en modo edición para modificar sus datos o redibujarlo
+function seleccionarCircuitoParaEditar(circuito) {
+  if (!circuito || !Array.isArray(circuito.coordenadas)) return;
+
+  limpiarDibujoActualCircuito();
+  circuitoEditandoId = circuito.id_circuito;
+  puntosCircuitoEnDibujo = circuito.coordenadas.map(p => [Number(p[0]), Number(p[1])]);
+
+  // Dibujamos los vértices del circuito seleccionado en el mapa
+  puntosCircuitoEnDibujo.forEach((punto, idx) => {
+    const marcador = window.L.circleMarker(punto, {
+      radius: idx === 0 ? 8 : 5,
+      fillColor: idx === 0 ? '#22c55e' : '#f59e0b',
+      color: '#ffffff',
+      weight: 2,
+      fillOpacity: 1
+    }).addTo(adminMapInstance);
+    marcadoresPuntosCircuito.push(marcador);
+  });
+
+  actualizarPreviewCircuito();
+
+  if (mapCircuitoTitulo) {
+    mapCircuitoTitulo.textContent = `Editar circuito ${circuito.id_circuito}`;
+  }
+  if (mapCircuitoCodigo) {
+    mapCircuitoCodigo.value = circuito.id_circuito || '';
+  }
+  if (mapCircuitoZona) {
+    mapCircuitoZona.value = circuito.zona || '';
+  }
+  if (mapCircuitoDesc) {
+    mapCircuitoDesc.value = circuito.descripcion || '';
+  }
+  const aviso = $('mapCircuitoAviso');
+  if (aviso) {
+    aviso.textContent = 'Editá los datos o tocá Redibujar para marcar nuevos puntos.';
+  }
+
+  btnRedibujarCircuitoMapa?.classList.remove('d-none');
+  circuitoDrawingBar?.classList.add('d-none');
+  formCircuitoMapaWrap?.classList.remove('d-none');
+  mapCircuitoCodigo?.focus();
+}
+
 // Cierra el modo de dibujo de circuito y limpia los puntos y líneas temporales
 function cerrarEdicionCircuito() {
   const mapCanvas = $('adminMapCanvas');
   const mapPanel = document.querySelector('.map-panel');
 
   modoEdicionCircuito = false;
-  puntosCircuitoEnDibujo = [];
 
   // Volvemos el botón a su estado azul original
   if (btnCrearCircuitoMapa) {
@@ -3185,24 +3318,7 @@ function cerrarEdicionCircuito() {
     mapCanvas.style.cursor = '';
   }
 
-  // Ocultamos la barra superior de ayuda y el formulario flotante
-  circuitoDrawingBar?.classList.add('d-none');
-  formCircuitoMapaWrap?.classList.add('d-none');
-  formCircuitoMapa?.reset();
-
-  // Quitamos los marcadores de puntos dibujados en el mapa
-  marcadoresPuntosCircuito.forEach(marcador => {
-    if (adminMapInstance) {
-      adminMapInstance.removeLayer(marcador);
-    }
-  });
-  marcadoresPuntosCircuito = [];
-
-  // Quitamos la vista previa del polígono
-  if (poligonoPreviewCircuito && adminMapInstance) {
-    adminMapInstance.removeLayer(poligonoPreviewCircuito);
-    poligonoPreviewCircuito = null;
-  }
+  limpiarDibujoActualCircuito();
 }
 
 // Abre la ventana flotante para completar el código y la zona del circuito cerrado
@@ -3211,8 +3327,8 @@ function abrirVentanaGuardarCircuito() {
     return;
   }
 
-  // Sugerimos automáticamente el siguiente código libre (ej: CIR_101)
-  if (mapCircuitoCodigo) {
+  // Si estamos creando un circuito nuevo, sugerimos automáticamente el código según el municipio (ej: CH_101, A_101)
+  if (!circuitoEditandoId && mapCircuitoCodigo) {
     mapCircuitoCodigo.value = sugerirCodigoCircuito();
   }
 
@@ -3235,7 +3351,11 @@ function actualizarPreviewCircuito() {
   const guia = $('circuitoGuiaTexto');
   if (guia) {
     if (cantidad === 0) {
-      guia.innerHTML = 'Haz clic en el mapa para marcar el punto de inicio';
+      if (circuitoEditandoId) {
+        guia.innerHTML = `Redibujando <strong>${escapeHtml(circuitoEditandoId)}</strong>: haz clic en el mapa para marcar el inicio`;
+      } else {
+        guia.innerHTML = 'Haz clic en el mapa para crear un circuito o toca uno existente para editarlo';
+      }
     } else if (cantidad < 3) {
       guia.innerHTML = `Marcando circuito: <strong>${cantidad}</strong> puntos (marca al menos 3)`;
     } else {
@@ -3282,14 +3402,45 @@ function actualizarPreviewCircuito() {
   }
 }
 
-// Genera una sugerencia del siguiente código correlativo de circuito (ej: CIR_101, CIR_102)
-function sugerirCodigoCircuito() {
-  const existentes = listaCircuitosCargados.map(c => String(c.id_circuito || ''));
+// Detecta en qué municipio (A, B, C, CH, D, E, F, G) cae una coordenada [lat, lng]
+function detectarMunicipioPorCoordenadas(lat, lng) {
+  for (const m of poligonosMunicipios) {
+    if (puntoDentroDePoligono(lat, lng, m.puntos)) {
+      return m.letra;
+    }
+  }
+  return 'CH';
+}
+
+// Obtiene el municipio donde cae el centro de un polígono de puntos
+function obtenerMunicipioDePuntos(puntos) {
+  if (!Array.isArray(puntos) || puntos.length === 0) {
+    return 'CH';
+  }
+  let sumaLat = 0;
+  let sumaLng = 0;
+  puntos.forEach(p => {
+    sumaLat += Number(p[0]);
+    sumaLng += Number(p[1]);
+  });
+  return detectarMunicipioPorCoordenadas(sumaLat / puntos.length, sumaLng / puntos.length);
+}
+
+// Genera el código automático de circuito según el municipio empezando desde el 101 (ej: CH_101, A_101, B_101)
+function sugerirCodigoCircuito(lat = null, lng = null) {
+  let municipio = 'CH';
+  if (lat !== null && lng !== null) {
+    municipio = detectarMunicipioPorCoordenadas(lat, lng);
+  } else if (puntosCircuitoEnDibujo.length > 0) {
+    municipio = obtenerMunicipioDePuntos(puntosCircuitoEnDibujo);
+  }
+
+  const existentes = listaCircuitosCargados.map(c => String(c.id_circuito || '').toUpperCase());
   let num = 101;
-  while (existentes.includes(`CIR_${num}`) || existentes.includes(`C_${num}`)) {
+  while (existentes.includes(`${municipio}_${num}`)) {
     num++;
   }
-  return `CIR_${num}`;
+  return `${municipio}_${num}`;
 }
 
 // Comprueba si un punto [lat, lng] está dentro de un polígono
@@ -3307,13 +3458,7 @@ function puntoDentroDePoligono(lat, lng, puntos) {
 
 // Genera el código automático según el municipio donde se hizo clic y el último número (ej: CH-CONT-111)
 function sugerirCodigoContenedor(lat, lng) {
-  let municipio = 'CH';
-  for (const m of poligonosMunicipios) {
-    if (puntoDentroDePoligono(lat, lng, m.puntos)) {
-      municipio = m.letra;
-      break;
-    }
-  }
+  const municipio = detectarMunicipioPorCoordenadas(lat, lng);
 
   let maxNum = 100;
   listaContenedoresMapa.forEach(c => {
@@ -3356,7 +3501,15 @@ function procesarClicEnMapa(latlng) {
         mapContAviso.textContent = 'Nueva ubicación marcada · Tocá Guardar para confirmar';
       }
     } else {
-      const circuitoAuto = sugerirCodigoCircuito();
+      // Buscamos si cae dentro de un circuito existente, o sugerimos el del municipio
+      let circuitoDetectado = null;
+      for (const c of listaCircuitosCargados) {
+        if (Array.isArray(c.coordenadas) && c.coordenadas.length >= 3 && puntoDentroDePoligono(lat, lng, c.coordenadas)) {
+          circuitoDetectado = c.id_circuito;
+          break;
+        }
+      }
+      const circuitoAuto = circuitoDetectado || sugerirCodigoCircuito(lat, lng);
       if (mapContCircuitoBadge) {
         mapContCircuitoBadge.textContent = `Circuito: ${circuitoAuto}`;
       }
@@ -3373,8 +3526,13 @@ function procesarClicEnMapa(latlng) {
     return;
   }
 
-  // Modo 2: Creación de circuito por puntos
+  // Modo 2: Creación o redibujo de circuito por puntos
   if (modoEdicionCircuito) {
+    // Si estaba viendo el formulario de un circuito, al hacer clic afuera no agregamos puntos hasta que toque Redibujar o Descartar
+    if (formCircuitoMapaWrap && !formCircuitoMapaWrap.classList.contains('d-none')) {
+      return;
+    }
+
     // Si ya tenemos al menos 3 puntos, verificamos si el usuario hizo clic cerca del inicio para cerrar el circuito
     if (puntosCircuitoEnDibujo.length >= 3) {
       const pInicio = adminMapInstance.latLngToContainerPoint(puntosCircuitoEnDibujo[0]);
@@ -3409,7 +3567,7 @@ function procesarClicEnMapa(latlng) {
       // Al hacer clic directo sobre el punto de inicio con 3 o más puntos, cierra el circuito
       puntoInicio.on('click', evento => {
         if (modoEdicionCircuito && puntosCircuitoEnDibujo.length >= 3) {
-          if (evento.originalEvent) evento.originalEvent.stopPropagation();
+          window.L.DomEvent.stopPropagation(evento);
           abrirVentanaGuardarCircuito();
         }
       });
@@ -3452,7 +3610,9 @@ function initAdminMap() {
 
   // Capas organizadas: Circuitos abajo, luego Contenedores encima
   capaCircuitosMapa = window.L.layerGroup().addTo(adminMapInstance);
+  capaRutaGenerada = window.L.layerGroup().addTo(adminMapInstance);
   capaContenedoresMapa = window.L.layerGroup().addTo(adminMapInstance);
+  
 
   // Evento cuando el administrador hace clic en el mapa
   adminMapInstance.on('click', evento => {
@@ -3620,9 +3780,9 @@ btnDeshacerPunto?.addEventListener('click', () => {
   actualizarPreviewCircuito();
 });
 
-// Cancelar dibujo desde la barra flotante
+// Cancelar dibujo actual desde la barra flotante (sin salir del modo edición)
 btnCancelarCircuito?.addEventListener('click', () => {
-  cerrarEdicionCircuito();
+  limpiarDibujoActualCircuito();
 });
 
 // Botón para cerrar el circuito y abrir el formulario
@@ -3630,12 +3790,32 @@ btnFinalizarPoligono?.addEventListener('click', () => {
   abrirVentanaGuardarCircuito();
 });
 
-// Cancelar guardado del circuito desde el formulario flotante
-btnCancelarCircuitoMapa?.addEventListener('click', () => {
-  cerrarEdicionCircuito();
+// Botón "Redibujar" cuando se está editando un circuito existente
+btnRedibujarCircuitoMapa?.addEventListener('click', () => {
+  puntosCircuitoEnDibujo = [];
+  marcadoresPuntosCircuito.forEach(marcador => {
+    if (adminMapInstance) {
+      adminMapInstance.removeLayer(marcador);
+    }
+  });
+  marcadoresPuntosCircuito = [];
+
+  if (poligonoPreviewCircuito && adminMapInstance) {
+    adminMapInstance.removeLayer(poligonoPreviewCircuito);
+    poligonoPreviewCircuito = null;
+  }
+
+  formCircuitoMapaWrap?.classList.add('d-none');
+  circuitoDrawingBar?.classList.remove('d-none');
+  actualizarPreviewCircuito();
 });
 
-// Guardar el nuevo circuito en la API de Gestión
+// Descartar edición o dibujo actual desde el formulario flotante (sin salir del modo edición)
+btnCancelarCircuitoMapa?.addEventListener('click', () => {
+  limpiarDibujoActualCircuito();
+});
+
+// Guardar el circuito nuevo o editado en la API de Gestión
 formCircuitoMapa?.addEventListener('submit', async evento => {
   evento.preventDefault();
 
@@ -3649,22 +3829,29 @@ formCircuitoMapa?.addEventListener('submit', async evento => {
   }
 
   try {
-    const respuesta = await requestGestion('/api/circuitos', {
-      method: 'POST',
+    const municipioDetectado = obtenerMunicipioDePuntos(puntosCircuitoEnDibujo);
+    const url = circuitoEditandoId !== null
+      ? `/api/circuitos/${encodeURIComponent(circuitoEditandoId)}`
+      : '/api/circuitos';
+    const metodo = circuitoEditandoId !== null ? 'PUT' : 'POST';
+
+    await requestGestion(url, {
+      method: metodo,
       body: {
         id_circuito: mapCircuitoCodigo?.value,
-        zona: mapCircuitoZona?.value,
-        descripcion: mapCircuitoDesc?.value,
+        municipio: municipioDetectado,
+        zona: mapCircuitoZona?.value || '',
+        descripcion: mapCircuitoDesc?.value || '',
         coordenadas: puntosCircuitoEnDibujo
       }
     });
 
-    if (respuesta?.data) {
-      dibujarCircuitoEnMapa(respuesta.data);
-      listaCircuitosCargados.push(respuesta.data);
-    }
+    // Recargamos circuitos y contenedores para ver reflejados los cambios en el mapa
+    await cargarCircuitosEnMapa();
+    await cargarContenedoresEnMapa();
 
-    cerrarEdicionCircuito();
+    // Limpiamos el dibujo actual pero mantenemos el modo edición abierto para crear o editar otro
+    limpiarDibujoActualCircuito();
   } catch (error) {
     const aviso = $('mapCircuitoAviso');
     if (aviso) {
@@ -3677,6 +3864,358 @@ formCircuitoMapa?.addEventListener('submit', async evento => {
   }
 });
 
+// Suma o quita un circuito de la selección actual para la ruta del camión
+function alternarCircuitoEnRuta(idCircuito) {
+  const indice = circuitosSeleccionadosRuta.indexOf(idCircuito);
+
+  if (indice === -1) {
+    circuitosSeleccionadosRuta.push(idCircuito);
+  } else {
+    circuitosSeleccionadosRuta.splice(indice, 1);
+  }
+
+  actualizarVistaSeleccionRuta();
+}
+
+// Pinta en el mapa los circuitos seleccionados y actualiza el texto de la barra superior
+function actualizarVistaSeleccionRuta() {
+  if (rutaCircuitosSeleccionados) {
+    rutaCircuitosSeleccionados.textContent =
+      circuitosSeleccionadosRuta.length > 0
+        ? circuitosSeleccionadosRuta.join(', ')
+        : 'Ninguno';
+  }
+
+  Object.entries(poligonosCircuitosMapa).forEach(([id, poligono]) => {
+    const seleccionado = circuitosSeleccionadosRuta.includes(id);
+    poligono.setStyle({
+      color: seleccionado ? '#d97706' : '#0f172a',
+      weight: seleccionado ? 4 : 3,
+      fillColor: seleccionado ? '#f59e0b' : '#0284c7',
+      fillOpacity: seleccionado ? 0.45 : 0.28
+    });
+  });
+}
+
+// Cierra el modo de selección de circuitos para ruta
+function cerrarSeleccionRuta() {
+  modoSeleccionRuta = false;
+  rutaBuilderBar?.classList.add('d-none');
+  actualizarVistaSeleccionRuta();
+}
+
+// Botón "Asignar ruta" (también permite editar y agregar más circuitos a la ruta del camión)
+btnAsignarRutaMapa?.addEventListener('click', () => {
+  const camion = selectedVehicle();
+  if (!camion) {
+    alert('Primero seleccioná un camión de la lista izquierda.');
+    return;
+  }
+
+  cerrarEdicionContenedor();
+  cerrarEdicionCircuito();
+
+  modoSeleccionRuta = true;
+
+  // Si el camión ya tenía circuitos en su ruta, los cargamos para poder agregar o quitar circuitos
+  const rutaExistente = rutasPorCamion[camion.id_camion];
+  circuitosSeleccionadosRuta = rutaExistente
+    ? [...rutaExistente.circuitos]
+    : [];
+
+  rutaBuilderBar?.classList.remove('d-none');
+  actualizarVistaSeleccionRuta();
+});
+
+// Botón "Cancelar" en la barra de selección de ruta
+btnCerrarBuilderRuta?.addEventListener('click', () => {
+  circuitosSeleccionadosRuta = [];
+  cerrarSeleccionRuta();
+});
+
+// Coordenadas exactas del portón de salida de la Base (Cantón del Buceo hacia Av. Rivera)
+// y la entrada del Vertedero (Camino Felipe Cardoso y Camino Cepeda), junto con sus áreas
+const COORD_BASE_BUCEO = [-34.899286, -56.129414];
+const POLIGONO_BASE_BUCEO = [
+  [-34.897954, -56.130250],
+  [-34.898171, -56.130496],
+  [-34.899286, -56.129639],
+  [-34.899260, -56.129350],
+  [-34.899164, -56.129243]
+];
+
+const COORD_VERTEDERO = [-34.851019, -56.099007];
+const POLIGONO_VERTEDERO = [
+  [-34.847870, -56.092277],
+  [-34.851322, -56.088201],
+  [-34.855055, -56.094767],
+  [-34.855688, -56.095925],
+  [-34.857168, -56.100346],
+  [-34.857238, -56.103350],
+  [-34.852906, -56.101719],
+  [-34.851005, -56.099015]
+];
+
+// Dibuja en el mapa la ruta generada (Base -> Contenedores -> Vertedero -> Base)
+function dibujarRutaDeCamionEnMapa(datosRuta) {
+  if (!capaRutaGenerada) return;
+  capaRutaGenerada.clearLayers();
+
+  if (!datosRuta || !Array.isArray(datosRuta.geometriaCalles)) {
+    return;
+  }
+
+  // 1. Área de la Base Cantón del Buceo y su portón de salida sur (hacia Av. Rivera)
+  window.L.polygon(POLIGONO_BASE_BUCEO, {
+    color: '#1d4ed8',
+    weight: 2,
+    fillColor: '#2563eb',
+    fillOpacity: 0.25,
+    interactive: false
+  }).addTo(capaRutaGenerada);
+
+  window.L.circleMarker(COORD_BASE_BUCEO, {
+    radius: 9,
+    fillColor: '#1d4ed8',
+    color: '#ffffff',
+    weight: 3,
+    fillOpacity: 1
+  })
+    .bindPopup('<strong>Salida Base Cantón del Buceo</strong><br>Portón de salida y regreso de camiones')
+    .addTo(capaRutaGenerada);
+
+  // 2. Área completa del Vertedero Felipe Cardoso y su entrada en Camino Felipe Cardoso y Camino Cepeda
+  window.L.polygon(POLIGONO_VERTEDERO, {
+    color: '#b45309',
+    weight: 2,
+    fillColor: '#eab308',
+    fillOpacity: 0.28,
+    interactive: false
+  }).addTo(capaRutaGenerada);
+
+  window.L.circleMarker(COORD_VERTEDERO, {
+    radius: 9,
+    fillColor: '#eab308',
+    color: '#0f172a',
+    weight: 3,
+    fillOpacity: 1
+  })
+    .bindPopup('<strong>Entrada Vertedero Felipe Cardoso</strong><br>Acceso por Cno. Felipe Cardoso y Cno. Cepeda')
+    .addTo(capaRutaGenerada);
+
+  // 3. Línea del recorrido (azul mientras se arma, verde cuando ya fue enviada al chofer)
+  const colorLinea = datosRuta.estado === 'Enviada al chofer' ? '#16a34a' : '#2563eb';
+  const lineaRuta = window.L.polyline(datosRuta.geometriaCalles, {
+    color: colorLinea,
+    weight: 5,
+    opacity: 0.9
+  }).addTo(capaRutaGenerada);
+
+  // Ajustamos el zoom para ver todo el recorrido completo
+  if (adminMapInstance && datosRuta.geometriaCalles.length > 1) {
+    adminMapInstance.fitBounds(lineaRuta.getBounds(), { padding: [35, 35] });
+  }
+}
+
+// Botón "Generar ruta": filtra contenedores amarillos para arriba de TODOS los circuitos elegidos
+btnGenerarRutaMapa?.addEventListener('click', async () => {
+  const camion = selectedVehicle();
+  if (!camion) {
+    alert('Seleccioná un camión primero.');
+    return;
+  }
+
+  if (circuitosSeleccionadosRuta.length === 0) {
+    alert('Tocá al menos un circuito en el mapa para generar la ruta.');
+    return;
+  }
+
+  const circuitosMayus = circuitosSeleccionadosRuta.map(id => String(id || '').toUpperCase());
+  const objetosCircuitosElegidos = listaCircuitosCargados.filter(
+    cir => circuitosMayus.includes(String(cir.id_circuito || '').toUpperCase())
+  );
+
+  // 1. Filtramos todos los contenedores de los circuitos seleccionados que sean de color amarillo para arriba (>= 3 días).
+  // Verificamos tanto por el nombre del circuito como geométricamente dentro del polígono de cada circuito elegido.
+  const contenedoresParaRecolectar = listaContenedoresMapa.filter(c => {
+    if (c.latitud === null || c.longitud === null) {
+      return false;
+    }
+
+    const lat = Number(c.latitud);
+    const lng = Number(c.longitud);
+    const dias = Number(c.dias_sin_recoleccion || 1);
+    const esAmarilloOPeor = dias >= 3 || c.estado === 'desbordado';
+
+    if (!esAmarilloOPeor) {
+      return false;
+    }
+
+    const coincidePorCodigo = circuitosMayus.includes(String(c.circuito || '').toUpperCase());
+    const caeDentroDePoligono = objetosCircuitosElegidos.some(
+      cir => Array.isArray(cir.coordenadas) && cir.coordenadas.length >= 3 && puntoDentroDePoligono(lat, lng, cir.coordenadas)
+    );
+
+    return coincidePorCodigo || caeDentroDePoligono;
+  });
+
+  if (contenedoresParaRecolectar.length === 0) {
+    alert('En los circuitos seleccionados no hay contenedores de color amarillo o superior (3+ días).');
+    return;
+  }
+
+  // 2. Armamos los puntos en orden: Base -> Contenedores -> Vertedero -> Vuelta a la Base
+  const puntosParadas = [
+    COORD_BASE_BUCEO,
+    ...contenedoresParaRecolectar.map(c => [Number(c.latitud), Number(c.longitud)]),
+    COORD_VERTEDERO,
+    COORD_BASE_BUCEO
+  ];
+
+  // 3. Consultamos OSRM para que trace la ruta respetando calles, sentidos y señalización del mapa
+  let geometriaCalles = puntosParadas;
+  let distanciaKm = 0;
+
+  try {
+    const queryOsrm = puntosParadas.map(p => `${p[1]},${p[0]}`).join(';');
+    const urlOsrm = `https://router.project-osrm.org/route/v1/driving/${queryOsrm}?overview=full&geometries=geojson`;
+    const resp = await fetch(urlOsrm);
+    const datosOsrm = await resp.json();
+
+    if (datosOsrm.code === 'Ok' && datosOsrm.routes?.[0]) {
+      geometriaCalles = datosOsrm.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+      distanciaKm = Number((datosOsrm.routes[0].distance / 1000).toFixed(1));
+    }
+  } catch (error) {
+    console.warn('No se pudo conectar a OSRM, usando trazo directo:', error);
+  }
+
+  // 4. Guardamos la ruta generada para este camión
+  const textoCircuitos = circuitosSeleccionadosRuta.join(', ');
+  rutasPorCamion[camion.id_camion] = {
+    id_camion: camion.id_camion,
+    matricula: camion.matricula,
+    chofer: camion.chofer,
+    circuitos: [...circuitosSeleccionadosRuta],
+    contenedores: contenedoresParaRecolectar,
+    geometriaCalles: geometriaCalles,
+    distanciaKm: distanciaKm,
+    estado: 'Generada (sin enviar)'
+  };
+
+  // 5. Actualizamos los datos del camión en la barra de abajo y dibujamos la ruta
+  camion.ruta_circuito = textoCircuitos;
+  camion.contenedores_asignados = contenedoresParaRecolectar.length;
+  camion.contenedores_recolectados = 0;
+  camion.km_en_turno = distanciaKm;
+  updateVehicleDetail(camion);
+
+  dibujarRutaDeCamionEnMapa(rutasPorCamion[camion.id_camion]);
+  cerrarSeleccionRuta();
+});
+
+// Botón "Quitar ruta": cancela la ruta del camión, limpia el mapa y actualiza los datos
+btnQuitarRutaMapa?.addEventListener('click', async () => {
+  const camion = selectedVehicle();
+  if (!camion) {
+    alert('Primero seleccioná un camión de la lista.');
+    return;
+  }
+
+  if (!rutasPorCamion[camion.id_camion] && !camion.ruta_circuito) {
+    alert('Este camión no tiene ninguna ruta asignada para quitar.');
+    return;
+  }
+
+  // 1. Si tenía ruta guardada en la API de Gestión, la quitamos también del servidor
+  if (camion.id_ruta) {
+    try {
+      await requestGestion(`/api/camiones/${camion.id_camion}/ruta`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.warn('Aviso al quitar ruta en API:', error);
+    }
+  }
+
+  // 2. Borramos la ruta en memoria, en localStorage y del mapa
+  delete rutasPorCamion[camion.id_camion];
+  const rutasDespachadas = JSON.parse(localStorage.getItem('sigeru_rutas_enviadas_chofer') || '{}');
+  delete rutasDespachadas[camion.matricula];
+  localStorage.setItem('sigeru_rutas_enviadas_chofer', JSON.stringify(rutasDespachadas));
+
+  circuitosSeleccionadosRuta = [];
+  cerrarSeleccionRuta();
+  dibujarRutaDeCamionEnMapa(null);
+
+  // 3. Limpiamos los datos de ruta del camión en la barra inferior
+  camion.id_ruta = null;
+  camion.ruta_circuito = null;
+  camion.estado = 'En base (Cantón del Buceo)';
+  camion.contenedores_asignados = 0;
+  camion.contenedores_recolectados = 0;
+  camion.km_en_turno = 0;
+
+  updateVehicleDetail(camion);
+  renderVehicleList(camion.id_camion);
+});
+
+// Botón "Enviar ruta a chofer": despacha la ruta generada para que el chofer pueda iniciarla
+btnEnviarRutaChofer?.addEventListener('click', async () => {
+  const camion = selectedVehicle();
+  if (!camion) {
+    alert('Primero seleccioná un camión de la lista.');
+    return;
+  }
+
+  const rutaActual = rutasPorCamion[camion.id_camion];
+  if (!rutaActual) {
+    alert('Primero debés asignar los circuitos y tocar "Generar ruta" para este camión.');
+    return;
+  }
+
+  btnEnviarRutaChofer.disabled = true;
+
+  try {
+    // 1. Buscamos el id_ruta del primer circuito en el catálogo para vincularlo en la base de datos
+    const primerCircuito = rutaActual.circuitos[0];
+    const rutaCatalogo = rutasCatalogo.find(
+      r => String(r.circuito || '').toUpperCase() === String(primerCircuito || '').toUpperCase()
+    );
+
+    if (rutaCatalogo?.id_ruta) {
+      await requestGestion(`/api/camiones/${camion.id_camion}/ruta`, {
+        method: 'POST',
+        body: { id_ruta: Number(rutaCatalogo.id_ruta) }
+      });
+      camion.id_ruta = Number(rutaCatalogo.id_ruta);
+    }
+
+    // 2. Marcamos la ruta como enviada al chofer y la guardamos para que la app del chofer / simulador la reciba
+    rutaActual.estado = 'Enviada al chofer';
+    rutaActual.fecha_envio = new Date().toISOString();
+
+    const rutasDespachadas = JSON.parse(localStorage.getItem('sigeru_rutas_enviadas_chofer') || '{}');
+    rutasDespachadas[camion.matricula] = rutaActual;
+    localStorage.setItem('sigeru_rutas_enviadas_chofer', JSON.stringify(rutasDespachadas));
+
+    // 3. Actualizamos el estado en la barra de abajo del camión y pintamos la ruta en verde
+    camion.estado = 'Ruta enviada a chofer';
+    updateVehicleDetail(camion);
+    renderVehicleList(camion.id_camion);
+
+    alert(
+      `Ruta enviada al chofer (${camion.chofer || camion.matricula}).\n` +
+      `Circuitos: ${rutaActual.circuitos.join(', ')}\n` +
+      `Contenedores a recolectar (amarillo o superior): ${rutaActual.contenedores.length}\n` +
+      `Distancia total hasta vertedero y regreso a base: ${rutaActual.distanciaKm} km`
+    );
+  } catch (error) {
+    alert('Error al enviar la ruta al chofer: ' + error.message);
+  } finally {
+    btnEnviarRutaChofer.disabled = false;
+  }
+});
 
 // COLORES SUAVES PARA DIFERENCIAR LOS MUNICIPIOS EN EL MAPA
 const colores_municipios = [
