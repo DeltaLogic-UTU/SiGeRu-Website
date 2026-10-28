@@ -1122,6 +1122,11 @@ function renderTruck(truck) {
   if (operationGrid) {
     operationGrid.innerHTML = [
       field(
+        'Chofer asignado',
+        truck.chofer || 'Sin asignar'
+      ),
+
+      field(
         'Ruta',
         route
       ),
@@ -1695,6 +1700,12 @@ driverForm?.addEventListener(
 
       driverModal.hide();
 
+      setTimeout(() => {
+        if (document.getElementById('detalleCamionModal')?.classList.contains('show')) {
+          document.body.classList.add('modal-open');
+        }
+      }, 350);
+
       await loadTrucks();
 
       await openTruck(
@@ -1779,6 +1790,12 @@ companionForm?.addEventListener(
       );
 
       companionModal.hide();
+
+      setTimeout(() => {
+        if (document.getElementById('detalleCamionModal')?.classList.contains('show')) {
+          document.body.classList.add('modal-open');
+        }
+      }, 350);
 
       await loadTrucks();
 
@@ -1893,6 +1910,15 @@ $('agregarCamionModal')?.addEventListener('hidden.bs.modal', () => {
   if (imgPreviewFoto) imgPreviewFoto.src = '';
   wrapPreviewFoto?.classList.add('d-none');
   if (inputFotoAgregar) inputFotoAgregar.value = '';
+});
+
+// Conectar botones del pie del modal con las acciones de chofer y cuadrilla
+$('btnAsignarChoferModalFooter')?.addEventListener('click', () => {
+  assignDriverBtn?.click();
+});
+
+$('btnAsignarCuadrillaModalFooter')?.addEventListener('click', () => {
+  assignCompanionBtn?.click();
 });
 
 // Botón "Cambiar foto de este camión" en el modal de detalles

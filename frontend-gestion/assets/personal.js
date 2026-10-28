@@ -2,10 +2,11 @@ const API_USUARIOS_PERSONAL = 'http://127.0.0.1:8000';
 const API_GESTION_PERSONAL = 'http://127.0.0.1:8001';
 
 const personnelState = {
-  current: 'cuadrillas',
+  current: 'todos',
   editIndex: null,
   mode: null,
   data: {
+    todos: [],
     cuadrillas: [],
     choferes: [],
     operarios: [],
@@ -196,28 +197,27 @@ async function cargarUsuarios() {
 }
 
 async function cargarCuadrillas() {
-  const response = await fetch(
-    `${API_GESTION_PERSONAL}/api/cuadrillas`,
-    {
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json'
-      }
-    }
-  );
+  try {
+    const token = localStorage.getItem('access_token');
+    const headers = { Accept: 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  if (!response.ok) {
-    throw new Error(
-      'No se pudieron cargar los responsables.'
+    const response = await fetch(
+      `${API_GESTION_PERSONAL}/api/cuadrillas`,
+      { headers }
     );
+
+    if (!response.ok) {
+      console.warn('No se pudieron cargar las cuadrillas desde la API.');
+      return [];
+    }
+
+    const result = await response.json();
+    return Array.isArray(result) ? result : result.data || [];
+  } catch (error) {
+    console.warn('Advertencia al cargar cuadrillas:', error);
+    return [];
   }
-
-  const result =
-    await response.json();
-
-  return Array.isArray(result)
-    ? result
-    : result.data || [];
 }
 
 function convertirUsuario(usuario) {
@@ -316,6 +316,8 @@ function organizarPersonal(
       usuario.responsableDe.length > 0;
 
   personnelState.data = {
+    todos: personal,
+
     cuadrillas:
       personal.filter(
         usuario =>
@@ -326,22 +328,19 @@ function organizarPersonal(
     choferes:
       personal.filter(
         usuario =>
-          usuario.rol === 'chofer' &&
-          !esResponsable(usuario)
+          usuario.rol === 'chofer'
       ),
 
     operarios:
       personal.filter(
         usuario =>
-          usuario.rol === 'operario' &&
-          !esResponsable(usuario)
+          usuario.rol === 'operario'
       ),
 
     barrenderos:
       personal.filter(
         usuario =>
-          usuario.rol === 'barrendero' &&
-          !esResponsable(usuario)
+          usuario.rol === 'barrendero'
       )
   };
 }
@@ -434,6 +433,7 @@ function renderPersonnel() {
     [];
 
   const nombres = {
+    todos: 'Todo el Personal',
     cuadrillas: 'Cuadrillas',
     choferes: 'Choferes',
     operarios: 'Operarios',
@@ -443,6 +443,61 @@ function renderPersonnel() {
   personnelTitle.textContent =
     nombres[type] ||
     'Personal';
+
+  if (type === 'todos') {
+    personnelHead.innerHTML = `
+      <tr>
+        <th>Nombre</th>
+        <th>Rol</th>
+        <th>Documento</th>
+        <th>Estado</th>
+        <th>Correo</th>
+        <th>Acciones</th>
+      </tr>
+    `;
+
+    personnelBody.innerHTML =
+      rows.length
+        ? rows.map(
+            (item, index) => `
+              <tr>
+                <td>
+                  <strong>
+                    ${escapePersonnel(item.nombre)} ${escapePersonnel(item.apellido)}
+                  </strong>
+                </td>
+                <td>
+                  <span class="badge ${item.rol === 'chofer' ? 'bg-primary' : (item.rol === 'administrador' ? 'bg-danger' : (item.rol === 'supervisor' ? 'bg-warning text-dark' : 'bg-secondary'))}">
+                    ${escapePersonnel(item.rol ? item.rol.charAt(0).toUpperCase() + item.rol.slice(1) : 'Personal')}
+                  </span>
+                </td>
+                <td>
+                  ${escapePersonnel(item.documento || '—')}
+                </td>
+                <td>
+                  <span class="badge ${item.estado === 'activo' ? 'bg-success' : 'bg-secondary'}">
+                    ${escapePersonnel(item.estado || 'activo')}
+                  </span>
+                </td>
+                <td>
+                  ${escapePersonnel(item.email || '—')}
+                </td>
+                <td>
+                  ${botonesUsuario(item, index, item.rol !== 'administrador')}
+                </td>
+              </tr>
+            `
+          ).join('')
+        : `
+          <tr>
+            <td colspan="6" class="text-center py-4">
+              No hay usuarios registrados en el sistema.
+            </td>
+          </tr>
+        `;
+
+    return;
+  }
 
   if (type === 'cuadrillas') {
     personnelHead.innerHTML = `

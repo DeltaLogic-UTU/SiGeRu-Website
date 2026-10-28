@@ -125,11 +125,11 @@
       <div class="form-grid">
        <label>
         Nombre
-        <input class="form-control" name="nombre" required="" type="text"/>
+        <input class="form-control" name="nombre" required type="text" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$" title="Solo letras y espacios, sin números ni símbolos." placeholder="Ej: Juan"/>
        </label>
        <label>
         Apellido
-        <input class="form-control" name="apellido" required="" type="text"/>
+        <input class="form-control" name="apellido" required type="text" pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$" title="Solo letras y espacios, sin números ni símbolos." placeholder="Ej: Pérez"/>
        </label>
       </div>
       <div class="form-grid">
@@ -144,7 +144,7 @@
       </div>
       <label>
        Correo electrónico
-       <input class="form-control" name="email" placeholder="nombre@correo.com" required="" type="email"/>
+       <input class="form-control" name="email" placeholder="nombre@correo.com" required type="email" pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$" title="Correo válido (ej: usuario@dominio.com). Debe incluir un dominio como .com o .uy."/>
       </label>
       <label>
        Contraseña
@@ -161,7 +161,7 @@
       </label>
       <label>
        Motivo de la solicitud
-       <textarea class="form-control" name="motivo" placeholder="Explicá brevemente por qué necesitás acceso." required=""></textarea>
+       <textarea class="form-control" name="motivo" placeholder="Explicá brevemente por qué necesitás acceso (solo texto y puntuación básica)." required maxlength="500"></textarea>
       </label>
       <button class="btn btn-primary" type="submit">
        Enviar solicitud

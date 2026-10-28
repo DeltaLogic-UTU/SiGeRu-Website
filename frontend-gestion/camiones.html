@@ -187,17 +187,27 @@
         <div class="truck-map-card">
          <!-- Mapa interactivo y funcional Leaflet con la ubicación real del camión -->
          <div id="truckDetailMap" class="truck-detail-map"></div>
-         <div class="truck-driver-bar">
-          <span id="truckMapDriver">Chofer: sin asignar</span>
-          <div class="truck-driver-actions">
-           <button class="btn btn-primary btn-sm" id="assignDriverBtn" type="button">
-            Asignar chofer
-           </button>
-           <button class="btn btn-outline btn-sm" id="assignCompanionBtn" type="button">
-            Asignar cuadrilla
-           </button>
-          </div>
+        </div>
+       </div>
+
+       <!-- Tarjeta visible y funcional para asignación de Chofer y Cuadrilla -->
+       <div class="truck-assignment-card p-3 my-3 rounded border d-flex flex-wrap justify-content-between align-items-center gap-3" style="background: var(--surface);">
+        <div class="d-flex align-items-center gap-3">
+         <div class="p-2 rounded-circle" style="background: rgba(14, 165, 233, 0.15); color: #0284c7;">
+          <i class="bi bi-person-badge fs-4"></i>
          </div>
+         <div>
+          <span class="d-block small text-muted-custom">Chofer</span>
+          <strong id="truckMapDriver" class="fs-6 text-body">Chofer: sin asignar</strong>
+         </div>
+        </div>
+        <div class="truck-driver-actions d-flex gap-2">
+         <button class="btn btn-primary btn-sm px-3" id="assignDriverBtn" type="button">
+          <i class="bi bi-person-plus"></i> Asignar chofer
+         </button>
+         <button class="btn btn-outline-secondary btn-sm" id="assignCompanionBtn" type="button">
+          <i class="bi bi-people"></i> Asignar cuadrilla
+         </button>
         </div>
        </div>
 
@@ -231,7 +241,15 @@
       </div>
      </div>
 
-     <div class="modal-footer">
+     <div class="modal-footer d-flex justify-content-between">
+      <div class="d-flex gap-2">
+       <button class="btn btn-primary btn-sm" id="btnAsignarChoferModalFooter" type="button">
+        <i class="bi bi-person-plus"></i> Asignar / Cambiar chofer
+       </button>
+       <button class="btn btn-outline-secondary btn-sm" id="btnAsignarCuadrillaModalFooter" type="button">
+        <i class="bi bi-people"></i> Asignar cuadrilla
+       </button>
+      </div>
       <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cerrar</button>
      </div>
     </div>
@@ -353,7 +371,7 @@
   </div>
 
 
-  <div aria-hidden="true" aria-labelledby="asignarChoferTitulo" class="modal fade" id="asignarChoferModal" tabindex="-1">
+  <div aria-hidden="true" aria-labelledby="asignarChoferTitulo" class="modal fade" id="asignarChoferModal" tabindex="-1" style="z-index: 1070;">
    <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content admin-modal">
      <form id="asignarChoferForm">
@@ -387,7 +405,7 @@
   </div>
 
 
-  <div aria-hidden="true" aria-labelledby="asignarAcompananteTitulo" class="modal fade" id="asignarAcompananteModal" tabindex="-1">
+  <div aria-hidden="true" aria-labelledby="asignarAcompananteTitulo" class="modal fade" id="asignarAcompananteModal" tabindex="-1" style="z-index: 1070;">
    <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content admin-modal">
      <form id="asignarAcompananteForm">

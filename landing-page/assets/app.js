@@ -386,6 +386,36 @@ if (registroForm) {
           ).entries()
         );
 
+      // Validaciones estrictas de formato y seguridad
+      const nombreRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/u;
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      const motivoRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s.,¿?¡!\-]+$/u;
+
+      const nombre = String(data.nombre || '').trim();
+      const apellido = String(data.apellido || '').trim();
+      const email = String(data.email || '').trim();
+      const motivo = String(data.motivo || '').trim();
+
+      if (!nombreRegex.test(nombre)) {
+        showMessage(message, 'El nombre solo puede contener letras y espacios (sin números ni símbolos).', true);
+        return;
+      }
+
+      if (!nombreRegex.test(apellido)) {
+        showMessage(message, 'El apellido solo puede contener letras y espacios (sin números ni símbolos).', true);
+        return;
+      }
+
+      if (!emailRegex.test(email)) {
+        showMessage(message, 'El correo electrónico debe tener un dominio válido (ej: nombre@dominio.com o nombre@dominio.uy), no se admiten números después del punto de extensión.', true);
+        return;
+      }
+
+      if (!motivoRegex.test(motivo)) {
+        showMessage(message, 'El motivo solo puede contener texto explicativo (sin números, comandos ni caracteres especiales).', true);
+        return;
+      }
+
       try {
         const {
           response,
