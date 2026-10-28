@@ -56,6 +56,57 @@ const modalForm = $('operacionForm');
 const modalSubmit = $('operacionSubmit');
 
 let camiones = [];
+
+// Configuración de los 4 camiones y choferes principales de SiGeRU
+const CAMIONES_DEFECTO = [
+  { id_camion: 5, matricula: 'SBK-3265', chofer: 'Albert Einstein', marca: 'Scania', modelo: 'P250', capacidad_kg: 8000, peso_recolectado_kg: 0, estado: 'En base', turno: 'Nocturno', ruta_circuito: null },
+  { id_camion: 6, matricula: 'SAE-5268', chofer: 'Leonardo da Vinci', marca: 'Iveco', modelo: 'Eurocargo', capacidad_kg: 7000, peso_recolectado_kg: 0, estado: 'En base', turno: 'Nocturno', ruta_circuito: null },
+  { id_camion: 7, matricula: 'SCE-1235', chofer: 'Frida Kahlo', marca: 'Volkswagen', modelo: 'Constellation', capacidad_kg: 8000, peso_recolectado_kg: 0, estado: 'En base', turno: 'Nocturno', ruta_circuito: null },
+  { id_camion: 8, matricula: 'SDT-5632', chofer: 'Julio Cortázar', marca: 'Scania', modelo: 'P280', capacidad_kg: 8000, peso_recolectado_kg: 0, estado: 'En base', turno: 'Nocturno', ruta_circuito: null }
+];
+
+// Estacionamientos individuales asignados dentro de la Base: Cantón del Buceo
+const POSICIONES_BASE_CAMIONES = {
+  5: [-34.899180, -56.129520], // Albert Einstein (Scania P250)
+  6: [-34.899220, -56.129420], // Leonardo da Vinci (Iveco Eurocargo)
+  7: [-34.899260, -56.129320], // Frida Kahlo (VW Constellation)
+  8: [-34.899300, -56.129220]  // Julio Cortázar (Scania P280)
+};
+
+function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Devuelve la ubicación actual del camión (por defecto en Base: Cantón del Buceo)
+function obtenerUbicacionActualCamion(camion) {
+  if (!camion) return 'Base (Cantón del Buceo)';
+
+  try {
+    const gpsGlobal = JSON.parse(localStorage.getItem('sigeru_gps_camiones') || '{}');
+    const camionGps = gpsGlobal[camion.id_camion] || gpsGlobal[camion.matricula];
+    if (camionGps) {
+      if (camionGps.ubicacion && camionGps.ubicacion.trim() !== '') {
+        return camionGps.ubicacion;
+      }
+      if (camionGps.lat && camionGps.lng) {
+        const dist = calcularDistanciaMetros(camionGps.lat, camionGps.lng, -34.899286, -56.129414);
+        if (dist < 150) {
+          return 'Base (Cantón del Buceo)';
+        }
+        return 'Lat: ' + Number(camionGps.lat).toFixed(4) + ', Lng: ' + Number(camionGps.lng).toFixed(4);
+      }
+    }
+  } catch (_) {}
+
+  return 'Base (Cantón del Buceo)';
+}
 let cuadrillas = [];
 let rutasCatalogo = [];
 let resumenCircuitos = [];
@@ -273,15 +324,20 @@ function selectedCrewId() {
   );
 }
 
+function listaCamionesActual() {
+  return (camiones && camiones.length > 0) ? camiones : CAMIONES_DEFECTO;
+}
+
 function selectedVehicle() {
   const id = selectedVehicleId();
+  const lista = listaCamionesActual();
 
   return (
-    camiones.find(
+    lista.find(
       item =>
         Number(item.id_camion) ===
         id
-    ) || null
+    ) || lista[0] || null
   );
 }
 
@@ -362,93 +418,38 @@ function showCrewView() {
   }
 }
 
-function renderVehicleList(
-  selectedId = null
-) {
-  if (!vehicleList) {
-    return;
-  }
+function renderVehicleList(selectedId = null) {
+  if (!vehicleList) return;
 
-  if (!camiones.length) {
-    vehicleList.innerHTML = `
-      <p class="p-3 mb-0 text-muted">
-        No hay camiones activos.
-      </p>
+  const listaACargar = (camiones && camiones.length > 0) ? camiones : CAMIONES_DEFECTO;
+
+  const activeId = Number(
+    selectedId ||
+    listaACargar[0].id_camion
+  );
+
+  vehicleList.innerHTML = listaACargar.map(camion => {
+    const ubicacionActual = obtenerUbicacionActualCamion(camion);
+
+    return `
+      <button
+        class="vehicle-item${Number(camion.id_camion) === activeId ? ' active' : ''}"
+        data-vehicle-id="${Number(camion.id_camion)}"
+        type="button"
+      >
+        <strong>${escapeHtml(camion.matricula)}</strong>
+        <span>Chofer: ${escapeHtml(camion.chofer || 'Sin asignar')}</span>
+        <small class="vehicle-location">
+          <i class="bi bi-geo-alt-fill"></i>
+          ${escapeHtml(ubicacionActual)}
+        </small>
+      </button>
     `;
+  }).join('');
 
-    clearVehicleDetail();
-
-    return;
-  }
-
-  const activeId =
-    Number(
-      selectedId ||
-      camiones[0].id_camion
-    );
-
-  vehicleList.innerHTML =
-    camiones.map(camion => {
-      const location =
-        camion.gps ||
-        camion.ruta_circuito ||
-        'Sin ubicación';
-
-      const route =
-        camion.ruta_circuito
-          ? ` · ${escapeHtml(
-              camion.ruta_circuito
-            )}`
-          : '';
-
-      return `
-        <button
-          class="vehicle-item${
-            Number(camion.id_camion) ===
-            activeId
-              ? ' active'
-              : ''
-          }"
-          data-vehicle-id="${
-            Number(camion.id_camion)
-          }"
-          type="button"
-        >
-          <strong>
-            ${escapeHtml(
-              camion.matricula
-            )}
-          </strong>
-
-          <span>
-            Chofer:
-            ${escapeHtml(
-              camion.chofer ||
-              'Sin asignar'
-            )}
-          </span>
-
-          <small>
-            ${escapeHtml(
-              camion.estado ||
-              'Sin estado'
-            )}
-            ${
-              route ||
-              ` · ${escapeHtml(location)}`
-            }
-          </small>
-        </button>
-      `;
-    }).join('');
-
-  const active =
-    camiones.find(
-      item =>
-        Number(item.id_camion) ===
-        activeId
-    ) ||
-    camiones[0];
+  const active = listaACargar.find(
+    item => Number(item.id_camion) === activeId
+  ) || listaACargar[0];
 
   updateVehicleDetail(active);
 }
@@ -514,9 +515,7 @@ function updateVehicleDetail(camion) {
 
   setInput(
     detailFields.location,
-    camion.gps ||
-    camion.ruta_circuito ||
-    '—'
+    obtenerUbicacionActualCamion(camion)
   );
 
   setInput(
@@ -669,7 +668,7 @@ function selectVehicle(id) {
     });
 
   const camion =
-    camiones.find(
+    listaCamionesActual().find(
       item =>
         Number(item.id_camion) ===
         Number(id)
@@ -680,6 +679,9 @@ function selectVehicle(id) {
       camion
     );
   }
+
+  // Lleva el mapa hasta el GPS del camión seleccionado
+  irACamionEnMapa(id);
 }
 
 function renderCrewList(
@@ -2555,6 +2557,7 @@ async function init() {
 
     renderVehicleList();
     renderCrewList();
+    cargarCamionesEnMapa();
 
     updateDashboardSummary();
 
@@ -2564,15 +2567,9 @@ async function init() {
       error
     );
 
-    if (vehicleList) {
-      vehicleList.innerHTML = `
-        <div class="alert alert-danger m-2">
-          ${escapeHtml(
-            error.message
-          )}
-        </div>
-      `;
-    }
+    // Sin API: mostramos igual los 4 camiones de respaldo en la Base
+    renderVehicleList();
+    cargarCamionesEnMapa();
 
     if (crewList) {
       crewList.innerHTML = `
@@ -2922,6 +2919,8 @@ document
 let adminMapInstance = null;
 let capaCircuitosMapa = null;
 let capaContenedoresMapa = null;
+let capaCamionesMapa = null;
+let marcadoresCamionesMapa = {};
 
 // Variables para la creación de contenedores
 let modoEdicionContenedor = false;
@@ -3591,6 +3590,135 @@ function procesarClicEnMapa(latlng) {
 }
 
 // Inicializa el mapa base de Leaflet dentro de #adminMapCanvas centrado en Montevideo
+
+// Crea el ícono circular del camión exactamente del mismo tamaño que los contenedores (20px)
+function crearIconoCamionCirculo(matricula = '', chofer = '', activo = false) {
+  return window.L.divIcon({
+    className: 'leaflet-camion-circulo-wrap',
+    html: `
+      <div class="camion-marker-circulo${activo ? ' activo' : ''}" id="map-circulo-camion-${escapeHtml(matricula)}" title="${escapeHtml(matricula)} · ${escapeHtml(chofer)}">
+        <img src="assets/icono-camion.png" alt="Camión" />
+      </div>
+    `,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -10]
+  });
+}
+
+function cargarCamionesEnMapa() {
+  if (!adminMapInstance || typeof window.L === 'undefined') return;
+
+  if (!capaCamionesMapa) {
+    capaCamionesMapa = window.L.layerGroup().addTo(adminMapInstance);
+  }
+  capaCamionesMapa.clearLayers();
+  marcadoresCamionesMapa = {};
+
+  const lista = (camiones && camiones.length > 0) ? camiones : CAMIONES_DEFECTO;
+  const gpsGlobal = JSON.parse(localStorage.getItem('sigeru_gps_camiones') || '{}');
+  const camionSeleccionado = selectedVehicle();
+  const idSeleccionado = camionSeleccionado ? Number(camionSeleccionado.id_camion) : (lista[0] ? Number(lista[0].id_camion) : null);
+
+  lista.forEach(c => {
+    const id = Number(c.id_camion);
+    const posBase = POSICIONES_BASE_CAMIONES[id] || COORD_BASE_BUCEO;
+    const gpsData = gpsGlobal[id] || gpsGlobal[c.matricula];
+
+    const lat = (gpsData && gpsData.lat) ? Number(gpsData.lat) : posBase[0];
+    const lng = (gpsData && gpsData.lng) ? Number(gpsData.lng) : posBase[1];
+    const esActivo = id === idSeleccionado;
+    const ubicacionTexto = obtenerUbicacionActualCamion(c);
+
+    const icono = crearIconoCamionCirculo(c.matricula, c.chofer || 'Chofer', esActivo);
+    const marker = window.L.marker([lat, lng], {
+      icon: icono,
+      zIndexOffset: esActivo ? 1500 : 1000
+    });
+
+    marker.bindPopup(`
+      <div style="font-size:0.84rem; line-height: 1.35;">
+        <strong style="color: #0284c7; font-size: 0.95rem;">${escapeHtml(c.matricula)}</strong>
+        <span style="color: #64748b; font-size: 0.78rem;">(${escapeHtml(c.modelo || c.marca || 'Camión')})</span><br>
+        <b>Chofer:</b> ${escapeHtml(c.chofer || 'Sin asignar')}<br>
+        <b>Ubicación actual:</b> <span id="map-popup-ub-${id}">${escapeHtml(ubicacionTexto)}</span>
+      </div>
+    `);
+
+    marker.on('click', () => {
+      vehicleList?.querySelectorAll('[data-vehicle-id]').forEach(item => {
+        item.classList.toggle('active', Number(item.dataset.vehicleId) === id);
+      });
+      updateVehicleDetail(c);
+    });
+
+    marker.addTo(capaCamionesMapa);
+    marcadoresCamionesMapa[id] = marker;
+  });
+}
+
+function irACamionEnMapa(id) {
+  if (!adminMapInstance) return;
+  if (!capaCamionesMapa || !marcadoresCamionesMapa[Number(id)]) {
+    cargarCamionesEnMapa();
+  }
+
+  const numId = Number(id);
+  const marker = marcadoresCamionesMapa[numId];
+  if (!marker) return;
+
+  document.querySelectorAll('.camion-marker-circulo').forEach(el => el.classList.remove('activo'));
+  Object.values(marcadoresCamionesMapa).forEach(m => m.setZIndexOffset(1000));
+  marker.setZIndexOffset(2000);
+  const iconoDiv = marker.getElement()?.querySelector('.camion-marker-circulo');
+  if (iconoDiv) iconoDiv.classList.add('activo');
+
+  // Vuela hasta el camión con zoom de calle
+  adminMapInstance.flyTo(marker.getLatLng(), 18, { duration: 0.8 });
+  setTimeout(() => marker.openPopup(), 850);
+}
+
+// Alias por compatibilidad
+const destacarCamionEnMapa = irACamionEnMapa;
+
+function actualizarPosicionesCamionesEnMapa() {
+  if (!adminMapInstance || !capaCamionesMapa) return;
+
+  const gpsGlobal = JSON.parse(localStorage.getItem('sigeru_gps_camiones') || '{}');
+  const lista = (camiones && camiones.length > 0) ? camiones : CAMIONES_DEFECTO;
+
+  let huboCambios = false;
+
+  lista.forEach(c => {
+    const id = Number(c.id_camion);
+    const marker = marcadoresCamionesMapa[id];
+    const gpsData = gpsGlobal[id] || gpsGlobal[c.matricula];
+
+    if (marker && gpsData && gpsData.lat && gpsData.lng) {
+      const actualPos = marker.getLatLng();
+      const nuevaLat = Number(gpsData.lat);
+      const nuevaLng = Number(gpsData.lng);
+
+      if (Math.abs(actualPos.lat - nuevaLat) > 0.00001 || Math.abs(actualPos.lng - nuevaLng) > 0.00001) {
+        marker.setLatLng([nuevaLat, nuevaLng]);
+        huboCambios = true;
+      }
+
+      const elemUb = document.getElementById(`map-popup-ub-${id}`);
+      if (elemUb && gpsData.ubicacion) {
+        elemUb.textContent = gpsData.ubicacion;
+      }
+    }
+  });
+
+  if (huboCambios) {
+    const vehiculoActivo = selectedVehicle();
+    if (vehiculoActivo) {
+      updateVehicleDetail(vehiculoActivo);
+    }
+  }
+}
+
 function initAdminMap() {
   const mapCanvas = $('adminMapCanvas');
 
@@ -3612,7 +3740,8 @@ function initAdminMap() {
   capaCircuitosMapa = window.L.layerGroup().addTo(adminMapInstance);
   capaRutaGenerada = window.L.layerGroup().addTo(adminMapInstance);
   capaContenedoresMapa = window.L.layerGroup().addTo(adminMapInstance);
-  
+  capaCamionesMapa = window.L.layerGroup().addTo(adminMapInstance);
+
 
   // Evento cuando el administrador hace clic en el mapa
   adminMapInstance.on('click', evento => {
@@ -3648,9 +3777,18 @@ function initAdminMap() {
     observer.observe(mapCanvas);
   }
 
-  // Cargamos los circuitos y los contenedores
+  // Cargamos los circuitos, los contenedores y los camiones (punto GPS)
   cargarCircuitosEnMapa();
   cargarContenedoresEnMapa();
+  cargarCamionesEnMapa();
+
+  // Escucha las posiciones GPS que publica el simulador en tiempo real
+  window.addEventListener('storage', evento => {
+    if (evento.key === 'sigeru_gps_camiones' || evento.key === 'sigeru_gps_camion') {
+      actualizarPosicionesCamionesEnMapa();
+    }
+  });
+  setInterval(actualizarPosicionesCamionesEnMapa, 2500);
 }
 
 // Botón "Crear contenedor" / "Cerrar edición"
