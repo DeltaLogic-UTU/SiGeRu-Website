@@ -1,4 +1,5 @@
 const API_SESION_USUARIOS = 'http://127.0.0.1:8000';
+const API_GESTION = 'http://127.0.0.1:8001';
 const API_RECOLECCION = 'http://127.0.0.1:8002';
 
 const COORD_BASE_BUCEO = [-34.899286, -56.129414];
@@ -58,7 +59,6 @@ function showMessage(element, text, isError = false) {
   element.classList.toggle('error', isError);
 }
 
-// Funciones para obtener y eliminar el token JWT almacenado en localStorage.
 const TOKEN_KEY = 'access_token';
 
 function getToken() {
@@ -126,7 +126,7 @@ async function cerrarSesion() {
       }
     );
   } finally {
-    // Eliminamos el token JWT de localStorage al cerrar sesión
+    
     removeToken();
   }
 }
@@ -223,15 +223,117 @@ const reporteForm =
   document.getElementById('reporteForm');
 
 if (reporteForm) {
-  reporteForm.addEventListener('submit', (event) => {
+  reporteForm.addEventListener('submit', async (event) => {
     event.preventDefault();
 
-    showMessage(
-      document.getElementById('reporteMensaje'),
-      'Reporte enviado y pendiente de revisión.'
+    const mensaje =
+      document.getElementById('reporteMensaje');
+
+    const boton =
+      reporteForm.querySelector('button[type="submit"]');
+
+    if (boton.disabled) {
+      return;
+    }
+
+    const token = getToken();
+
+    if (!token) {
+      window.location.replace(
+        '../landing-page/login.html'
+      );
+      return;
+    }
+
+    const datos = new FormData(reporteForm);
+
+    const tipo = String(
+      datos.get('tipo') || ''
+    ).trim();
+
+    const categorias = {
+      'Contenedor desbordado': 'Contenedores',
+      'Contenedor roto': 'Contenedores',
+      'Residuos fuera de lugar': 'Residuos',
+      'Demora en la recolección': 'Recolección',
+      'Riesgo sanitario / contaminación biológica': 'Riesgo sanitario'
+    };
+
+    datos.set(
+      'categoria',
+      categorias[tipo] || 'General'
     );
 
-    reporteForm.reset();
+    const foto = datos.get('foto');
+
+    if (foto instanceof File && foto.size === 0) {
+      datos.delete('foto');
+    }
+
+    boton.disabled = true;
+    boton.textContent = 'Enviando reporte...';
+
+    try {
+      const response = await fetch(
+        `${API_GESTION}/api/reclamos`,
+        {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: datos
+        }
+      );
+
+      const resultado = await response.json().catch(
+        () => null
+      );
+
+      if (!response.ok) {
+        const errores =
+          resultado?.errors &&
+          typeof resultado.errors === 'object'
+            ? Object.values(resultado.errors).flat()
+            : [];
+
+        throw new Error(
+          errores.join('\n') ||
+          resultado?.message ||
+          `No se pudo enviar el reporte (HTTP ${response.status}).`
+        );
+      }
+
+      if (!resultado || resultado.success !== true) {
+        throw new Error(
+          resultado?.message ||
+          'La API no confirmó que el reporte se haya registrado.'
+        );
+      }
+
+      showMessage(
+        mensaje,
+        'Reporte enviado correctamente y pendiente de revisión.'
+      );
+
+      reporteForm.reset();
+
+    } catch (error) {
+      console.error(
+        'Error enviando reporte:',
+        error
+      );
+
+      showMessage(
+        mensaje,
+        error.message || 'No se pudo enviar el reporte.',
+        true
+      );
+
+    } finally {
+      boton.disabled = false;
+      boton.textContent = 'Enviar reporte';
+    }
   });
 }
 

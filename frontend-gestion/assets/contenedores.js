@@ -25,6 +25,7 @@ let filtrosCircuitos = {
 let filtrosContenedores = {
   prioridad: '',
   municipio: '',
+  barrio: '',
   tipo: ''
 };
 
@@ -51,6 +52,13 @@ const removeContainerModal =
 const historyModal =
   bootstrap.Modal.getOrCreateInstance(
     $('containerHistoryModal')
+  );
+
+const replaceContainerForm = $('replaceContainerForm');
+
+const replaceContainerModal =
+  bootstrap.Modal.getOrCreateInstance(
+    $('replaceContainerModal')
   );
 
 const IMAGENES_RECICLAJE = [
@@ -114,7 +122,6 @@ const field = (name, value) => `
   </div>
 `;
 
-// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
 async function requestGestion(
   url,
   options = {}
@@ -281,6 +288,9 @@ function convertirContenedor(item) {
 
     estado:
       item.estado || '',
+
+    activo:
+      Number(item.activo) === 1,
 
     diasSinRecoleccion:
       dias,
@@ -936,30 +946,25 @@ function aplicarLimiteFilasCircuitos() {
 }
 
 function filtrarContenedores() {
-  return containers.filter(
-    item => {
-      const prioridad =
-        !filtrosContenedores.prioridad ||
-        item.nivelRecoleccion ===
-          filtrosContenedores.prioridad;
+  return containers.filter(item => {
+    const prioridad =
+      !filtrosContenedores.prioridad ||
+      item.nivelRecoleccion === filtrosContenedores.prioridad;
 
-      const municipio =
-        !filtrosContenedores.municipio ||
-        item.municipio ===
-          filtrosContenedores.municipio;
+    const municipio =
+      !filtrosContenedores.municipio ||
+      item.municipio === filtrosContenedores.municipio;
 
-      const tipo =
-        !filtrosContenedores.tipo ||
-        item.tipo ===
-          filtrosContenedores.tipo;
+    const barrio =
+      !filtrosContenedores.barrio ||
+      item.barrio === filtrosContenedores.barrio;
 
-      return (
-        prioridad &&
-        municipio &&
-        tipo
-      );
-    }
-  );
+    const tipo =
+      !filtrosContenedores.tipo ||
+      item.tipo === filtrosContenedores.tipo;
+
+    return prioridad && municipio && barrio && tipo;
+  });
 }
 
 function renderTable() {
@@ -1116,6 +1121,14 @@ function prepararFiltrosContenedores() {
         )
   );
 
+  const barrios = [
+  ...new Set(
+    containers
+      .map(item => item.barrio)
+      .filter(Boolean)
+  )
+  ].sort((a, b) => a.localeCompare(b, 'es'));
+
   const filtros =
     document.createElement(
       'div'
@@ -1127,7 +1140,7 @@ function prepararFiltrosContenedores() {
   filtros.className =
     'd-flex flex-wrap gap-2 mb-3';
 
-  filtros.innerHTML = `
+    filtros.innerHTML = `
     <select
       id="containerPriorityFilter"
       class="form-select form-select-sm w-auto"
@@ -1169,6 +1182,32 @@ function prepararFiltrosContenedores() {
             >
               Municipio ${escapeHtml(
                 municipio
+              )}
+            </option>
+          `
+        )
+        .join('')}
+    </select>
+
+    <select
+      id="containerNeighborhoodFilter"
+      class="form-select form-select-sm w-auto"
+      aria-label="Filtrar por barrio"
+    >
+      <option value="">
+        Todos los barrios
+      </option>
+
+      ${barrios
+        .map(
+          barrio => `
+            <option
+              value="${escapeHtml(
+                barrio
+              )}"
+            >
+              ${escapeHtml(
+                barrio
               )}
             </option>
           `
@@ -1230,6 +1269,20 @@ function prepararFiltrosContenedores() {
       'change',
       event => {
         filtrosContenedores.municipio =
+          event.target.value;
+
+        listadoExpandido =
+          false;
+
+        renderTable();
+      }
+    );
+
+  $('containerNeighborhoodFilter')
+    ?.addEventListener(
+      'change',
+      event => {
+        filtrosContenedores.barrio =
           event.target.value;
 
         listadoExpandido =
@@ -1439,6 +1492,21 @@ async function showContainer(id) {
         item.estado
       );
   }
+
+  $('replaceContainerBtn')?.classList.toggle(
+  'd-none',
+  !item.activo || item.estado !== 'incendiado'
+);
+
+$('editContainerBtn')?.classList.toggle(
+  'd-none',
+  !item.activo
+);
+
+$('removeContainerBtn')?.classList.toggle(
+  'd-none',
+  !item.activo
+);
 
   if (dataGrid) {
     dataGrid.innerHTML = [
@@ -1981,6 +2049,99 @@ async function recargarDatos() {
   ]);
 }
 
+$('replaceContainerBtn')?.addEventListener('click', () => {
+  const item = containers.find(
+    container => container.id === selectedId
+  );
+
+  if (!item || !item.activo || item.estado !== 'incendiado') {
+    return;
+  }
+
+  replaceContainerForm.reset();
+
+  $('replaceOriginalCode').textContent = item.codigo;
+
+  const mensaje = $('replaceContainerMessage');
+  mensaje.textContent = '';
+  mensaje.classList.add('d-none');
+
+  const tipoSelect = replaceContainerForm.elements['tipo'];
+
+  tipoSelect.innerHTML = catalogos.tipos.map(tipo => `
+    <option value="${escapeHtml(tipo.tipo)}">
+      ${escapeHtml(label(tipo.tipo))}
+    </option>
+  `).join('');
+
+  tipoSelect.value = item.tipo;
+
+  replaceContainerForm.elements['modelo'].value = item.modelo;
+  replaceContainerForm.elements['capacidad'].value = item.capacidad;
+
+  replaceContainerModal.show();
+});
+
+replaceContainerForm?.addEventListener('submit', async event => {
+  event.preventDefault();
+
+  const item = containers.find(
+    container => container.id === selectedId
+  );
+
+  if (!item || !item.activo || item.estado !== 'incendiado') {
+    return;
+  }
+
+  const data = new FormData(replaceContainerForm);
+
+  const payload = {
+    codigo: String(data.get('codigo') || '').trim().toUpperCase(),
+    modelo: String(data.get('modelo') || '').trim(),
+    tipo: String(data.get('tipo') || '').trim(),
+    capacidad: Number(data.get('capacidad'))
+  };
+
+  const mensaje = $('replaceContainerMessage');
+
+  const submitButton = replaceContainerForm.querySelector(
+    '[type="submit"]'
+  );
+
+  submitButton.disabled = true;
+
+  try {
+    const result = await requestGestion(
+      `/api/contenedores/${item.id}/reemplazar`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }
+    );
+
+    replaceContainerModal.hide();
+
+    selectedId = null;
+
+    await recargarDatos();
+
+    const nuevoId = Number(result?.data?.id_contenedor);
+
+    if (nuevoId) {
+      await showContainer(nuevoId);
+    } else {
+      detailPanel?.classList.add('d-none');
+      historyPanel?.classList.add('d-none');
+    }
+
+  } catch (error) {
+    mensaje.textContent = error.message;
+    mensaje.classList.remove('d-none');
+  } finally {
+    submitButton.disabled = false;
+  }
+});
+
 $('addContainerBtn')
   ?.addEventListener(
     'click',
@@ -2285,17 +2446,16 @@ async function iniciarContenedores() {
 
     prepararCatalogosForm();
     prepararFiltrosCircuitos();
-    prepararFiltrosContenedores();
     prepararBotonExpansionCircuitos();
     prepararBotonExpansion();
 
     await recargarDatos();
 
+    prepararFiltrosContenedores();
+
     renderTable();
   } catch (error) {
-    console.error(
-      error
-    );
+    console.error(error);
 
     if (tableBody) {
       tableBody.innerHTML = `
