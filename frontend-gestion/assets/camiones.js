@@ -1,3 +1,105 @@
+
+let truckDetailMapInstance = null;
+let truckDetailMapMarker = null;
+
+function renderTruckMap(truck) {
+  const mapContainer = document.getElementById('truckDetailMap');
+  if (!mapContainer || typeof window.L === 'undefined') return;
+
+  if (!truckDetailMapInstance) {
+    truckDetailMapInstance = window.L.map('truckDetailMap', {
+      zoomControl: true,
+      attributionControl: false
+    });
+
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(truckDetailMapInstance);
+
+    // Polígono de la Base: Cantón del Buceo como referencia espacial
+    window.L.polygon([
+      [-34.897954, -56.130250],
+      [-34.898171, -56.130496],
+      [-34.899286, -56.129639],
+      [-34.899260, -56.129350],
+      [-34.899164, -56.129243]
+    ], {
+      color: '#1d4ed8',
+      weight: 2,
+      fillColor: '#2563eb',
+      fillOpacity: 0.22
+    }).bindPopup('<b>Base Operativa: Cantón del Buceo</b>').addTo(truckDetailMapInstance);
+  }
+
+  // Determinar la posición del camión
+  let lat = -34.899286;
+  let lng = -56.129414;
+  let ubicacionNombre = truck.ubicacion || truck.gps || 'Base: Cantón del Buceo';
+
+  try {
+    const gpsGlobal = JSON.parse(localStorage.getItem('sigeru_gps_camiones') || '{}');
+    const camionGps = gpsGlobal[truck.id_camion] || gpsGlobal[truck.matricula];
+    if (camionGps && camionGps.lat && camionGps.lng) {
+      lat = Number(camionGps.lat);
+      lng = Number(camionGps.lng);
+      if (camionGps.ubicacion) ubicacionNombre = camionGps.ubicacion;
+    } else if (truck.latitud && truck.longitud) {
+      lat = Number(truck.latitud);
+      lng = Number(truck.longitud);
+    } else {
+      const POSICIONES_BASE = {
+        5: [-34.899180, -56.129520],
+        6: [-34.899220, -56.129420],
+        7: [-34.899260, -56.129320],
+        8: [-34.899300, -56.129220],
+        9: [-34.899340, -56.129120]
+      };
+      if (POSICIONES_BASE[truck.id_camion]) {
+        lat = POSICIONES_BASE[truck.id_camion][0];
+        lng = POSICIONES_BASE[truck.id_camion][1];
+      }
+    }
+  } catch (_) {}
+
+  // Ícono circular nítido idéntico al de los contenedores
+  const icono = window.L.divIcon({
+    className: 'leaflet-camion-circulo-wrap',
+    html: `
+      <div class="camion-marker-circulo activo" title="${escapeHtml(truck.matricula)}">
+        <img src="assets/icono-camion.png" alt="Camión" />
+      </div>
+    `,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+    popupAnchor: [0, -11]
+  });
+
+  if (truckDetailMapMarker) {
+    truckDetailMapMarker.setLatLng([lat, lng]);
+    truckDetailMapMarker.setIcon(icono);
+  } else {
+    truckDetailMapMarker = window.L.marker([lat, lng], {
+      icon: icono,
+      zIndexOffset: 1500
+    }).addTo(truckDetailMapInstance);
+  }
+
+  truckDetailMapMarker.bindPopup(`
+    <div style="font-size:0.85rem; line-height: 1.35;">
+      <strong style="color: #0284c7;">${escapeHtml(truck.matricula)}</strong> (${escapeHtml(truck.modelo || truck.marca || 'Camión')})<br>
+      <b>Chofer:</b> ${escapeHtml(truck.chofer || 'Sin asignar')}<br>
+      <b>Ubicación:</b> ${escapeHtml(ubicacionNombre)}
+    </div>
+  `);
+
+  truckDetailMapInstance.setView([lat, lng], 16);
+
+  setTimeout(() => {
+    truckDetailMapInstance?.invalidateSize();
+    truckDetailMapMarker?.openPopup();
+  }, 250);
+}
+
 const API_GESTION = 'http://127.0.0.1:8001';
 
 const $ = id => document.getElementById(id);
@@ -20,6 +122,11 @@ const TRUCK_VISUALS = {
   },
   'SDT-5632': {
     imagen: '../resources/Camion4.png',
+    fotoPosicion: 'center',
+    fotoAjuste: 'cover'
+  },
+  'STB-4819': {
+    imagen: '../resources/Camion1.png',
     fotoPosicion: 'center',
     fotoAjuste: 'cover'
   }
@@ -742,7 +849,7 @@ function renderTable() {
 
           <td>
             ${escapeHtml(
-              truck.gps || '—'
+              truck.ubicacion || truck.gps || '—'
             )}
           </td>
 
@@ -887,13 +994,15 @@ function renderTruck(truck) {
 
   renderTable();
 
-  detailPanel?.classList.remove(
-    'd-none'
-  );
+  // Abrir la ventana emergente modal con la información del camión
+  const modalEl = document.getElementById('detalleCamionModal');
+  if (modalEl && typeof bootstrap !== 'undefined') {
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+  }
 
-  historyPanel?.classList.remove(
-    'd-none'
-  );
+  // Renderizar la ubicación del camión en el mapa interactivo
+  renderTruckMap(truck);
 
   if (title) {
     title.textContent =
@@ -975,7 +1084,7 @@ function renderTruck(truck) {
 
       field(
         'GPS / ubicación',
-        truck.gps || '—'
+        truck.ubicacion || truck.gps || '—'
       )
     ].join('');
   }

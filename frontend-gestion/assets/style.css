@@ -1529,3 +1529,16 @@ button,
   color: #38bdf8;
   font-size: .75rem;
 }
+
+
+/* Mapa funcional en la ficha modal de camión */
+.truck-detail-map {
+  width: 100%;
+  height: 250px;
+  min-height: 250px;
+  background-color: #0f172a;
+}
+
+#asignarChoferModal, #asignarAcompananteModal, #incidenciaModal {
+  z-index: 1060 !important;
+}

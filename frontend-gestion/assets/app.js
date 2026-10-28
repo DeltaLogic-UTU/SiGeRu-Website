@@ -62,7 +62,8 @@ const CAMIONES_DEFECTO = [
   { id_camion: 5, matricula: 'SBK-3265', chofer: 'Albert Einstein', marca: 'Scania', modelo: 'P250', capacidad_kg: 8000, peso_recolectado_kg: 0, estado: 'En base', turno: 'Nocturno', ruta_circuito: null },
   { id_camion: 6, matricula: 'SAE-5268', chofer: 'Leonardo da Vinci', marca: 'Iveco', modelo: 'Eurocargo', capacidad_kg: 7000, peso_recolectado_kg: 0, estado: 'En base', turno: 'Nocturno', ruta_circuito: null },
   { id_camion: 7, matricula: 'SCE-1235', chofer: 'Frida Kahlo', marca: 'Volkswagen', modelo: 'Constellation', capacidad_kg: 8000, peso_recolectado_kg: 0, estado: 'En base', turno: 'Nocturno', ruta_circuito: null },
-  { id_camion: 8, matricula: 'SDT-5632', chofer: 'Julio Cortázar', marca: 'Scania', modelo: 'P280', capacidad_kg: 8000, peso_recolectado_kg: 0, estado: 'En base', turno: 'Nocturno', ruta_circuito: null }
+  { id_camion: 8, matricula: 'SDT-5632', chofer: 'Julio Cortázar', marca: 'Scania', modelo: 'P280', capacidad_kg: 8000, peso_recolectado_kg: 0, estado: 'En base', turno: 'Nocturno', ruta_circuito: null },
+  { id_camion: 9, matricula: 'STB-4819', chofer: 'Chofer Demo', marca: 'Mercedes-Benz', modelo: 'Atego 1729', capacidad_kg: 8000, peso_recolectado_kg: 0, estado: 'En base', turno: 'Nocturno', ruta_circuito: null }
 ];
 
 // Estacionamientos individuales asignados dentro de la Base: Cantón del Buceo
@@ -70,7 +71,8 @@ const POSICIONES_BASE_CAMIONES = {
   5: [-34.899180, -56.129520], // Albert Einstein (Scania P250)
   6: [-34.899220, -56.129420], // Leonardo da Vinci (Iveco Eurocargo)
   7: [-34.899260, -56.129320], // Frida Kahlo (VW Constellation)
-  8: [-34.899300, -56.129220]  // Julio Cortázar (Scania P280)
+  8: [-34.899300, -56.129220], // Julio Cortázar (Scania P280)
+  9: [-34.899340, -56.129120]  // Chofer Demo (Mercedes-Benz Atego 1729)
 };
 
 function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
