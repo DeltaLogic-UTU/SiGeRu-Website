@@ -4199,6 +4199,29 @@ btnEnviarRutaChofer?.addEventListener('click', async () => {
     rutasDespachadas[camion.matricula] = rutaActual;
     localStorage.setItem('sigeru_rutas_enviadas_chofer', JSON.stringify(rutasDespachadas));
 
+    // Enviamos también la ruta generada a la API de Recolección (puerto 8002)
+    try {
+      const token = getToken();
+      await fetch('http://127.0.0.1:8002/api/rutas/despachar', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          id_camion: Number(camion.id_camion),
+          id_ruta: camion.id_ruta ? Number(camion.id_ruta) : null,
+          circuitos: rutaActual.circuitos,
+          contenedores: rutaActual.contenedores,
+          geometriaCalles: rutaActual.geometriaCalles,
+          distanciaKm: Number(rutaActual.distanciaKm || 0)
+        })
+      });
+    } catch (errApiRecoleccion) {
+      console.warn('Aviso al despachar ruta en API 8002:', errApiRecoleccion);
+    }
+
     // 3. Actualizamos el estado en la barra de abajo del camión y pintamos la ruta en verde
     camion.estado = 'Ruta enviada a chofer';
     updateVehicleDetail(camion);
