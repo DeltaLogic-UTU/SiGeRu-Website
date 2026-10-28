@@ -6,41 +6,51 @@
   <title>Chofer | SiGeRU</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link href="assets/style.css" rel="stylesheet">
   <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+  <link href="assets/style.css?v=4" rel="stylesheet">
 </head>
-<body>
+<body class="chofer-dashboard-body">
   <header class="site-header">
-    <div class="container">
-      <nav class="navbar navbar-expand-lg py-2 py-lg-3">
-        <div class="navbar-brand logo-link"  aria-label="Ir al inicio de SiGeRU">
+    <div class="container-fluid px-3">
+      <nav class="navbar navbar-expand-lg py-1">
+        <a class="navbar-brand logo-link" href="chofer.html" aria-label="Inicio Chofer SiGeRU">
           <img class="brand-logo" src="../resources/logo.png" alt="Logo de SiGeRU">
-        </div>
+        </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
           aria-controls="mainNav" aria-expanded="false" aria-label="Abrir navegación">
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="mainNav">
           <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
-            <li class="nav-item"><a class="nav-link" href="#jornada">Mi jornada</a></li>
-            <li class="nav-item"><a class="nav-link" href="#vehiculo">Mi camión</a></li>
+            <li class="nav-item">
+              <button class="nav-link active" id="navFocusMapaChofer" type="button">
+                <i class="bi bi-map"></i>
+                <span>Mapa de recorrido</span>
+              </button>
+            </li>
+            <li class="nav-item">
+              <span class="nav-link text-secondary fw-bold" id="choferHeaderBadge">
+                <i class="bi bi-truck"></i>
+                <span id="choferHeaderCamion">Cargando camión...</span>
+              </span>
+            </li>
             <li class="nav-item mt-2 mt-lg-0">
               <button class="theme-toggle" data-theme-toggle type="button"></button>
             </li>
-          <li class="nav-item mt-2 mt-lg-0">
-        <a class="nav-link logout-link" data-logout href="../landing-page/login.html">
-         <i class="bi bi-box-arrow-right"></i>
-         <span>Cerrar sesión</span>
-        </a>
-       </li>
-      </ul>
+            <li class="nav-item mt-2 mt-lg-0">
+              <a class="nav-link logout-link" data-logout href="../landing-page/login.html">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Cerrar sesión</span>
+              </a>
+            </li>
+          </ul>
         </div>
       </nav>
     </div>
   </header>
 
   <main>
-        <!-- Barra superior del chofer (estilo Administrador) -->
+    <!-- Barra superior del chofer (mismo formato que el Administrador) -->
     <section class="chofer-status-bar" aria-label="Resumen de jornada del chofer">
       <div class="container-fluid px-3">
         <div class="chofer-status-grid">
@@ -56,21 +66,21 @@
 
           <label>
             Turno
-            <input id="choferTurnoTop" class="form-control form-control-sm" type="text" value="Diurno" readonly>
+            <input id="choferTurnoTop" class="form-control form-control-sm" type="text" value="Nocturno" readonly>
           </label>
 
           <div class="chofer-status-item">
-            <span>A levantar</span>
+            <span>Contenedores a levantar</span>
             <strong id="choferTotalLevantar">0</strong>
           </div>
 
           <div class="chofer-status-item">
-            <span>Levantados</span>
+            <span>Contenedores levantados</span>
             <strong id="choferTotalLevantados">0</strong>
           </div>
 
           <div class="chofer-status-item">
-            <span>Incidencias</span>
+            <span>Incidencias creadas</span>
             <strong id="choferTotalIncidencias">0</strong>
           </div>
 
@@ -87,221 +97,241 @@
       </div>
     </section>
 
-    <!-- Panel principal: Controles del Chofer a la izquierda y Mapa interactivo a la derecha -->
-    <section class="chofer-workspace py-3" id="mapaChoferSection">
-      <div class="container-fluid px-3">
-        <div class="chofer-map-layout">
+    <!-- Distribución operativa: Panel lateral izquierdo, Mapa interactivo central y Detalle inferior del camión -->
+    <section class="chofer-operation-layout container-fluid px-3 pb-2" id="mapaChoferSection">
 
-          <!-- Panel lateral de control del recorrido -->
-          <aside class="chofer-control-panel">
-            <div class="chofer-box">
-              <span class="chofer-box-tag">Mi Camión y Ruta</span>
-              <h3 id="choferMapaCamion">Sin camión</h3>
-              <p id="choferMapaCircuitos" class="mb-1">Esperando ruta del administrador...</p>
-              <small id="choferEstadoViaje" class="badge bg-secondary">En espera</small>
-            </div>
-
-            <!-- Tarjeta del contenedor donde está parado el camión -->
-            <div class="chofer-box" id="choferParadaBox">
-              <span class="chofer-box-tag">Parada actual</span>
-              <h4 id="choferContenedorActual">Sin parada activa</h4>
-              <p id="choferContenedorDetalle" class="mb-0">Iniciá el recorrido para avanzar hacia el primer contenedor.</p>
-            </div>
-
-            <!-- Botones de acción del chofer -->
-            <div class="chofer-actions-stack">
-              <button id="btnIniciarViajeChofer" class="btn btn-primary w-100" type="button">
-                <i class="bi bi-play-circle-fill"></i> Iniciar recorrido
-              </button>
-
-              <button id="btnContenedorLevantado" class="btn btn-success w-100" type="button" disabled>
-                <i class="bi bi-check2-circle"></i> Contenedor levantado
-              </button>
-
-              <button id="btnAbrirIncidenciaChofer" class="btn btn-danger w-100" type="button" disabled>
-                <i class="bi bi-exclamation-triangle-fill"></i> No levantado / Incidencia
-              </button>
-            </div>
-
-            <!-- Formulario desplegable cuando no se pudo levantar o hay incidencia -->
-            <div id="formIncidenciaChoferWrap" class="chofer-box d-none">
-              <span class="chofer-box-tag text-danger">Registrar incidencia en contenedor</span>
-
-              <label class="mt-2">
-                Estado de recolección
-                <select id="incidenciaAccionChofer" class="form-select form-select-sm">
-                  <option value="no_levantado">No levantado</option>
-                  <option value="levantado">Levantado con observación</option>
-                </select>
-              </label>
-
-              <label class="mt-2">
-                Motivo
-                <select id="incidenciaMotivoChofer" class="form-select form-select-sm">
-                  <option value="Vehículo mal estacionado bloqueando">Vehículo mal estacionado bloqueando</option>
-                  <option value="Contenedor roto o dañado">Contenedor roto o dañado</option>
-                  <option value="Contenedor desbordado / residuos en piso">Contenedor desbordado / residuos en piso</option>
-                  <option value="Contenedor vandalizado / incendiado">Contenedor vandalizado / incendiado</option>
-                  <option value="Calle cortada / inaccesible">Calle cortada / inaccesible</option>
-                  <option value="Residuos impropios (escombros / poda)">Residuos impropios (escombros / poda)</option>
-                </select>
-              </label>
-
-              <label class="mt-2">
-                Detalle adicional (opcional)
-                <input id="incidenciaDetalleChofer" type="text" class="form-control form-control-sm" placeholder="Ej: Auto frente al contenedor...">
-              </label>
-
-              <div class="d-flex gap-2 mt-2">
-                <button id="btnConfirmarIncidenciaChofer" class="btn btn-sm btn-danger w-100" type="button">
-                  Guardar incidencia
-                </button>
-                <button id="btnCancelarIncidenciaChofer" class="btn btn-sm btn-secondary" type="button">
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </aside>
-
-          <!-- Mapa interactivo del chofer -->
-          <div class="chofer-map-panel">
-            <div class="chofer-map-tools">
-              <button id="btnCentrarMiCamion" class="btn btn-sm btn-dark" type="button">
-                <i class="bi bi-crosshair"></i> Mi camión
-              </button>
-              <button id="btnVerTodaLaRuta" class="btn btn-sm btn-dark" type="button">
-                <i class="bi bi-arrows-fullscreen"></i> Ver ruta
-              </button>
-            </div>
-            <div id="choferMapCanvas" class="chofer-map-canvas"></div>
-          </div>
-
-        </div>
-      </div>
-    </section>
-
-    <section class="hero" id="jornada">
-      <div class="container hero-grid">
-        <div>
-          <span class="tag">Espacio del chofer</span>
-          <h1>Tu recorrido y <span>vehículo asignado</span></h1>
-          <p>
-            Consultá el camión, la ruta y el estado operativo asignados para tu jornada.
-          </p>
-          <div class="hero-actions">
-            <a class="btn btn-primary" href="#vehiculo">Ver mi camión</a>
-            <a class="btn btn-outline" href="../landing-page/index.html#contacto">Contactar soporte</a>
-          </div>
+      <!-- Panel lateral izquierdo: Controles del chofer y paradas -->
+      <aside class="chofer-control-panel">
+        <div class="chofer-panel-title">
+          <i class="bi bi-truck"></i> Control de Recorrido
         </div>
 
-        <div class="dashboard-preview">
-          <div class="preview-top">
-            <strong>Resumen de jornada</strong>
-            <div class="dots"><span></span><span></span><span></span></div>
+        <div class="chofer-panel-body">
+          <div class="chofer-box">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="chofer-box-tag mb-0">Mi Camión y Ruta</span>
+              <span id="choferEstadoViaje" class="badge bg-secondary">En espera</span>
+            </div>
+            <h3 id="choferMapaCamion">Cargando...</h3>
+            <p id="choferMapaCircuitos" class="mb-0">Verificando ruta asignada...</p>
           </div>
-          <div class="feature-board">
-            <div class="feature-row">
-              <div class="feature-icon" aria-hidden="true"><i class="bi bi-truck"></i></div>
-              <div>
-                <strong id="choferCamionResumen">Camión asignado</strong>
-                <p id="choferCamionTexto">Consultá los datos del vehículo de la jornada.</p>
-              </div>
-              <span class="feature-state" id="choferEstadoResumen">Activo</span>
-            </div>
 
-            <div class="feature-row">
-              <div class="feature-icon" aria-hidden="true"><i class="bi bi-signpost-split"></i></div>
-              <div>
-                <strong id="choferRutaResumen">Ruta asignada</strong>
-                <p>Recorrido previsto para el turno actual.</p>
-              </div>
-              <span class="feature-state">Ruta</span>
-            </div>
+          <!-- Tarjeta del contenedor donde está parado el camión -->
+          <div class="chofer-box" id="choferParadaBox">
+            <span class="chofer-box-tag">Parada actual</span>
+            <h4 id="choferContenedorActual">En Base Cantón del Buceo</h4>
+            <p id="choferContenedorDetalle" class="mb-0">Hacé clic en "Iniciar recorrido" para avanzar por la ruta hacia el primer contenedor.</p>
+          </div>
 
-            <div class="feature-row">
-              <div class="feature-icon" aria-hidden="true"><i class="bi bi-clock"></i></div>
-              <div>
-                <strong id="choferTurnoResumen">Turno operativo</strong>
-                <p>Horario correspondiente a la jornada.</p>
-              </div>
-              <span class="feature-state">Turno</span>
+          <!-- Botones de acción del chofer -->
+          <div class="chofer-actions-stack">
+            <button id="btnIniciarViajeChofer" class="btn btn-primary w-100" type="button">
+              <i class="bi bi-play-circle-fill"></i> Iniciar recorrido
+            </button>
+
+            <button id="btnContenedorLevantado" class="btn btn-success w-100" type="button" disabled>
+              <i class="bi bi-check2-circle"></i> Contenedor levantado
+            </button>
+
+            <button id="btnAbrirIncidenciaChofer" class="btn btn-danger w-100" type="button" disabled>
+              <i class="bi bi-exclamation-triangle-fill"></i> No levantado / Agregar incidencia
+            </button>
+          </div>
+
+          <!-- Formulario desplegable cuando no se pudo levantar o hay incidencia -->
+          <div id="formIncidenciaChoferWrap" class="chofer-box d-none">
+            <span class="chofer-box-tag text-danger">Registrar incidencia en contenedor</span>
+
+            <label class="mt-1">
+              Estado de recolección
+              <select id="incidenciaAccionChofer" class="form-select form-select-sm">
+                <option value="no_levantado">No levantado</option>
+                <option value="levantado">Levantado con observación</option>
+              </select>
+            </label>
+
+            <label class="mt-2">
+              Motivo por el que no se levantó / incidencia
+              <select id="incidenciaMotivoChofer" class="form-select form-select-sm">
+                <option value="Vehículo mal estacionado bloqueando">Vehículo mal estacionado bloqueando</option>
+                <option value="Contenedor roto o dañado">Contenedor roto o dañado</option>
+                <option value="Contenedor desbordado / residuos en piso">Contenedor desbordado / residuos en piso</option>
+                <option value="Contenedor vandalizado / incendiado">Contenedor vandalizado / incendiado</option>
+                <option value="Calle cortada / inaccesible">Calle cortada / inaccesible</option>
+                <option value="Residuos impropios (escombros / poda)">Residuos impropios (escombros / poda)</option>
+              </select>
+            </label>
+
+            <label class="mt-2">
+              Detalle adicional (opcional)
+              <input id="incidenciaDetalleChofer" type="text" class="form-control form-control-sm" placeholder="Ej: Auto frente al contenedor...">
+            </label>
+
+            <div class="d-flex gap-2 mt-2">
+              <button id="btnConfirmarIncidenciaChofer" class="btn btn-sm btn-danger w-100" type="button">
+                Guardar y continuar
+              </button>
+              <button id="btnCancelarIncidenciaChofer" class="btn btn-sm btn-secondary" type="button">
+                Cancelar
+              </button>
+            </div>
+          </div>
+
+          <!-- Lista de paradas de la ruta -->
+          <div class="chofer-stops-wrap">
+            <span class="chofer-box-tag px-1">Contenedores en la ruta</span>
+            <div id="choferListaParadas" class="chofer-stops-list">
+              <p class="text-muted small mb-0 p-2">Cargando contenedores...</p>
             </div>
           </div>
         </div>
+      </aside>
+
+      <!-- Mapa interactivo del chofer -->
+      <div class="chofer-map-panel" style="min-height: 460px;">
+        <div id="choferMapCanvas" class="chofer-map-canvas" style="width: 100%; height: 100%; min-height: 460px;"></div>
+
+        <!-- Panel de navegación GPS estilo Waze -->
+        <div id="wazeNavHud" class="waze-nav-hud">
+          <div class="waze-nav-card">
+            <div class="waze-maneuver-col">
+              <div class="waze-icon-box" id="wazeIconBox">
+                <i class="bi bi-arrow-up" id="wazeManeuverIcon"></i>
+              </div>
+              <span class="waze-dist-text" id="wazeDistText">-- m</span>
+            </div>
+            <div class="waze-info-col">
+              <div class="waze-instruction" id="wazeInstruction">Listo para iniciar</div>
+              <div class="waze-next-street" id="wazeNextStreet">Navegación paso a paso con voz</div>
+              <div class="waze-sub-preview" id="wazeSubPreview">
+                <i class="bi bi-signpost-2-fill"></i>
+                <span id="wazeNextStepText">Tocá "Iniciar recorrido" para comenzar</span>
+              </div>
+            </div>
+            <div class="waze-controls-col">
+              <button id="btnVozNav" class="btn-waze-sound active" type="button" title="Voz de navegación activada (clic para silenciar)">
+                <i class="bi bi-volume-up-fill" id="iconoVozNav"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Velocímetro flotante estilo Waze -->
+        <div class="waze-speed-widget" id="wazeSpeedWidget">
+          <span class="waze-speed-val" id="wazeSpeedVal">0</span>
+          <span class="waze-speed-lbl">KM/H</span>
+        </div>
+
+        <!-- Botones superiores derechos del mapa -->
+        <div class="chofer-map-tools">
+          <button id="btnCentrarMiCamion" class="btn-chofer-tool btn-chofer-blue" type="button">
+            <i class="bi bi-crosshair"></i>
+            <span>Mi camión</span>
+          </button>
+          <button id="btnVerTodaLaRuta" class="btn-chofer-tool btn-chofer-green" type="button">
+            <i class="bi bi-arrows-fullscreen"></i>
+            <span>Ver ruta</span>
+          </button>
+        </div>
+
+        <!-- Leyenda inferior izquierda del mapa -->
+        <div class="chofer-map-legend" aria-label="Leyenda del mapa">
+          <span><i class="legend-dot level-verde"></i> Verde: hasta 2 días</span>
+          <span><i class="legend-dot level-amarillo"></i> Amarillo: 3er día</span>
+          <span><i class="legend-dot level-naranja"></i> Naranja: 4to día</span>
+          <span><i class="legend-dot level-rojo"></i> Rojo: 5to día / Levantado</span>
+          <span><i class="legend-dot level-negro"></i> Negro: 6 o más días</span>
+          <span><i class="legend-dot claim"></i> No levantado (Incidencia)</span>
+        </div>
       </div>
-    </section>
 
-    <section id="vehiculo">
-      <div class="container">
-        <div class="section-title center">
-          <h2>Información operativa</h2>
-          <p>Datos principales que necesitás antes y durante el recorrido.</p>
+      <!-- Panel inferior compacto de detalle del camión (mismo diseño que Administrador) -->
+      <section class="chofer-vehicle-detail" aria-label="Detalle del camión del chofer">
+        <div class="chofer-detail-grid">
+          <div class="chofer-detail-group">
+            <label>
+              Camión
+              <input class="form-control form-control-sm" id="choferDetCamion" readonly value="—">
+            </label>
+            <label>
+              Chofer asignado
+              <input class="form-control form-control-sm" id="choferDetChofer" readonly value="—">
+            </label>
+            <label>
+              Se encuentra
+              <input class="form-control form-control-sm" id="choferDetEstado" readonly value="—">
+            </label>
+          </div>
+
+          <div class="chofer-detail-group">
+            <label>
+              Ubicación
+              <input class="form-control form-control-sm" id="choferDetUbicacion" readonly value="Cantón del Buceo">
+            </label>
+            <label>
+              Turno
+              <input class="form-control form-control-sm" id="choferDetTurno" readonly value="—">
+            </label>
+            <label>
+              Circuito asignado
+              <input class="form-control form-control-sm" id="choferDetCircuito" readonly value="—">
+            </label>
+          </div>
+
+          <div class="chofer-detail-group">
+            <label>
+              Contenedores en ruta
+              <input class="form-control form-control-sm" id="choferDetAsignados" readonly value="0">
+            </label>
+            <label>
+              Contenedores levantados
+              <input class="form-control form-control-sm" id="choferDetLevantados" readonly value="0">
+            </label>
+            <label>
+              Contenedores faltantes
+              <input class="form-control form-control-sm" id="choferDetFaltantes" readonly value="0">
+            </label>
+          </div>
+
+          <div class="chofer-detail-group">
+            <label>
+              Peso recolectado
+              <input class="form-control form-control-sm" id="choferDetPeso" readonly value="0 kg">
+            </label>
+            <label>
+              Capacidad del camión
+              <input class="form-control form-control-sm" id="choferDetCapacidad" readonly value="—">
+            </label>
+            <label>
+              Kilómetros recorridos
+              <input class="form-control form-control-sm" id="choferDetKm" readonly value="0.0 km">
+            </label>
+          </div>
+
+          <div class="chofer-detail-group">
+            <label>
+              Km para finalizar el viaje
+              <input class="form-control form-control-sm" id="choferDetKmRestantes" readonly value="0.0 km">
+            </label>
+            <label>
+              Incidencias registradas
+              <input class="form-control form-control-sm" id="choferDetIncidencias" readonly value="0">
+            </label>
+            <label>
+              Cuadrilla de apoyo
+              <input class="form-control form-control-sm" id="choferDetCuadrilla" readonly value="—">
+            </label>
+          </div>
         </div>
+      </section>
 
-        <div class="cards three">
-          <article class="card">
-            <div class="card-icon" aria-hidden="true"><i class="bi bi-truck-front"></i></div>
-            <h3>Vehículo</h3>
-            <p id="choferVehiculo">El supervisor asignará un camión a tu jornada.</p>
-          </article>
-
-          <article class="card">
-            <div class="card-icon" aria-hidden="true"><i class="bi bi-map"></i></div>
-            <h3>Ruta</h3>
-            <p id="choferRuta">La ruta asignada aparecerá cuando Gestión la confirme.</p>
-          </article>
-
-          <article class="card">
-            <div class="card-icon" aria-hidden="true"><i class="bi bi-clipboard-check"></i></div>
-            <h3>Estado</h3>
-            <p id="choferEstado">Verificá el estado del vehículo antes de comenzar.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <div class="section-title center">
-          <h2>Tareas del chofer</h2>
-          <p>Acciones básicas vinculadas a la operación del vehículo.</p>
-        </div>
-
-        <div class="cards three">
-          <article class="card">
-            <div class="card-icon">1</div>
-            <h3>Inicio de turno</h3>
-            <p>Confirmar vehículo, ruta asignada y condiciones básicas antes de salir.</p>
-          </article>
-          <article class="card">
-            <div class="card-icon">2</div>
-            <h3>Durante la ruta</h3>
-            <p>Seguir el recorrido asignado y comunicar incidencias relacionadas con el camión.</p>
-          </article>
-          <article class="card">
-            <div class="card-icon">3</div>
-            <h3>Fin de jornada</h3>
-            <p>Registrar el cierre del turno y dejar constancia de observaciones del vehículo.</p>
-          </article>
-        </div>
-      </div>
     </section>
   </main>
 
-  <footer>
-    <div class="container footer-grid">
-      <p>SiGeRU · Chofer</p>
-      <div class="footer-links">
-        <a href="../landing-page/index.html#contacto">Contacto</a>
-        <a data-logout href="chofer.html">Salir</a>
-      </div>
-    </div>
-  </footer>
-
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="assets/simulador-chofer.js"></script>
-  <script src="assets/app.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
+  <script src="assets/simulador-chofer.js?v=4"></script>
+  <script src="assets/app.js?v=4"></script>
 </body>
 </html>

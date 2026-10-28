@@ -4131,7 +4131,8 @@ btnQuitarRutaMapa?.addEventListener('click', async () => {
   if (camion.id_ruta) {
     try {
       await requestGestion(`/api/camiones/${camion.id_camion}/ruta`, {
-        method: 'DELETE'
+        method: 'PUT',
+        body: { id_ruta: null }
       });
     } catch (error) {
       console.warn('Aviso al quitar ruta en API:', error);
@@ -4184,11 +4185,15 @@ btnEnviarRutaChofer?.addEventListener('click', async () => {
     );
 
     if (rutaCatalogo?.id_ruta) {
-      await requestGestion(`/api/camiones/${camion.id_camion}/ruta`, {
-        method: 'POST',
-        body: { id_ruta: Number(rutaCatalogo.id_ruta) }
-      });
-      camion.id_ruta = Number(rutaCatalogo.id_ruta);
+      try {
+        await requestGestion(`/api/camiones/${camion.id_camion}/ruta`, {
+          method: 'PUT',
+          body: { id_ruta: Number(rutaCatalogo.id_ruta) }
+        });
+        camion.id_ruta = Number(rutaCatalogo.id_ruta);
+      } catch (errRutaDb) {
+        console.warn('Aviso al vincular id_ruta en camión:', errRutaDb);
+      }
     }
 
     // 2. Marcamos la ruta como enviada al chofer y la guardamos para que la app del chofer / simulador la reciba
@@ -4199,7 +4204,16 @@ btnEnviarRutaChofer?.addEventListener('click', async () => {
     rutasDespachadas[camion.matricula] = rutaActual;
     localStorage.setItem('sigeru_rutas_enviadas_chofer', JSON.stringify(rutasDespachadas));
 
-    // Enviamos también la ruta generada a la API de Recolección (puerto 8002)
+    // Enviamos también la ruta generada a la API de Recolección (puerto 8002) y respaldo en API Gestión (8001)
+    const payloadDespacho = {
+      id_camion: Number(camion.id_camion),
+      id_ruta: camion.id_ruta ? Number(camion.id_ruta) : null,
+      circuitos: rutaActual.circuitos,
+      contenedores: rutaActual.contenedores,
+      geometriaCalles: rutaActual.geometriaCalles,
+      distanciaKm: Number(rutaActual.distanciaKm || 0)
+    };
+
     try {
       const token = getToken();
       await fetch('http://127.0.0.1:8002/api/rutas/despachar', {
@@ -4209,17 +4223,17 @@ btnEnviarRutaChofer?.addEventListener('click', async () => {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({
-          id_camion: Number(camion.id_camion),
-          id_ruta: camion.id_ruta ? Number(camion.id_ruta) : null,
-          circuitos: rutaActual.circuitos,
-          contenedores: rutaActual.contenedores,
-          geometriaCalles: rutaActual.geometriaCalles,
-          distanciaKm: Number(rutaActual.distanciaKm || 0)
-        })
+        body: JSON.stringify(payloadDespacho)
       });
     } catch (errApiRecoleccion) {
-      console.warn('Aviso al despachar ruta en API 8002:', errApiRecoleccion);
+      try {
+        await requestGestion('/api/rutas/despachar', {
+          method: 'POST',
+          body: payloadDespacho
+        });
+      } catch (errRespaldo) {
+        console.warn('Aviso al despachar ruta en API:', errRespaldo);
+      }
     }
 
     // 3. Actualizamos el estado en la barra de abajo del camión y pintamos la ruta en verde
