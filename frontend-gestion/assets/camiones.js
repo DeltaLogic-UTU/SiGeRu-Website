@@ -124,11 +124,6 @@ const TRUCK_VISUALS = {
     imagen: '../resources/Camion4.png',
     fotoPosicion: 'center',
     fotoAjuste: 'cover'
-  },
-  'STB-4819': {
-    imagen: '../resources/Camion1.png',
-    fotoPosicion: 'center',
-    fotoAjuste: 'cover'
   }
 };
 
@@ -526,10 +521,40 @@ function field(
 
 
 function truckVisual(truck) {
-  return (
-    TRUCK_VISUALS[truck.matricula] ||
-    DEFAULT_TRUCK_VISUAL
-  );
+  // 1. Si el camión tiene foto guardada en base de datos
+  if (truck.foto && (truck.foto.startsWith('data:image') || truck.foto.startsWith('http') || truck.foto.startsWith('../resources'))) {
+    return { imagen: truck.foto, fotoPosicion: 'center', fotoAjuste: 'cover' };
+  }
+
+  // 2. Si tiene foto en localStorage subida por el usuario
+  try {
+    const fotos = JSON.parse(localStorage.getItem('sigeru_fotos_camiones') || '{}');
+    const foto = fotos[truck.matricula] || fotos[truck.id_camion];
+    if (foto) {
+      return { imagen: foto, fotoPosicion: 'center', fotoAjuste: 'cover' };
+    }
+  } catch (_) {}
+
+  // 3. Si tiene visual predefinido por matrícula
+  if (TRUCK_VISUALS[truck.matricula]) {
+    return TRUCK_VISUALS[truck.matricula];
+  }
+
+  // 4. Alternativa inteligente según la marca para no repetir siempre la misma
+  const marca = String(truck.marca || '').toLowerCase();
+  const modelo = String(truck.modelo || '').toLowerCase();
+
+  if (marca.includes('iveco') || modelo.includes('eurocargo')) {
+    return { imagen: '../resources/Camion2.png', fotoPosicion: 'center', fotoAjuste: 'cover' };
+  }
+  if (marca.includes('volkswagen') || marca.includes('vw') || modelo.includes('constellation')) {
+    return { imagen: '../resources/Camion3.png', fotoPosicion: 'left center', fotoAjuste: 'contain' };
+  }
+  if (marca.includes('mercedes') || modelo.includes('atego')) {
+    return { imagen: '../resources/Camion2.png', fotoPosicion: 'center', fotoAjuste: 'cover' };
+  }
+
+  return DEFAULT_TRUCK_VISUAL;
 }
 
 
@@ -1451,7 +1476,9 @@ addForm?.addEventListener(
           ? Number(
               data.id_chofer
             )
-          : null
+          : null,
+
+      foto: fotoSeleccionadaDataUrl || null
     };
 
     try {
@@ -1466,6 +1493,16 @@ addForm?.addEventListener(
           }
         );
 
+      if (fotoSeleccionadaDataUrl) {
+        try {
+          const fotos = JSON.parse(localStorage.getItem('sigeru_fotos_camiones') || '{}');
+          fotos[body.matricula] = fotoSeleccionadaDataUrl;
+          if (result.data?.id_camion) fotos[result.data.id_camion] = fotoSeleccionadaDataUrl;
+          localStorage.setItem('sigeru_fotos_camiones', JSON.stringify(fotos));
+        } catch (_) {}
+      }
+      fotoSeleccionadaDataUrl = null;
+      if ($('agregarCamionPreviewWrap')) $('agregarCamionPreviewWrap').classList.add('d-none');
       addForm.reset();
 
       fillCatalogControls();
@@ -1825,3 +1862,82 @@ window.addEventListener(
 );
 
 void init();
+
+// Manejo de la subida de foto en el modal Agregar Camión
+let fotoSeleccionadaDataUrl = null;
+
+const inputFotoAgregar = $('agregarCamionFoto');
+const wrapPreviewFoto = $('agregarCamionPreviewWrap');
+const imgPreviewFoto = $('agregarCamionPreviewImg');
+
+inputFotoAgregar?.addEventListener('change', event => {
+  const file = event.target.files?.[0];
+  if (!file) {
+    fotoSeleccionadaDataUrl = null;
+    wrapPreviewFoto?.classList.add('d-none');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    fotoSeleccionadaDataUrl = e.target?.result;
+    if (imgPreviewFoto) imgPreviewFoto.src = fotoSeleccionadaDataUrl;
+    wrapPreviewFoto?.classList.remove('d-none');
+  };
+  reader.readAsDataURL(file);
+});
+
+// Limpiar campo de foto al cerrar el modal Agregar Camión
+$('agregarCamionModal')?.addEventListener('hidden.bs.modal', () => {
+  fotoSeleccionadaDataUrl = null;
+  if (imgPreviewFoto) imgPreviewFoto.src = '';
+  wrapPreviewFoto?.classList.add('d-none');
+  if (inputFotoAgregar) inputFotoAgregar.value = '';
+});
+
+// Botón "Cambiar foto de este camión" en el modal de detalles
+const btnCambiarFoto = $('btnCambiarFotoDetalle');
+const inputCambiarFoto = $('cambiarFotoDetalleInput');
+
+btnCambiarFoto?.addEventListener('click', () => {
+  inputCambiarFoto?.click();
+});
+
+inputCambiarFoto?.addEventListener('change', async event => {
+  const file = event.target.files?.[0];
+  if (!file || !selectedTruck) return;
+
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const dataUrl = e.target?.result;
+    if (!dataUrl) return;
+
+    // Actualizar vista previa y modelo del camión
+    selectedTruck.foto = dataUrl;
+    const foundTruck = trucks.find(t => t.id_camion === selectedTruck.id_camion || t.matricula === selectedTruck.matricula);
+    if (foundTruck) foundTruck.foto = dataUrl;
+
+    if (truckPhoto) {
+      truckPhoto.src = dataUrl;
+    }
+
+    // Guardar en localStorage
+    try {
+      const fotos = JSON.parse(localStorage.getItem('sigeru_fotos_camiones') || '{}');
+      fotos[selectedTruck.matricula] = dataUrl;
+      fotos[selectedTruck.id_camion] = dataUrl;
+      localStorage.setItem('sigeru_fotos_camiones', JSON.stringify(fotos));
+    } catch (_) {}
+
+    // Intentar guardar en la API si está activa
+    try {
+      await requestJson(`${API_GESTION}/api/camiones/${selectedTruck.id_camion}/foto`, {
+        method: 'PUT',
+        body: { foto: dataUrl }
+      });
+    } catch (err) {
+      console.log('Foto guardada localmente:', err.message);
+    }
+  };
+  reader.readAsDataURL(file);
+});

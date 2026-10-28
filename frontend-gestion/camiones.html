@@ -177,6 +177,12 @@
        <div class="truck-visual-grid">
         <div class="truck-photo-wrap">
          <img alt="Camión recolector de SiGeRU" class="truck-photo" id="truckPhoto" src="../resources/Camion1.png"/>
+         <div class="mt-2 text-center">
+          <input type="file" id="cambiarFotoDetalleInput" accept="image/*" class="d-none" />
+          <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="btnCambiarFotoDetalle">
+           <i class="bi bi-camera"></i> Cambiar foto de este camión
+          </button>
+         </div>
         </div>
         <div class="truck-map-card">
          <!-- Mapa interactivo y funcional Leaflet con la ubicación real del camión -->
@@ -285,6 +291,19 @@
           <option value="">Sin asignar</option>
          </select>
         </label>
+
+        <label style="grid-column: 1 / -1;">Foto del camión <span class="text-muted-custom">(subir imagen del vehículo)</span>
+         <input class="form-control" name="foto_input" id="agregarCamionFoto" type="file" accept="image/*"/>
+        </label>
+        <div id="agregarCamionPreviewWrap" class="d-none" style="grid-column: 1 / -1;">
+         <div class="d-flex align-items-center gap-3 p-2 border rounded" style="background: var(--soft);">
+          <img id="agregarCamionPreviewImg" src="" alt="Vista previa" style="width: 80px; height: 60px; object-fit: cover; border-radius: 6px;" />
+          <div>
+           <strong class="d-block small text-success"><i class="bi bi-image"></i> Foto seleccionada lista</strong>
+           <small class="text-muted-custom">Se asociará a la ficha de este camión al crearlo.</small>
+          </div>
+         </div>
+        </div>
        </div>
 
        <div class="form-message mt-3" id="agregarCamionMensaje" role="status"></div>
