@@ -11,7 +11,7 @@
   let vozHabilitada = true;
   let ultimoTextoHablado = '';
   let ultimoMomentoHablado = 0;
-  let intervaloPasoMs = 1200; // 200 veces más lento (avance de 1 metro cada 1.2s)
+  let intervaloPasoMs = 130; // Modo ágil y dinámico (fluido sin trabas)
 
   let estadoSimulacion = {
     timer: null,
@@ -54,6 +54,9 @@
   }
 
   let vozHablando = false;
+  let idUltimaEsquinaHablada = -1;
+  let idUltimaParadaHablada = -1;
+  let ultimoMomentoVoz = 0;
 
   function decirVoz(texto) {
     if (!vozHabilitada || typeof window.speechSynthesis === 'undefined') {
@@ -103,8 +106,8 @@
       resultado.push([lat1, lng1]);
 
       const distM = distanciaMetros(lat1, lng1, lat2, lng2);
-      // Avance pausado: puntos cada 2.5 metros para que tarde 150 veces más en recorrer cada tramo
-      const pasos = Math.max(1, Math.floor(distM / 1.0)); // Puntos metro a metro
+      // Puntos fluidos cada 10 metros para desplazamiento ágil
+      const pasos = Math.min(18, Math.floor(distM / 10));
       for (let p = 1; p <= pasos; p++) {
         const t = p / (pasos + 1);
         resultado.push([
@@ -181,31 +184,24 @@
       const codCont = contenedorObjetivo?.codigo || (`Contenedor #${indiceParadaActual + 1}`);
 
       if (distParadaM <= 140) {
-        if (distParadaM <= 22) {
-          decirVoz(`Llegando al contenedor ${codCont}. Deteniendo camión.`);
-          return {
-            tipoMani: 'arrive',
-            icono: 'bi-trash3-fill',
-            instruccion: `Llegando a parada: ${codCont}`,
-            calle: `Circuito ${contenedorObjetivo?.circuito || 'de recolección'}`,
-            distanciaM: Math.round(distParadaM),
-            distanciaMText: `${Math.round(distParadaM)} m`,
-            siguientePaso: 'Preparate para levantar el contenedor'
-          };
-        } else {
-          if (distParadaM <= 95 && distParadaM >= 65) {
-            decirVoz(`En ${Math.round(distParadaM)} metros, parada en contenedor ${codCont}`);
+        // Solo avisa una vez con anticipación prudente al acercarse al contenedor
+        if (distParadaM <= 70 && distParadaM >= 25) {
+          if (idUltimaParadaHablada !== indiceParadaActual && (Date.now() - ultimoMomentoVoz > 12000)) {
+            decirVoz(`Próxima parada en contenedor ${codCont}`);
+            idUltimaParadaHablada = indiceParadaActual;
+            ultimoMomentoVoz = Date.now();
           }
-          return {
-            tipoMani: 'arrive',
-            icono: 'bi-geo-alt-fill',
-            instruccion: `En ${Math.round(distParadaM)} m, parada en ${codCont}`,
-            calle: `Circuito ${contenedorObjetivo?.circuito || '—'}`,
-            distanciaM: Math.round(distParadaM),
-            distanciaMText: `${Math.round(distParadaM)} m`,
-            siguientePaso: 'Aproximándose al contenedor'
-          };
         }
+
+        return {
+          tipoMani: 'arrive',
+          icono: distParadaM <= 22 ? 'bi-trash3-fill' : 'bi-geo-alt-fill',
+          instruccion: distParadaM <= 22 ? `Llegando a: ${codCont}` : `En ${Math.round(distParadaM)} m: ${codCont}`,
+          calle: `Circuito ${contenedorObjetivo?.circuito || 'de recolección'}`,
+          distanciaM: Math.round(distParadaM),
+          distanciaMText: `${Math.round(distParadaM)} m`,
+          siguientePaso: distParadaM <= 22 ? 'Preparate para levantar el contenedor' : 'Aproximándose al contenedor'
+        };
       }
     }
 
@@ -226,32 +222,24 @@
         const iconoGiro = esDerecha ? 'bi-arrow-90deg-right' : 'bi-arrow-90deg-left';
         const tipoMani = esDerecha ? 'turn-right' : 'turn-left';
 
-        // Avisos de voz estilo Waze
-        if (distAcumuladaM <= 28) {
-          decirVoz(esDerecha ? 'Doble a la derecha' : 'Doble a la izquierda');
-          return {
-            tipoMani,
-            icono: iconoGiro,
-            instruccion: esDerecha ? 'Doble a la derecha' : 'Doble a la izquierda',
-            calle: 'Próxima intersección',
-            distanciaM: Math.round(distAcumuladaM),
-            distanciaMText: `${Math.round(distAcumuladaM)} m`,
-            siguientePaso: 'Maniobra en curso'
-          };
-        }
-
-        if (distAcumuladaM <= 110 && distAcumuladaM >= 75) {
-          decirVoz(`En ${Math.round(distAcumuladaM)} metros, ${textoGiro}`);
+        // Avisos de voz estilo Waze: solo cuando se acerca a doblar (entre 40 y 85 metros),
+        // y se habla UNA SOLA VEZ por esquina para no aturdir ni repetir en bucle
+        if (distAcumuladaM <= 85 && distAcumuladaM >= 30) {
+          if (idUltimaEsquinaHablada !== k && (Date.now() - ultimoMomentoVoz > 10000)) {
+            decirVoz(`En ${Math.round(distAcumuladaM)} metros, ${textoGiro}`);
+            idUltimaEsquinaHablada = k;
+            ultimoMomentoVoz = Date.now();
+          }
         }
 
         return {
           tipoMani,
           icono: iconoGiro,
-          instruccion: `En ${Math.round(distAcumuladaM)} m, ${textoGiro}`,
-          calle: 'Siguiendo la ruta programada',
+          instruccion: distAcumuladaM <= 25 ? (esDerecha ? 'Doble a la derecha' : 'Doble a la izquierda') : `En ${Math.round(distAcumuladaM)} m, ${textoGiro}`,
+          calle: distAcumuladaM <= 25 ? 'Próxima intersección' : 'Siguiendo la ruta programada',
           distanciaM: Math.round(distAcumuladaM),
           distanciaMText: `${Math.round(distAcumuladaM)} m`,
-          siguientePaso: `Preparando giro a la ${esDerecha ? 'derecha' : 'izquierda'}`
+          siguientePaso: distAcumuladaM <= 25 ? 'Maniobra en curso' : `Preparando giro a la ${esDerecha ? 'derecha' : 'izquierda'}`
         };
       }
     }
@@ -339,7 +327,7 @@
 
     // Centramos la cámara suavemente sobre el camión (estilo Waze)
     if (mapa && coordActual) {
-      mapa.panTo(coordActual, { animate: true, duration: 1.0 });
+      mapa.panTo(coordActual, { animate: true, duration: 0.13 });
     }
 
     // Calculamos avance en Km
@@ -520,9 +508,9 @@
     const txtVel = document.getElementById('txtVelocidadSim');
     if (btnVel) {
       const velocidades = [
-        { label: '200x', ms: 1200, title: 'Velocidad: 200 veces más lento (1.2s por metro)' },
-        { label: '100x', ms: 600, title: 'Velocidad: 100 veces más lento (0.6s por metro)' },
-        { label: '300x', ms: 1800, title: 'Velocidad: 300 veces más lento (1.8s por metro)' }
+        { label: 'Ágil', ms: 130, title: 'Velocidad normal ágil' },
+        { label: 'Rápido', ms: 80, title: 'Velocidad rápida' },
+        { label: 'Pausado', ms: 280, title: 'Velocidad pausada' }
       ];
       let velIdx = 0;
       btnVel.addEventListener('click', () => {
