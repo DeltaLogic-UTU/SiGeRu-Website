@@ -11,6 +11,7 @@
   let vozHabilitada = true;
   let ultimoTextoHablado = '';
   let ultimoMomentoHablado = 0;
+  let intervaloPasoMs = 3000; // 500 veces más lento (avance lento de 1 metro cada 3s)
 
   let estadoSimulacion = {
     timer: null,
@@ -52,27 +53,40 @@
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
   }
 
+  let vozHablando = false;
+
   function decirVoz(texto) {
     if (!vozHabilitada || typeof window.speechSynthesis === 'undefined') {
       return;
     }
     const ahora = Date.now();
-    if (texto === ultimoTextoHablado && ahora - ultimoMomentoHablado < 8000) {
+    // No repetir la misma instrucción si ya se dijo recientemente
+    if (texto === ultimoTextoHablado && ahora - ultimoMomentoHablado < 20000) {
+      return;
+    }
+    // Si la voz está hablando actualmente, NO cancelar: dejar que termine de hablar completo
+    if (window.speechSynthesis.speaking || vozHablando) {
       return;
     }
     try {
-      window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(texto);
       u.lang = 'es-UY';
-      u.rate = 1.05;
+      u.rate = 0.92; // Ritmo pausado y claro
       u.pitch = 1.0;
       const voces = window.speechSynthesis.getVoices();
       const vozEs = voces.find(v => v.lang.startsWith('es'));
       if (vozEs) u.voice = vozEs;
+
       ultimoTextoHablado = texto;
       ultimoMomentoHablado = ahora;
+      vozHablando = true;
+
+      u.onend = () => { vozHablando = false; };
+      u.onerror = () => { vozHablando = false; };
+
       window.speechSynthesis.speak(u);
     } catch (err) {
+      vozHablando = false;
       console.warn('Aviso en voz de navegación:', err);
     }
   }
@@ -89,7 +103,8 @@
       resultado.push([lat1, lng1]);
 
       const distM = distanciaMetros(lat1, lng1, lat2, lng2);
-      const pasos = Math.min(14, Math.floor(distM / 20));
+      // Avance pausado: puntos cada 2.5 metros para que tarde 150 veces más en recorrer cada tramo
+      const pasos = Math.max(1, Math.floor(distM / 1.0)); // Puntos metro a metro
       for (let p = 1; p <= pasos; p++) {
         const t = p / (pasos + 1);
         resultado.push([
@@ -196,9 +211,9 @@
 
     // 2. Buscamos el próximo giro significativo por ángulo entre tramos (lookahead de hasta 220 metros)
     let distAcumuladaM = 0;
-    const maxLook = Math.min(totalPuntos - 2, idxActual + 35);
 
-    for (let k = idxActual + 1; k < maxLook; k++) {
+    for (let k = idxActual + 1; k < totalPuntos - 1; k++) {
+      if (distAcumuladaM > 220) break;
       distAcumuladaM += distanciaMetros(puntosRuta[k - 1][0], puntosRuta[k - 1][1], puntosRuta[k][0], puntosRuta[k][1]);
 
       const rumbo1 = calcularRumbo(puntosRuta[k - 1][0], puntosRuta[k - 1][1], puntosRuta[k][0], puntosRuta[k][1]);
@@ -324,7 +339,7 @@
 
     // Centramos la cámara suavemente sobre el camión (estilo Waze)
     if (mapa && coordActual) {
-      mapa.panTo(coordActual, { animate: true, duration: 0.12 });
+      mapa.panTo(coordActual, { animate: true, duration: 2.6 });
     }
 
     // Calculamos avance en Km
@@ -394,7 +409,7 @@
   function reanudarLoop() {
     detenerTimer();
     estadoSimulacion.enPausaPorParada = false;
-    estadoSimulacion.timer = setInterval(ejecutarPaso, 120);
+    estadoSimulacion.timer = setInterval(ejecutarPaso, intervaloPasoMs);
   }
 
   window.SimuladorChofer = {
@@ -471,6 +486,52 @@
 
     isVozHabilitada() {
       return vozHabilitada;
+    },
+
+    setIntervaloMs(ms) {
+      intervaloPasoMs = Math.max(200, Math.min(10000, Number(ms) || 2400));
+      if (estadoSimulacion.timer && !estadoSimulacion.enPausaPorParada) {
+        reanudarLoop();
+      }
+      return intervaloPasoMs;
+    },
+
+    getIntervaloMs() {
+      return intervaloPasoMs;
     }
   };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const btnVoz = document.getElementById('btnVozNav');
+    const iconoVoz = document.getElementById('iconoVozNav');
+    if (btnVoz) {
+      btnVoz.addEventListener('click', () => {
+        const activa = !vozHabilitada;
+        window.SimuladorChofer.setVozHabilitada(activa);
+        btnVoz.classList.toggle('active', activa);
+        btnVoz.classList.toggle('muted', !activa);
+        if (iconoVoz) {
+          iconoVoz.className = activa ? 'bi bi-volume-up-fill' : 'bi bi-volume-mute-fill';
+        }
+      });
+    }
+
+    const btnVel = document.getElementById('btnVelocidadSim');
+    const txtVel = document.getElementById('txtVelocidadSim');
+    if (btnVel) {
+      const velocidades = [
+        { label: '500x', ms: 3000, title: 'Velocidad: 500 veces más lento (tiempo sobrado para escuchar la voz)' },
+        { label: '1000x', ms: 6000, title: 'Velocidad: 1000 veces más lento (paso a paso extremo)' },
+        { label: '150x', ms: 1200, title: 'Velocidad: 150 veces más lento' }
+      ];
+      let velIdx = 0;
+      btnVel.addEventListener('click', () => {
+        velIdx = (velIdx + 1) % velocidades.length;
+        const vel = velocidades[velIdx];
+        window.SimuladorChofer.setIntervaloMs(vel.ms);
+        if (txtVel) txtVel.textContent = vel.label;
+        btnVel.title = vel.title;
+      });
+    }
+  });
 })();

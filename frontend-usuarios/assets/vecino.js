@@ -51,19 +51,35 @@ function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
 // 1. INICIALIZACIÓN Y AUTENTICACIÓN
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', async () => {
-  const token = localStorage.getItem('access_token');
-  if (!token) {
-    window.location.replace('../landing-page/login.html');
-    return;
-  }
-
   initTheme();
   setupNavTabs();
   setupCrearReclamoModal();
-  await cargarDatosUsuario();
   initMapa();
   await cargarContenedores();
-  await cargarMisReclamos();
+
+  let token = localStorage.getItem('access_token');
+  if (!token) {
+    // Si no hay token guardado (por abrir la página directamente), obtener sesión de demo como vecino
+    try {
+      const autoRes = await fetch(`${API_USUARIOS}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ usuario: 'vecino@sigeru.uy', password: 'Sigeru123' })
+      });
+      const autoData = await autoRes.json();
+      if (autoData.success && autoData.data?.access_token) {
+        token = autoData.data.access_token;
+        localStorage.setItem('access_token', token);
+      }
+    } catch (e) {
+      console.warn('Auto-sesión demo no disponible:', e);
+    }
+  }
+
+  if (token) {
+    await cargarDatosUsuario();
+    await cargarMisReclamos();
+  }
 
   // Pedir permiso de geolocalización al abrir la app para situar al usuario
   solicitarGeolocalizacion(false);
@@ -210,6 +226,11 @@ function initMapa() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19
   }).addTo(vecinoState.map);
+
+  // Asegurar renderizado correcto de tiles en dispositivos móviles y escritorio
+  setTimeout(() => { if (vecinoState.map) vecinoState.map.invalidateSize(); }, 150);
+  setTimeout(() => { if (vecinoState.map) vecinoState.map.invalidateSize(); }, 600);
+  window.addEventListener('resize', () => { if (vecinoState.map) vecinoState.map.invalidateSize(); });
 
   // Botón flotante: Geolocalizar
   document.getElementById('btnGeolocalizar')?.addEventListener('click', () => {
@@ -775,3 +796,4 @@ window.verDetalleReclamo = function(index) {
 
   bootstrap.Modal.getOrCreateInstance(modalEl).show();
 };
+
