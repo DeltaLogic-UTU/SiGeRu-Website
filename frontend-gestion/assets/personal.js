@@ -139,37 +139,65 @@ async function requestUsuarios(
       JSON.stringify(body);
   }
 
-  const response = await fetch(
-    `${API_USUARIOS_PERSONAL}${path}`,
-    options
-  );
-
-  let result = {};
-
   try {
-    result =
-      await response.json();
-  } catch {
-    result = {
-      success: false,
-      message:
-        'La API devolvió una respuesta inválida.'
-    };
-  }
+    const response = await fetch(
+      `${API_USUARIOS_PERSONAL}${path}`,
+      options
+    );
 
-  return {
-    response,
-    result
-  };
+    let result = {};
+    try {
+      result = await response.json();
+    } catch {
+      result = {
+        success: false,
+        message: 'La API devolvió una respuesta inválida.'
+      };
+    }
+
+    return { response, result };
+  } catch (err) {
+    // Si falló 127.0.0.1 intentar con localhost o viceversa
+    const altHost = API_USUARIOS_PERSONAL.includes('127.0.0.1')
+      ? API_USUARIOS_PERSONAL.replace('127.0.0.1', 'localhost')
+      : API_USUARIOS_PERSONAL.replace('localhost', '127.0.0.1');
+
+    try {
+      const response = await fetch(`${altHost}${path}`, options);
+      let result = {};
+      try {
+        result = await response.json();
+      } catch {
+        result = { success: false, message: 'La API devolvió una respuesta inválida.' };
+      }
+      return { response, result };
+    } catch (_) {
+      return {
+        response: { ok: false, status: 0 },
+        result: {
+          success: false,
+          message: 'No se pudo conectar con el servicio de Usuarios (puerto 8000). Verificá que la API esté iniciada.'
+        }
+      };
+    }
+  }
 }
 
 async function cargarUsuarios() {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    console.warn('Sin token de acceso, redirigiendo al login...');
+    window.location.replace('../landing-page/login.html');
+    return null;
+  }
+
   const { response, result } =
     await requestUsuarios(
       '/api/usuarios'
     );
 
   if (response.status === 401) {
+    localStorage.removeItem('access_token');
     window.location.replace(
       '../landing-page/login.html'
     );
@@ -189,7 +217,7 @@ async function cargarUsuarios() {
   ) {
     throw new Error(
       result.message ||
-      'No se pudo cargar el personal.'
+      'No se pudo cargar el personal desde la API.'
     );
   }
 
@@ -347,6 +375,17 @@ function organizarPersonal(
 
 async function loadPersonnel() {
   try {
+    if (personnelBody) {
+      personnelBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="text-center py-4 text-muted-custom">
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+            Cargando personal...
+          </td>
+        </tr>
+      `;
+    }
+
     const usuarios =
       await cargarUsuarios();
 
@@ -354,8 +393,12 @@ async function loadPersonnel() {
       return;
     }
 
-    const cuadrillas =
-      await cargarCuadrillas();
+    let cuadrillas = [];
+    try {
+      cuadrillas = await cargarCuadrillas();
+    } catch (_) {
+      cuadrillas = [];
+    }
 
     organizarPersonal(
       usuarios,
@@ -364,18 +407,21 @@ async function loadPersonnel() {
 
     renderPersonnel();
   } catch (error) {
-    personnelBody.innerHTML = `
-      <tr>
-        <td
-          colspan="6"
-          class="text-center py-4"
-        >
-          ${escapePersonnel(
-            error.message
-          )}
-        </td>
-      </tr>
-    `;
+    if (personnelBody) {
+      personnelBody.innerHTML = `
+        <tr>
+          <td
+            colspan="6"
+            class="text-center py-4 text-danger fw-bold"
+          >
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            ${escapePersonnel(
+              error.message
+            )}
+          </td>
+        </tr>
+      `;
+    }
   }
 }
 
