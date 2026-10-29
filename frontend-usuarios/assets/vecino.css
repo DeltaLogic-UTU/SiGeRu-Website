@@ -1,0 +1,386 @@
+/* ==========================================================================
+   Estilos de la App Vecinal (Mobile-First y Responsive) - SiGeRU
+   ========================================================================== */
+
+:root {
+  --vecino-primary: #15803d;
+  --vecino-primary-hover: #166534;
+  --vecino-accent: #22c55e;
+  --vecino-surface: #ffffff;
+  --vecino-bg: #f8fafc;
+  --vecino-card-bg: #f1f5f9;
+  --vecino-border: #e2e8f0;
+  --vecino-text: #0f172a;
+  --vecino-muted: #64748b;
+  --vecino-bottom-nav-h: 70px;
+}
+
+[data-theme="dark"] {
+  --vecino-primary: #22c55e;
+  --vecino-primary-hover: #4ade80;
+  --vecino-accent: #15803d;
+  --vecino-surface: #0f172a;
+  --vecino-bg: #020617;
+  --vecino-card-bg: #1e293b;
+  --vecino-border: #334155;
+  --vecino-text: #f8fafc;
+  --vecino-muted: #94a3b8;
+}
+
+body.vecino-app-body {
+  margin: 0;
+  padding: 0;
+  padding-bottom: var(--vecino-bottom-nav-h);
+  background-color: var(--vecino-bg);
+  color: var(--vecino-text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Encabezado fijo o compacto */
+.vecino-header {
+  background: var(--vecino-surface);
+  border-bottom: 1px solid var(--vecino-border);
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+}
+
+.vecino-header .navbar {
+  padding: 0.5rem 1rem;
+}
+
+.vecino-app-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+/* Pantallas / Pestañas de la App */
+.vecino-tab-page {
+  display: none;
+  flex: 1;
+  width: 100%;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.vecino-tab-page.active {
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   Pestaña Mapa (Mobile Map View)
+   ========================================================================== */
+.vecino-map-wrapper {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 60px - var(--vecino-bottom-nav-h));
+  min-height: 480px;
+  background-color: #0f172a;
+}
+
+#vecinoMap {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Controles flotantes en el mapa */
+.map-floating-top {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 1000;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.map-floating-top > * {
+  pointer-events: auto;
+}
+
+.map-floating-actions {
+  position: absolute;
+  bottom: 24px;
+  right: 14px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn-map-float {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--vecino-surface);
+  color: var(--vecino-text);
+  border: 1px solid var(--vecino-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.btn-map-float:hover, .btn-map-float:active {
+  transform: scale(1.06);
+  background: var(--vecino-card-bg);
+  color: var(--vecino-primary);
+}
+
+.btn-map-float.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+/* Marcador pulsante de ubicación del usuario (punto azul) */
+.user-pulse-marker {
+  position: relative;
+  width: 22px;
+  height: 22px;
+}
+
+.user-pulse-marker .core {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background-color: #0284c7;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(2, 132, 199, 0.8);
+  z-index: 2;
+}
+
+.user-pulse-marker .pulse {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: rgba(2, 132, 199, 0.4);
+  animation: userPulseAnimation 2s infinite ease-out;
+  z-index: 1;
+}
+
+@keyframes userPulseAnimation {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* Tarjeta flotante inferior de contenedor seleccionado */
+.contenedor-bottom-sheet {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 1010;
+  background: var(--vecino-surface);
+  border-radius: 16px;
+  border: 1px solid var(--vecino-border);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  padding: 1rem;
+  transform: translateY(120%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.contenedor-bottom-sheet.show {
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+   Barra de Navegación Inferior (Bottom Nav Bar)
+   ========================================================================== */
+.vecino-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--vecino-bottom-nav-h);
+  background: var(--vecino-surface);
+  border-top: 1px solid var(--vecino-border);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+  z-index: 1030;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 0.5rem;
+}
+
+.vecino-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--vecino-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 10px;
+  transition: color 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+  min-width: 65px;
+}
+
+.vecino-nav-item i {
+  font-size: 1.35rem;
+  margin-bottom: 2px;
+}
+
+.vecino-nav-item.active {
+  color: var(--vecino-primary);
+}
+
+.vecino-nav-item:active {
+  transform: scale(0.95);
+}
+
+/* Botón central FAB de la barra (Cámara / Reportar) */
+.vecino-fab-btn {
+  position: relative;
+  top: -16px;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22c55e, #15803d);
+  color: #ffffff;
+  border: 4px solid var(--vecino-surface);
+  box-shadow: 0 6px 18px rgba(22, 163, 74, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.vecino-fab-btn:hover {
+  transform: scale(1.08) translateY(-2px);
+  box-shadow: 0 10px 24px rgba(22, 163, 74, 0.55);
+}
+
+.vecino-fab-btn:active {
+  transform: scale(0.96);
+}
+
+/* ==========================================================================
+   Pestaña "Tus Reclamos" (Lista de reclamos)
+   ========================================================================== */
+.reclamos-list-container {
+  max-width: 700px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.reclamo-card {
+  background: var(--vecino-surface);
+  border: 1px solid var(--vecino-border);
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 0.9rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.reclamo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.reclamo-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.reclamo-badge-status {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.status-sin_asignar {
+  background: rgba(234, 179, 8, 0.18);
+  color: #b45309;
+}
+
+[data-theme="dark"] .status-sin_asignar {
+  background: rgba(234, 179, 8, 0.25);
+  color: #fde047;
+}
+
+.status-asignado {
+  background: rgba(2, 132, 199, 0.18);
+  color: #0284c7;
+}
+
+[data-theme="dark"] .status-asignado {
+  background: rgba(2, 132, 199, 0.25);
+  color: #38bdf8;
+}
+
+.status-completado {
+  background: rgba(34, 197, 94, 0.18);
+  color: #15803d;
+}
+
+[data-theme="dark"] .status-completado {
+  background: rgba(34, 197, 94, 0.25);
+  color: #4ade80;
+}
+
+/* ==========================================================================
+   Pestaña "Perfil" (Datos del vecino)
+   ========================================================================== */
+.perfil-card {
+  max-width: 550px;
+  width: 100%;
+  margin: 1.5rem auto;
+  background: var(--vecino-surface);
+  border: 1px solid var(--vecino-border);
+  border-radius: 18px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+}
+
+.perfil-stat-pill {
+  background: var(--vecino-card-bg);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+}
