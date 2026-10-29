@@ -3603,6 +3603,7 @@ function crearIconoCamionCirculo(matricula = '', chofer = '', activo = false) {
     html: `
       <div class="camion-marker-circulo${activo ? ' activo' : ''}" id="map-circulo-camion-${escapeHtml(matricula)}" title="${escapeHtml(matricula)} · ${escapeHtml(chofer)}">
         <img src="assets/icono-camion.png" alt="Camión" />
+        <span class="camion-badge-matricula">${escapeHtml(matricula)}</span>
       </div>
     `,
     iconSize: [20, 20],
@@ -3715,7 +3716,7 @@ function actualizarPosicionesCamionesEnMapa() {
         }
       }
 
-      const elemUb = document.getElementById(map-popup-ub-${id});
+      const elemUb = document.getElementById('map-popup-ub-' + id);
       if (elemUb && gpsData.ubicacion) {
         elemUb.textContent = gpsData.ubicacion;
       }
@@ -3794,7 +3795,7 @@ function initAdminMap() {
 
     // Escucha el GPS en vivo y los cambios de ruta del chofer
   window.addEventListener('storage', evento => {
-    if (evento.key === 'sigeru_gps_camiones' || evento.key === 'sigeru_gps_camion') {
+    if (evento.key === 'sigeru_gps_camiones' || evento.key === 'sigeru_gps_camion' || evento.key === 'sigeru_gps_heartbeat') {
       actualizarPosicionesCamionesEnMapa();
     }
     // Si el chofer finalizó la ruta, se borra de la pantalla del administrador de inmediato
@@ -3810,6 +3811,7 @@ function initAdminMap() {
     }
   });
   setInterval(actualizarPosicionesCamionesEnMapa, 300); // Actualización fluida
+}
 
 // Botón "Crear contenedor" / "Cerrar edición"
 btnCrearContenedorMapa?.addEventListener('click', () => {
