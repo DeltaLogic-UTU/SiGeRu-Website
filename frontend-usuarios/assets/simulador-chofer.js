@@ -11,7 +11,7 @@
   let vozHabilitada = true;
   let ultimoTextoHablado = '';
   let ultimoMomentoHablado = 0;
-  let intervaloPasoMs = 20; // Avance a 20ms configurado por usuario
+  let intervaloPasoMs = 600; // Avance a 500ms configurado por usuario
 
   let estadoSimulacion = {
     timer: null,
