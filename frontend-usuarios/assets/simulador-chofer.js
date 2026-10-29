@@ -11,7 +11,7 @@
   let vozHabilitada = true;
   let ultimoTextoHablado = '';
   let ultimoMomentoHablado = 0;
-  let intervaloPasoMs = 1800; // 300 veces más lento (avance de 1 metro cada 1.8s)
+  let intervaloPasoMs = 1200; // 200 veces más lento (avance de 1 metro cada 1.2s)
 
   let estadoSimulacion = {
     timer: null,
@@ -339,7 +339,7 @@
 
     // Centramos la cámara suavemente sobre el camión (estilo Waze)
     if (mapa && coordActual) {
-      mapa.panTo(coordActual, { animate: true, duration: 1.5 });
+      mapa.panTo(coordActual, { animate: true, duration: 1.0 });
     }
 
     // Calculamos avance en Km
@@ -520,9 +520,9 @@
     const txtVel = document.getElementById('txtVelocidadSim');
     if (btnVel) {
       const velocidades = [
-        { label: '300x', ms: 1800, title: 'Velocidad: 300 veces más lento (1.8s por metro)' },
-        { label: '500x', ms: 3000, title: 'Velocidad: 500 veces más lento (3s por metro)' },
-        { label: '100x', ms: 800, title: 'Velocidad: 100 veces más lento (0.8s por metro)' }
+        { label: '200x', ms: 1200, title: 'Velocidad: 200 veces más lento (1.2s por metro)' },
+        { label: '100x', ms: 600, title: 'Velocidad: 100 veces más lento (0.6s por metro)' },
+        { label: '300x', ms: 1800, title: 'Velocidad: 300 veces más lento (1.8s por metro)' }
       ];
       let velIdx = 0;
       btnVel.addEventListener('click', () => {
