@@ -3697,29 +3697,25 @@ function actualizarPosicionesCamionesEnMapa() {
   lista.forEach(c => {
     const id = Number(c.id_camion);
     const marker = marcadoresCamionesMapa[id];
-    const gpsData = gpsGlobal[id] || gpsGlobal[c.matricula];
+    const gpsData = gpsGlobal[id] || gpsGlobal[String(id)] || gpsGlobal[c.matricula];
 
     if (marker && gpsData && gpsData.lat && gpsData.lng) {
       const actualPos = marker.getLatLng();
       const nuevaLat = Number(gpsData.lat);
       const nuevaLng = Number(gpsData.lng);
 
-      if (Math.abs(actualPos.lat - nuevaLat) > 0.00001 || Math.abs(actualPos.lng - nuevaLng) > 0.00001) {
-        marker.setLatLng([nuevaLat, nuevaLng]);
-              if (Math.abs(actualPos.lat - nuevaLat) > 0.00001 || Math.abs(actualPos.lng - nuevaLng) > 0.00001) {
+      if (Math.abs(actualPos.lat - nuevaLat) > 0.000001 || Math.abs(actualPos.lng - nuevaLng) > 0.000001) {
         marker.setLatLng([nuevaLat, nuevaLng]);
         huboCambios = true;
 
-        // SEGUIR AL CAMIÓN EN DIRECTO: si es el camión que el administrador tiene seleccionado
+        // SEGUIMIENTO EN VIVO: Si es el camión seleccionado por el administrador, la cámara lo sigue suavemente
         const vehiculoActivo = selectedVehicle();
-        if (vehiculoActivo && Number(vehiculoActivo.id_camion) === id && adminMapInstance) {
-          adminMapInstance.panTo([nuevaLat, nuevaLng], { animate: true, duration: 0.3 });
+        if (vehiculoActivo && (Number(vehiculoActivo.id_camion) === id || vehiculoActivo.matricula === c.matricula) && adminMapInstance) {
+          adminMapInstance.panTo([nuevaLat, nuevaLng], { animate: false });
         }
       }
-        huboCambios = true;
-      }
 
-      const elemUb = document.getElementById(`map-popup-ub-${id}`);
+      const elemUb = document.getElementById(map-popup-ub-${id});
       if (elemUb && gpsData.ubicacion) {
         elemUb.textContent = gpsData.ubicacion;
       }
@@ -3733,7 +3729,6 @@ function actualizarPosicionesCamionesEnMapa() {
     }
   }
 }
-
 function initAdminMap() {
   const mapCanvas = $('adminMapCanvas');
 

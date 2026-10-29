@@ -1090,8 +1090,158 @@ async function iniciarPagina() {
     mapaChofer.setView(marcadorCamionChofer.getLatLng(), 16);
   }
 
+  function publicarGpsChofer(lat, lng) {
+  if (!lat || !lng) return;
+
+  const camion = datosChoferActual.camion || { id_camion: 5, matricula: "SBK-3265" };
+  const idCamion = Number(camion.id_camion || 5);
+  const matricula = camion.matricula || "SBK-3265";
+
+  const gpsGlobal = JSON.parse(localStorage.getItem("sigeru_gps_camiones") || "{}");
+  const infoGps = {
+    lat: Number(lat),
+    lng: Number(lng),
+    id_camion: idCamion,
+    matricula: matricula,
+    en_movimiento: true,
+    timestamp: Date.now(),
+    ubicacion: "En recorrido (" + (datosChoferActual.circuitosAsignados.join(", ") || "Ruta activa") + ")"
+  };
+
+  gpsGlobal[idCamion] = infoGps;
+  gpsGlobal[String(idCamion)] = infoGps;
+  gpsGlobal[matricula] = infoGps;
+
+  localStorage.setItem("sigeru_gps_camiones", JSON.stringify(gpsGlobal));
+  localStorage.setItem("sigeru_gps_heartbeat", String(Date.now()));
+}
+
+async function finalizarRecorridoCompleto(esManual = false) {
+  if (window.SimuladorChofer) {
+    window.SimuladorChofer.detener();
+  }
+
+  const btnIniciar = document.getElementById("btnIniciarViajeChofer");
+  const btnFinalizar = document.getElementById("btnFinalizarRecorridoChofer");
+  if (btnIniciar) {
+    btnIniciar.classList.remove("d-none");
+    btnIniciar.disabled = true;
+  }
+  if (btnFinalizar) {
+    btnFinalizar.classList.add("d-none");
+  }
+
+  datosChoferActual.kmRecorridos = datosChoferActual.distanciaTotalKm;
+  if (datosChoferActual.camion) {
+    datosChoferActual.camion.estado = "En base (Libre)";
+  }
+  setInputVal("choferDetUbicacion", "Base Cantón del Buceo");
+  actualizarTableroChofer();
+
+  // A. Cálculo de métricas requeridas
+  const duracionMs = Date.now() - (datosChoferActual.inicioTimestamp || Date.now());
+  const minutosTotal = Math.max(1, Math.round(duracionMs / 60000));
+  const horas = Math.floor(minutosTotal / 60);
+  const minutos = minutosTotal % 60;
+  const tiempoTexto = horas > 0 ? `${horas}h ${minutos}m` : `${minutos} min`;
+
+  const totalAsignados = datosChoferActual.contenedores.length;
+  const levantados = datosChoferActual.levantados;
+  const noLevantados = Math.max(0, totalAsignados - levantados);
+  const completada = !esManual && noLevantados === 0;
+
+  // B. Objeto para el Historial
+  const registroHistorial = {
+    id: Date.now(),
+    fecha: new Date().toLocaleString("es-UY", { dateStyle: "short", timeStyle: "short" }),
+    circuito: datosChoferActual.circuitosAsignados.join(", ") || "Sin circuito",
+    estado: completada ? "Completada" : (esManual ? "Finalizada manualmente" : "Incompleta"),
+    levantados: levantados,
+    noLevantados: noLevantados,
+    kmRecorridos: `${datosChoferActual.distanciaTotalKm.toFixed(1)} km`,
+    duracion: tiempoTexto
+  };
+
+  // C. Guardar en localStorage de respaldo
+  const historial = JSON.parse(localStorage.getItem("sigeru_historial_rutas_chofer") || "[]");
+  historial.unshift(registroHistorial);
+  localStorage.setItem("sigeru_historial_rutas_chofer", JSON.stringify(historial));
+
+  // D. Guardar en el Backend (sin alterar la BD)
+  if (datosChoferActual.idRecoleccion) {
+    await peticionRecoleccion(`/api/recolecciones/${datosChoferActual.idRecoleccion}/finalizar`, {
+      method: "POST",
+      body: registroHistorial
+    }).catch(() => {});
+  }
+
+  // E. QUITAR LA RUTA DE LA PANTALLA
+  if (capaRutaChofer) capaRutaChofer.clearLayers();
+  if (capaContenedoresChofer) capaContenedoresChofer.clearLayers();
+  marcadoresContenedoresChofer = {};
+
+  // Ocultar HUD Waze de navegación
+  document.getElementById("wazeNavHud")?.classList.add("d-none");
+
+  // Limpiar lista de paradas en el panel lateral
+  const listaParadas = document.getElementById("choferListaParadas");
+  if (listaParadas) {
+    listaParadas.innerHTML = `
+      <div class="text-center p-3 text-success">
+        <i class="bi bi-check-circle-fill fs-4"></i>
+        <div class="fw-bold mt-1">Ruta finalizada</div>
+        <small class="text-muted">No hay rutas activas pendientes.</small>
+      </div>`;
+  }
+
+  // Restablecer textos de parada y badge
+  setTexto("choferContenedorActual", "En Base Cantón del Buceo");
+  setTexto("choferContenedorDetalle", "Recorrido finalizado y descargado en Vertedero. A la espera de una nueva ruta.");
+
+  const estadoBadge = document.getElementById("choferEstadoViaje");
+  if (estadoBadge) {
+    estadoBadge.className = "badge bg-success";
+    estadoBadge.textContent = "En base (Libre)";
+  }
+
+  // Limpiar la ruta despachada para que no vuelva si refresca
+  localStorage.removeItem("sigeru_rutas_enviadas_chofer");
+  datosChoferActual.contenedores = [];
+  datosChoferActual.geometriaCalles = [];
+
+  // Regresar el camión a la Base Cantón del Buceo en el mapa del Administrador
+  if (datosChoferActual.camion) {
+    const idCamion = datosChoferActual.camion.id_camion;
+    const matricula = datosChoferActual.camion.matricula;
+    const gpsGlobal = JSON.parse(localStorage.getItem("sigeru_gps_camiones") || "{}");
+
+    gpsGlobal[idCamion] = {
+      lat: COORD_BASE_BUCEO[0],
+      lng: COORD_BASE_BUCEO[1],
+      ubicacion: "Base (Cantón del Buceo)",
+      en_movimiento: false,
+      timestamp: Date.now()
+    };
+    if (matricula) gpsGlobal[matricula] = gpsGlobal[idCamion];
+    localStorage.setItem("sigeru_gps_camiones", JSON.stringify(gpsGlobal));
+    localStorage.setItem("sigeru_gps_heartbeat", String(Date.now()));
+  }
+
+  // Borrar la ruta despachada para que el Administrador vea borrarse el trazado al instante
+  const rutasDespachadas = JSON.parse(localStorage.getItem("sigeru_rutas_enviadas_chofer") || "{}");
+  if (datosChoferActual.camion?.matricula) {
+    delete rutasDespachadas[datosChoferActual.camion.matricula];
+  }
+  if (datosChoferActual.camion?.id_camion) {
+    delete rutasDespachadas[datosChoferActual.camion.id_camion];
+  }
+  localStorage.setItem("sigeru_rutas_enviadas_chofer", JSON.stringify(rutasDespachadas));
+}
+
   // Botón Iniciar recorrido
   const btnIniciar = document.getElementById('btnIniciarViajeChofer');
+  const btnFinalizar = document.getElementById('btnFinalizarRecorridoChofer');
+
   btnIniciar?.addEventListener('click', async () => {
     if (!datosChoferActual.contenedores.length) {
       alert('Todavía no tenés contenedores asignados en tu ruta.');
@@ -1099,8 +1249,13 @@ async function iniciarPagina() {
     }
 
     btnIniciar.disabled = true;
+    btnIniciar.classList.add('d-none');
+    if (btnFinalizar) {
+      btnFinalizar.classList.remove('d-none');
+      btnFinalizar.disabled = false;
+    }
 
-    datosChoferActual.inicioTimestamp = Date.now(); // marca el inicio de la ruta 
+    datosChoferActual.inicioTimestamp = Date.now();
 
     if (camion?.id_camion) {
       try {
@@ -1128,7 +1283,14 @@ async function iniciarPagina() {
     }
     actualizarTableroChofer();
 
-    // Iniciamos el simulador separado para que mueva el camión por la ruta hasta cada contenedor
+    // Emitir de inmediato la primera posición GPS al iniciar
+    if (datosChoferActual.geometriaCalles && datosChoferActual.geometriaCalles[0]) {
+      publicarGpsChofer(datosChoferActual.geometriaCalles[0][0], datosChoferActual.geometriaCalles[0][1]);
+    } else {
+      publicarGpsChofer(COORD_BASE_BUCEO[0], COORD_BASE_BUCEO[1]);
+    }
+
+    // Iniciamos el simulador para que mueva el camión por la ruta
     if (window.SimuladorChofer) {
       window.SimuladorChofer.iniciar({
         mapa: mapaChofer,
@@ -1136,143 +1298,27 @@ async function iniciarPagina() {
         geometriaCalles: datosChoferActual.geometriaCalles,
         contenedores: datosChoferActual.contenedores,
         distanciaTotalKm: datosChoferActual.distanciaTotalKm,
-               onAvanceKm: (kmActuales, lat, lng) => {
+        onAvanceKm: (kmActuales, lat, lng) => {
           datosChoferActual.kmRecorridos = kmActuales;
           actualizarTableroChofer();
-
-          // Transmitir posición GPS al Administrador en tiempo real
-          if (lat && lng && datosChoferActual.camion) {
-            const ahora = Date.now();
-            // Emitimos cada 250ms para movimiento fluido sin saturar memoria
-            if (!datosChoferActual.ultimoGpsMs || ahora - datosChoferActual.ultimoGpsMs > 250) {
-              datosChoferActual.ultimoGpsMs = ahora;
-
-              const idCamion = datosChoferActual.camion.id_camion;
-              const matricula = datosChoferActual.camion.matricula;
-              const gpsGlobal = JSON.parse(localStorage.getItem('sigeru_gps_camiones') || '{}');
-
-              gpsGlobal[idCamion] = {
-                lat: Number(lat),
-                lng: Number(lng),
-                ubicacion: 'En recorrido (' + (datosChoferActual.circuitosAsignados.join(', ') || 'Ruta activa') + ')'
-              };
-
-              if (matricula) {
-                gpsGlobal[matricula] = gpsGlobal[idCamion];
-              }
-
-              // Publica la posición para que el mapa de administrador la capture de inmediato
-              localStorage.setItem('sigeru_gps_camiones', JSON.stringify(gpsGlobal));
-            }
+          if (lat && lng) {
+            publicarGpsChofer(lat, lng);
           }
         },
         onLlegarAContenedor: (cont, indice, total) => {
           alLlegarAContenedor(cont, indice, total);
         },
-               onFinalizarRecorrido: async () => {
-          datosChoferActual.kmRecorridos = datosChoferActual.distanciaTotalKm;
-          if (datosChoferActual.camion) {
-            datosChoferActual.camion.estado = 'En base (Libre)';
-          }
-          setInputVal('choferDetUbicacion', 'Base Cantón del Buceo');
-          actualizarTableroChofer();
-
-          // A. Cálculo de métricas requeridas
-          const duracionMs = Date.now() - (datosChoferActual.inicioTimestamp || Date.now());
-          const minutosTotal = Math.max(1, Math.round(duracionMs / 60000));
-          const horas = Math.floor(minutosTotal / 60);
-          const minutos = minutosTotal % 60;
-          const tiempoTexto = horas > 0 ? `${horas}h ${minutos}m` : `${minutos} min`;
-
-          const totalAsignados = datosChoferActual.contenedores.length;
-          const levantados = datosChoferActual.levantados;
-          const noLevantados = Math.max(0, totalAsignados - levantados);
-          const completada = noLevantados === 0;
-
-          // B. Objeto para el Historial
-          const registroHistorial = {
-            id: Date.now(),
-            fecha: new Date().toLocaleString('es-UY', { dateStyle: 'short', timeStyle: 'short' }),
-            circuito: datosChoferActual.circuitosAsignados.join(', ') || 'Sin circuito',
-            estado: completada ? 'Completada' : 'Incompleta',
-            levantados: levantados,
-            noLevantados: noLevantados,
-            kmRecorridos: `${datosChoferActual.distanciaTotalKm.toFixed(1)} km`,
-            duracion: tiempoTexto
-          };
-
-          // C. Guardar en localStorage de respaldo
-          const historial = JSON.parse(localStorage.getItem('sigeru_historial_rutas_chofer') || '[]');
-          historial.unshift(registroHistorial);
-          localStorage.setItem('sigeru_historial_rutas_chofer', JSON.stringify(historial));
-
-          // D. Guardar en el Backend (sin alterar la BD)
-          if (datosChoferActual.idRecoleccion) {
-            await peticionRecoleccion(`/api/recolecciones/${datosChoferActual.idRecoleccion}/finalizar`, {
-              method: 'POST',
-              body: registroHistorial
-            }).catch(() => {});
-          }
-
-          // E. QUITAR LA RUTA DE LA PANTALLA
-          if (capaRutaChofer) capaRutaChofer.clearLayers();
-          if (capaContenedoresChofer) capaContenedoresChofer.clearLayers();
-          marcadoresContenedoresChofer = {};
-
-          // Ocultar HUD Waze de navegación
-          document.getElementById('wazeNavHud')?.classList.add('d-none');
-
-          // Limpiar lista de paradas en el panel lateral
-          const listaParadas = document.getElementById('choferListaParadas');
-          if (listaParadas) {
-            listaParadas.innerHTML = `
-              <div class="text-center p-3 text-success">
-                <i class="bi bi-check-circle-fill fs-4"></i>
-                <div class="fw-bold mt-1">Ruta finalizada</div>
-                <small class="text-muted">No hay rutas activas pendientes.</small>
-              </div>`;
-          }
-
-          // Restablecer textos de parada y badge
-          setTexto('choferContenedorActual', 'En Base Cantón del Buceo');
-          setTexto('choferContenedorDetalle', 'Recorrido finalizado y descargado en Vertedero. A la espera de una nueva ruta.');
-
-          if (estadoBadge) {
-            estadoBadge.className = 'badge bg-success';
-            estadoBadge.textContent = 'En base (Libre)';
-          }
-
-          // Limpiar la ruta despachada para que no vuelva si refresca
-          localStorage.removeItem('sigeru_rutas_enviadas_chofer');
-          datosChoferActual.contenedores = [];
-          datosChoferActual.geometriaCalles = [];
-
-                    // Regresar el camión a la Base Cantón del Buceo en el mapa del Administrador
-          if (datosChoferActual.camion) {
-            const idCamion = datosChoferActual.camion.id_camion;
-            const matricula = datosChoferActual.camion.matricula;
-            const gpsGlobal = JSON.parse(localStorage.getItem('sigeru_gps_camiones') || '{}');
-
-            gpsGlobal[idCamion] = {
-              lat: COORD_BASE_BUCEO[0],
-              lng: COORD_BASE_BUCEO[1],
-              ubicacion: 'Base (Cantón del Buceo)'
-            };
-            if (matricula) gpsGlobal[matricula] = gpsGlobal[idCamion];
-            localStorage.setItem('sigeru_gps_camiones', JSON.stringify(gpsGlobal));
-          }
-
-                    // Borrar la ruta despachada para que el Administrador vea borrarse el trazado al instante
-          const rutasDespachadas = JSON.parse(localStorage.getItem('sigeru_rutas_enviadas_chofer') || '{}');
-          if (datosChoferActual.camion?.matricula) {
-            delete rutasDespachadas[datosChoferActual.camion.matricula];
-          }
-          if (datosChoferActual.camion?.id_camion) {
-            delete rutasDespachadas[datosChoferActual.camion.id_camion];
-          }
-          localStorage.setItem('sigeru_rutas_enviadas_chofer', JSON.stringify(rutasDespachadas));
+        onFinalizarRecorrido: async () => {
+          await finalizarRecorridoCompleto(false);
         }
       });
+    }
+  });
+
+  // Botón Finalizar recorrido manualmente
+  btnFinalizar?.addEventListener('click', async () => {
+    if (confirm('¿Deseas finalizar el recorrido de recolección ahora?')) {
+      await finalizarRecorridoCompleto(true);
     }
   });
 

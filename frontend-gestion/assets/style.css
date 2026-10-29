@@ -1542,3 +1542,25 @@ button,
 #asignarChoferModal, #asignarAcompananteModal, #incidenciaModal {
   z-index: 1060 !important;
 }
+
+.camion-badge-matricula {
+  position: absolute;
+  top: -19px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0284c7;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  border: 1.5px solid #ffffff;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.camion-marker-circulo.activo .camion-badge-matricula {
+  background: #16a34a;
+}
