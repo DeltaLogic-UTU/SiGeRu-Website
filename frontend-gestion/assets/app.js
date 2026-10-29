@@ -640,16 +640,19 @@ function updateVehicleDetail(camion) {
               .join('')
           : '<li>Sin integrantes asignados</li>';
   }
-    // Si el camión ya tiene una ruta generada, el botón permite editarla y sumarle más circuitos
-  const rutaGuardada = rutasPorCamion[camion.id_camion];
+      // Buscar ruta en memoria o en las rutas enviadas activas
+  const rutasDespachadas = JSON.parse(localStorage.getItem('sigeru_rutas_enviadas_chofer') || '{}');
+  const rutaActiva = rutasPorCamion[camion.id_camion] || rutasDespachadas[camion.matricula] || rutasDespachadas[camion.id_camion];
+
   if (btnAsignarRutaMapa) {
-    btnAsignarRutaMapa.textContent = rutaGuardada
+    btnAsignarRutaMapa.textContent = rutaActiva
       ? 'Editar / Agregar circuitos'
       : 'Asignar ruta';
   }
-  // Mostramos en el mapa la ruta del camión seleccionado (o limpiamos si no tiene)
+
+  // Si la ruta sigue activa, la dibuja; si finalizó, limpia el mapa
   if (typeof dibujarRutaDeCamionEnMapa === 'function') {
-    dibujarRutaDeCamionEnMapa(rutaGuardada || null);
+    dibujarRutaDeCamionEnMapa(rutaActiva || null);
   }
 }
 
@@ -3703,6 +3706,16 @@ function actualizarPosicionesCamionesEnMapa() {
 
       if (Math.abs(actualPos.lat - nuevaLat) > 0.00001 || Math.abs(actualPos.lng - nuevaLng) > 0.00001) {
         marker.setLatLng([nuevaLat, nuevaLng]);
+              if (Math.abs(actualPos.lat - nuevaLat) > 0.00001 || Math.abs(actualPos.lng - nuevaLng) > 0.00001) {
+        marker.setLatLng([nuevaLat, nuevaLng]);
+        huboCambios = true;
+
+        // SEGUIR AL CAMIÓN EN DIRECTO: si es el camión que el administrador tiene seleccionado
+        const vehiculoActivo = selectedVehicle();
+        if (vehiculoActivo && Number(vehiculoActivo.id_camion) === id && adminMapInstance) {
+          adminMapInstance.panTo([nuevaLat, nuevaLng], { animate: true, duration: 0.3 });
+        }
+      }
         huboCambios = true;
       }
 
@@ -3784,14 +3797,24 @@ function initAdminMap() {
   cargarContenedoresEnMapa();
   cargarCamionesEnMapa();
 
-  // Escucha las posiciones GPS que publica el simulador en tiempo real
+    // Escucha el GPS en vivo y los cambios de ruta del chofer
   window.addEventListener('storage', evento => {
     if (evento.key === 'sigeru_gps_camiones' || evento.key === 'sigeru_gps_camion') {
       actualizarPosicionesCamionesEnMapa();
     }
+    // Si el chofer finalizó la ruta, se borra de la pantalla del administrador de inmediato
+    if (evento.key === 'sigeru_rutas_enviadas_chofer') {
+      const vehiculoActivo = selectedVehicle();
+      if (vehiculoActivo) {
+        const rutasDespachadas = JSON.parse(localStorage.getItem('sigeru_rutas_enviadas_chofer') || '{}');
+        const rutaActiva = rutasDespachadas[vehiculoActivo.matricula] || rutasDespachadas[vehiculoActivo.id_camion];
+        if (typeof dibujarRutaDeCamionEnMapa === 'function') {
+          dibujarRutaDeCamionEnMapa(rutaActiva || null);
+        }
+      }
+    }
   });
-  setInterval(actualizarPosicionesCamionesEnMapa, 2500);
-}
+  setInterval(actualizarPosicionesCamionesEnMapa, 300); // Actualización fluida
 
 // Botón "Crear contenedor" / "Cerrar edición"
 btnCrearContenedorMapa?.addEventListener('click', () => {
