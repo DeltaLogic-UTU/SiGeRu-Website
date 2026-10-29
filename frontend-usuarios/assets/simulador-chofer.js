@@ -11,7 +11,7 @@
   let vozHabilitada = true;
   let ultimoTextoHablado = '';
   let ultimoMomentoHablado = 0;
-  let intervaloPasoMs = 130; // Modo ágil y dinámico (fluido sin trabas)
+  let intervaloPasoMs = 20; // Avance a 20ms configurado por usuario
 
   let estadoSimulacion = {
     timer: null,
@@ -327,7 +327,7 @@
 
     // Centramos la cámara suavemente sobre el camión (estilo Waze)
     if (mapa && coordActual) {
-      mapa.panTo(coordActual, { animate: true, duration: 0.13 });
+      mapa.panTo(coordActual, { animate: false });
     }
 
     // Calculamos avance en Km
@@ -477,7 +477,7 @@
     },
 
     setIntervaloMs(ms) {
-      intervaloPasoMs = Math.max(200, Math.min(10000, Number(ms) || 2400));
+      intervaloPasoMs = Math.max(10, Math.min(10000, Number(ms) || 20));
       if (estadoSimulacion.timer && !estadoSimulacion.enPausaPorParada) {
         reanudarLoop();
       }
@@ -508,7 +508,7 @@
     const txtVel = document.getElementById('txtVelocidadSim');
     if (btnVel) {
       const velocidades = [
-        { label: 'Ágil', ms: 130, title: 'Velocidad normal ágil' },
+        { label: '20ms', ms: 20, title: 'Velocidad: 20ms' },
         { label: 'Rápido', ms: 80, title: 'Velocidad rápida' },
         { label: 'Pausado', ms: 280, title: 'Velocidad pausada' }
       ];
