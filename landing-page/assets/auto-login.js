@@ -32,7 +32,8 @@
       grupo: 'Operativa e Instalaciones',
       usuarios: [
         { email: 'cuadrilla@sigeru.uy', rol: 'cuadrilla', nombre: 'Cuadrilla de Recolección', detalle: 'Servicio de recolección y reclamos', badge: 'Cuadrilla' },
-        { email: 'operario@sigeru.uy', rol: 'operario', nombre: 'Operario de Instalaciones', detalle: 'Control de plantas y mantenimiento', badge: 'Operario' }
+        { email: 'operario@sigeru.uy', rol: 'operario', nombre: 'Operario de Instalaciones', detalle: 'Control de plantas y mantenimiento', badge: 'Operario' },
+        { email: 'china.zorrilla@sigeru.uy', rol: 'barrendero', nombre: 'China Zorrilla', detalle: 'Barrendero de la ciudad', badge: 'Barrendero' }
       ]
     },
     {
@@ -48,12 +49,12 @@
     administrador: '../frontend-gestion/administrador.html',
     supervisor: '../frontend-gestion/administrador.html',
     chofer: '../frontend-usuarios/chofer.html',
-    cuadrilla: '../frontend-usuarios/cuadrilla.html',
+    cuadrilla: '../frontend-usuarios/cuadrilla-usuario.html',
     operario: '../frontend-usuarios/operario.html',
-    vecino: '../frontend-usuarios/vecino.html'
+    vecino: '../frontend-usuarios/vecino.html',
+    barrendero: '../frontend-usuarios/cuadrilla-usuario.html',
   };
 
-  // Estilos encapsulados para que no dependa de editar style.css
   function inyectarEstilos() {
     if (document.getElementById('autoLoginDevStyles')) return;
     const style = document.createElement('style');
@@ -184,7 +185,6 @@
     document.head.appendChild(style);
   }
 
-  // Realiza la petición de login directo a la API de Laravel
   async function ejecutarLoginAutomatico(email, botonTrigger) {
     const alertBox = document.getElementById('devAutoLoginAlert');
     if (alertBox) {
@@ -215,7 +215,6 @@
         throw new Error(resultado?.message || 'Error en las credenciales del usuario.');
       }
 
-      // Guardamos el token JWT recibido
       if (resultado.data?.access_token) {
         localStorage.setItem('access_token', resultado.data.access_token);
       }
@@ -265,6 +264,7 @@
       { email: 'leonardo@sigeru.uy', label: 'Leonardo (Iveco)', icon: 'bi-truck' },
       { email: 'frida@sigeru.uy', label: 'Frida (VW)', icon: 'bi-truck' },
       { email: 'julio@sigeru.uy', label: 'Julio (Scania P280)', icon: 'bi-truck' },
+      { email: 'china.zorrilla@sigeru.uy', label: 'China Zorrilla', icon: 'bi-person-badge-fill' },
       { email: 'cuadrilla@sigeru.uy', label: 'Cuadrilla', icon: 'bi-people-fill' },
       { email: 'operario@sigeru.uy', label: 'Operario', icon: 'bi-gear-fill' },
       { email: 'vecino@sigeru.uy', label: 'Vecino', icon: 'bi-person-fill' }
@@ -312,7 +312,6 @@
       <!-- [FIN BLOQUE ACCESO RÁPIDO AUTOMÁTICO] -->
     `;
 
-    // Si existe el contenedor designado lo llenamos; si no, lo insertamos al final de la tarjeta de login
     if (document.getElementById('moduloAutoLogin')) {
       document.getElementById('moduloAutoLogin').innerHTML = htmlCard;
     } else {
@@ -322,7 +321,6 @@
       contenedorDestino.appendChild(divWrap);
     }
 
-    // Event listener del botón principal
     document.getElementById('btnDevAutoLogin')?.addEventListener('click', (e) => {
       const email = document.getElementById('devAutoLoginSelect')?.value;
       if (email) {
@@ -330,12 +328,10 @@
       }
     });
 
-    // Event listeners de las pastillas/pills rápidas
     document.querySelectorAll('[data-autologin-email]').forEach(btn => {
       btn.addEventListener('click', () => {
         const email = btn.getAttribute('data-autologin-email');
         if (email) {
-          // Actualizamos también el select por coherencia visual
           const select = document.getElementById('devAutoLoginSelect');
           if (select) select.value = email;
           ejecutarLoginAutomatico(email, btn);

@@ -16,6 +16,53 @@ let catalogos = {
   estados: []
 };
 
+
+const BARRIOS_POR_MUNICIPIO = {
+  A: [
+    'Paso de la Arena', 'Nuevo París', 'Belvedere', 'Prado Nueva Savona',
+    'La Teja', 'Cerro', 'Casabó', 'Pajas Blancas', 'La Paloma',
+    'Tomkinson', 'Tres Ombúes', 'Pueblo Victoria',
+    'Pueblo Santiago Vázquez', 'Paso Molino'
+  ],
+  B: [
+    'Cordón', 'Parque Rodó', 'Palermo', 'Barrio Sur', 'Ciudad Vieja',
+    'Centro', 'Aguada', 'La Comercial', 'Tres Cruces'
+  ],
+  C: [
+    'Aguada', 'Aires Puros', 'Arroyo Seco', 'Atahualpa', 'Bella Vista',
+    'Brazo Oriental', 'Capurro', 'Prado', 'Goes', 'Jacinto Vera', 'Krüger',
+    'Larrañaga', 'La Comercial', 'La Figurita', 'Mercado Modelo',
+    'Bolívar', 'Reducto', 'Villa Muñoz'
+  ],
+  CH: [
+    'Tres Cruces', 'Larrañaga', 'La Blanqueada', 'Parque Batlle',
+    'Villa Dolores', 'Buceo', 'Pocitos', 'Punta Carretas'
+  ],
+  D: [
+    'Toledo Chico', 'Manga', 'Piedras Blancas', 'Casavalle', 'Borro',
+    'Marconi', 'Las Acacias', 'Pérez Castellanos', 'Villa Española',
+    'Unión', 'Mercado Modelo y Bolívar', 'Cerrito de la Victoria',
+    'Aires Puros'
+  ],
+  E: [
+    'Unión', 'Malvín Norte', 'Malvín Nuevo', 'Las Canteras',
+    'Carrasco Norte', 'Carrasco', 'Punta Gorda', 'Malvín', 'Buceo',
+    'La Blanqueada Este'
+  ],
+  F: [
+    'Villa García', 'Manga', 'Bañados de Carrasco', 'Las Canteras',
+    'Maroñas', 'Parque Guaraní', 'Villa Española', 'Flor de Maroñas',
+    'Ituzaingó', 'Jardines del Hipódromo', 'Piedras Blancas',
+    'Km. 16 Cno. Maldonado', 'Ideal', 'Industrial', 'Málaga',
+    'Punta de Rieles', 'Bella Italia'
+  ],
+  G: [
+    'Lezica', 'Melilla', 'Colón Sureste', 'Abayubá', 'Peñarol',
+    'Lavalleja', 'Paso de las Duranas', 'Nuevo París', 'Sayago',
+    'Conciliación', 'Barrio Ferrocarril', 'Colón Centro y Noroeste'
+  ]
+};
+
 let filtrosCircuitos = {
   prioridad: '',
   municipio: '',
@@ -36,7 +83,8 @@ const historyBody = $('containerHistoryBody');
 const circuitOverview = $('circuitOverview');
 const dataGrid = $('containerDataGrid');
 const photo = $('containerPhoto');
-const map = $('containerMap');
+let containerLeafletMap = null;
+let containerLeafletMarker = null;
 const form = $('containerForm');
 
 const containerModal =
@@ -72,14 +120,6 @@ const IMAGEN_GENERAL =
 const IMAGEN_MIXTO =
   '../resources/contenedor4.png';
 
-const MAPA_CH =
-  '../resources/mapa-contenedor1.png';
-
-const MAPAS_B = [
-  '../resources/mapa-contenedor2.png',
-  '../resources/mapa-contenedor3.png',
-  '../resources/mapa-contenedor4.png'
-];
 
 const formatDate = value => {
   if (!value) return '—';
@@ -233,119 +273,74 @@ function obtenerImagen(item) {
   return IMAGEN_GENERAL;
 }
 
-function obtenerMapa(item) {
-  const circuito =
-    String(
-      item.circuito || ''
-    ).toUpperCase();
-
-  if (
-    circuito.startsWith('CH_')
-  ) {
-    return MAPA_CH;
-  }
-
-  if (
-    circuito.startsWith('B_')
-  ) {
-    return MAPAS_B[
-      indiceVisual(
-        item.codigo,
-        MAPAS_B.length
-      )
-    ];
-  }
-
-  return MAPAS_B[0];
-}
-
 function convertirContenedor(item) {
-  const dias =
-    Number(
-      item.dias_sin_recoleccion ||
-      0
-    );
+  const dias = Number(
+    item.dias_sin_recoleccion || 0
+  );
+
+  const incidenciaVioleta =
+    item.incidencia_violeta === true ||
+    item.incidencia_violeta === 1 ||
+    item.incidencia_violeta === '1';
 
   return {
-    id:
-      Number(
-        item.id_contenedor
-      ),
+    id: Number(item.id_contenedor),
 
-    codigo:
-      item.codigo || '',
+    codigo: item.codigo || '',
 
-    modelo:
-      item.modelo || '',
+    modelo: item.modelo || '',
 
-    tipo:
-      item.tipo || '',
+    tipo: item.tipo || '',
 
-    capacidad:
-      Number(
-        item.capacidad || 0
-      ),
+    capacidad: Number(
+      item.capacidad || 0
+    ),
 
-    estado:
-      item.estado || '',
+    estado: item.estado || '',
 
     activo:
-      Number(item.activo) === 1,
+      item.activo === true ||
+      item.activo === 1 ||
+      item.activo === '1',
 
-    diasSinRecoleccion:
-      dias,
+    diasSinRecoleccion: dias,
 
-    nivelRecoleccion:
-      item.nivel_recoleccion ||
-      'verde',
+    incidenciaVioleta: incidenciaVioleta,
 
-    etiquetaRecoleccion:
-      item.etiqueta_recoleccion ||
-      `${dias} ${
-        dias === 1
-          ? 'día'
-          : 'días'
-      }`,
+    nivelRecoleccion: incidenciaVioleta
+      ? 'violeta'
+      : (item.nivel_recoleccion || 'verde'),
 
-    calle:
-      item.calle || '',
+    etiquetaRecoleccion: incidenciaVioleta
+      ? 'Incidencia pendiente'
+      : (
+        item.etiqueta_recoleccion ||
+        `${dias} ${dias === 1 ? 'día' : 'días'}`
+      ),
 
-    esquina:
-      item.esquina || '',
+    calle: item.calle || '',
 
-    esquina2:
-      item.esquina_2 || '',
+    esquina: item.esquina || '',
 
-    municipio:
-      item.municipio || '',
+    esquina2: item.esquina_2 || '',
 
-    barrio:
-      item.barrio || '',
+    municipio: item.municipio || '',
 
-    descripcion:
-      item.descripcion || '',
+    barrio: item.barrio || '',
 
-    latitud:
-      item.latitud,
+    descripcion: item.descripcion || '',
 
-    longitud:
-      item.longitud,
+    latitud: item.latitud,
 
-    circuito:
-      item.circuito || '',
+    longitud: item.longitud,
 
-    ultimoRegistro:
-      item.ultimo_registro
-        ? String(
-            item.ultimo_registro
-          ).slice(0, 10)
-        : '',
+    circuito: item.circuito || '',
 
-    imagen:
-      obtenerImagen(item),
+    ultimoRegistro: item.ultimo_registro
+      ? String(item.ultimo_registro).slice(0, 10)
+      : '',
 
-    mapa:
-      obtenerMapa(item),
+    imagen: obtenerImagen(item),
 
     historial: []
   };
@@ -392,8 +387,8 @@ async function cargarContenedores() {
       result?.data
     )
       ? result.data.map(
-          convertirContenedor
-        )
+        convertirContenedor
+      )
       : [];
 
   if (
@@ -432,10 +427,9 @@ async function cargarResumenCircuitos() {
 
   const result =
     await requestGestion(
-      `/api/contenedores/resumen-circuitos${
-        consulta
-          ? `?${consulta}`
-          : ''
+      `/api/contenedores/resumen-circuitos${consulta
+        ? `?${consulta}`
+        : ''
       }`
     );
 
@@ -469,8 +463,8 @@ function collectionBadge(item) {
   return `
     <span
       class="collection-age collection-${escapeHtml(
-        item.nivelRecoleccion
-      )}"
+    item.nivelRecoleccion
+  )}"
     >
       <span
         class="collection-dot"
@@ -478,8 +472,8 @@ function collectionBadge(item) {
       ></span>
 
       ${escapeHtml(
-        item.etiquetaRecoleccion
-      )}
+    item.etiquetaRecoleccion
+  )}
     </span>
   `;
 }
@@ -488,12 +482,12 @@ function collectionDetailLabel(item) {
   return `
     <span
       class="collection-detail collection-${escapeHtml(
-        item.nivelRecoleccion
-      )}"
+    item.nivelRecoleccion
+  )}"
     >
       ${escapeHtml(
-        item.etiquetaRecoleccion
-      )}
+    item.etiquetaRecoleccion
+  )}
     </span>
   `;
 }
@@ -518,22 +512,22 @@ function renderCircuitOverview() {
         item => `
           <article
             class="circuit-overview-card circuit-${escapeHtml(
-              item.nivel
-            )}"
+          item.nivel
+        )}"
           >
             <div>
               <span>
                 Municipio
                 ${escapeHtml(
-                  item.municipio ||
-                  '—'
-                )}
+          item.municipio ||
+          '—'
+        )}
               </span>
 
               <strong>
                 ${escapeHtml(
-                  item.circuito
-                )}
+          item.circuito
+        )}
               </strong>
             </div>
 
@@ -545,25 +539,25 @@ function renderCircuitOverview() {
             <div class="circuit-counts">
               <span>
                 ${Number(
-                  item.counts
-                    ?.verde || 0
-                )}
+          item.counts
+            ?.verde || 0
+        )}
                 verdes
               </span>
 
               <span>
                 ${Number(
-                  item.counts
-                    ?.amarillo || 0
-                )}
+          item.counts
+            ?.amarillo || 0
+        )}
                 amarillos
               </span>
 
               <span>
                 ${Number(
-                  item.counts
-                    ?.rojo || 0
-                )}
+          item.counts
+            ?.rojo || 0
+        )}
                 rojos
               </span>
             </div>
@@ -586,7 +580,7 @@ function actualizarCircuitosFiltroEstado() {
       ruta =>
         !filtrosCircuitos.municipio ||
         ruta.municipio ===
-          filtrosCircuitos.municipio
+        filtrosCircuitos.municipio
     );
 
   if (
@@ -611,12 +605,12 @@ function actualizarCircuitosFiltroEstado() {
         ruta => `
           <option
             value="${escapeHtml(
-              ruta.circuito
-            )}"
+          ruta.circuito
+        )}"
           >
             ${escapeHtml(
-              ruta.circuito
-            )}
+          ruta.circuito
+        )}
           </option>
         `
       )
@@ -696,20 +690,20 @@ function prepararFiltrosCircuitos() {
       </option>
 
       ${municipios
-        .map(
-          municipio => `
+      .map(
+        municipio => `
             <option
               value="${escapeHtml(
-                municipio
-              )}"
+          municipio
+        )}"
             >
               Municipio ${escapeHtml(
-                municipio
-              )}
+          municipio
+        )}
             </option>
           `
-        )
-        .join('')}
+      )
+      .join('')}
     </select>
 
     <select
@@ -996,74 +990,73 @@ function renderTable() {
     listadoExpandido
       ? filtrados
       : filtrados.slice(
-          0,
-          4
-        );
+        0,
+        4
+      );
 
   tableBody.innerHTML =
     visibles
       .map(
         item => `
           <tr
-            class="${
-              item.id ===
-              selectedId
-                ? 'active'
-                : ''
-            }"
+            class="${item.id ===
+            selectedId
+            ? 'active'
+            : ''
+          }"
           >
             <td>
               <strong>
                 ${escapeHtml(
-                  item.codigo
-                )}
+            item.codigo
+          )}
               </strong>
             </td>
 
             <td>
               ${escapeHtml(
-                item.municipio
-              )}
+            item.municipio
+          )}
             </td>
 
             <td>
               ${escapeHtml(
-                item.barrio
-              )}
+            item.barrio
+          )}
             </td>
 
             <td>
               ${escapeHtml(
-                item.calle
-              )}
+            item.calle
+          )}
             </td>
 
             <td>
               ${escapeHtml(
-                label(
-                  item.tipo
-                )
-              )}
+            label(
+              item.tipo
+            )
+          )}
             </td>
 
             <td>
               ${escapeHtml(
-                label(
-                  item.estado
-                )
-              )}
+            label(
+              item.estado
+            )
+          )}
             </td>
 
             <td>
               ${collectionBadge(
-                item
-              )}
+            item
+          )}
             </td>
 
             <td>
               ${formatDate(
-                item.ultimoRegistro
-              )}
+            item.ultimoRegistro
+          )}
             </td>
 
             <td>
@@ -1072,8 +1065,8 @@ function renderTable() {
                 type="button"
                 data-open-container="${item.id}"
                 aria-label="Ver ${escapeHtml(
-                  item.codigo
-                )}"
+            item.codigo
+          )}"
               >
                 <i class="bi bi-search"></i>
               </button>
@@ -1122,11 +1115,11 @@ function prepararFiltrosContenedores() {
   );
 
   const barrios = [
-  ...new Set(
-    containers
-      .map(item => item.barrio)
-      .filter(Boolean)
-  )
+    ...new Set(
+      containers
+        .map(item => item.barrio)
+        .filter(Boolean)
+    )
   ].sort((a, b) => a.localeCompare(b, 'es'));
 
   const filtros =
@@ -1140,7 +1133,7 @@ function prepararFiltrosContenedores() {
   filtros.className =
     'd-flex flex-wrap gap-2 mb-3';
 
-    filtros.innerHTML = `
+  filtros.innerHTML = `
     <select
       id="containerPriorityFilter"
       class="form-select form-select-sm w-auto"
@@ -1173,20 +1166,20 @@ function prepararFiltrosContenedores() {
       </option>
 
       ${municipios
-        .map(
-          municipio => `
+      .map(
+        municipio => `
             <option
               value="${escapeHtml(
-                municipio
-              )}"
+          municipio
+        )}"
             >
               Municipio ${escapeHtml(
-                municipio
-              )}
+          municipio
+        )}
             </option>
           `
-        )
-        .join('')}
+      )
+      .join('')}
     </select>
 
     <select
@@ -1199,20 +1192,20 @@ function prepararFiltrosContenedores() {
       </option>
 
       ${barrios
-        .map(
-          barrio => `
+      .map(
+        barrio => `
             <option
               value="${escapeHtml(
-                barrio
-              )}"
+          barrio
+        )}"
             >
               ${escapeHtml(
-                barrio
-              )}
+          barrio
+        )}
             </option>
           `
-        )
-        .join('')}
+      )
+      .join('')}
     </select>
 
     <select
@@ -1225,22 +1218,22 @@ function prepararFiltrosContenedores() {
       </option>
 
       ${catalogos.tipos
-        .map(
-          item => `
+      .map(
+        item => `
             <option
               value="${escapeHtml(
-                item.tipo
-              )}"
+          item.tipo
+        )}"
             >
               ${escapeHtml(
-                label(
-                  item.tipo
-                )
-              )}
+          label(
+            item.tipo
+          )
+        )}
             </option>
           `
-        )
-        .join('')}
+      )
+      .join('')}
     </select>
   `;
 
@@ -1396,34 +1389,34 @@ function renderHistory(container) {
   historyBody.innerHTML =
     container.historial.length
       ? container.historial
-          .map(
-            (
-              entry,
-              index
-            ) => `
+        .map(
+          (
+            entry,
+            index
+          ) => `
               <tr>
                 <td>
                   ${formatDate(
-                    entry.fecha
-                  )}
+            entry.fecha
+          )}
                 </td>
 
                 <td>
                   ${escapeHtml(
-                    entry.tipo
-                  )}
+            entry.tipo
+          )}
                 </td>
 
                 <td>
                   ${escapeHtml(
-                    entry.detalle
-                  )}
+            entry.detalle
+          )}
                 </td>
 
                 <td>
                   ${escapeHtml(
-                    entry.estado
-                  )}
+            entry.estado
+          )}
                 </td>
 
                 <td>
@@ -1438,8 +1431,8 @@ function renderHistory(container) {
                 </td>
               </tr>
             `
-          )
-          .join('')
+        )
+        .join('')
       : `
           <tr>
             <td
@@ -1450,6 +1443,246 @@ function renderHistory(container) {
             </td>
           </tr>
         `;
+}
+
+
+
+function cargarLeafletDinamicamente() {
+  if (typeof window.L !== 'undefined') {
+    return Promise.resolve();
+  }
+
+  if (!document.querySelector('link[data-sigeru-leaflet]')) {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    css.dataset.sigeruLeaflet = 'true';
+    document.head.appendChild(css);
+  }
+
+  return new Promise((resolve, reject) => {
+    const existente =
+      document.querySelector('script[data-sigeru-leaflet]');
+
+    if (existente) {
+      existente.addEventListener('load', resolve, { once: true });
+      existente.addEventListener(
+        'error',
+        () => reject(
+          new Error('No se pudo cargar Leaflet.')
+        ),
+        { once: true }
+      );
+
+      if (typeof window.L !== 'undefined') {
+        resolve();
+      }
+
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src =
+      'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.dataset.sigeruLeaflet = 'true';
+
+    script.onload = () => resolve();
+    script.onerror = () =>
+      reject(
+        new Error('No se pudo cargar Leaflet.')
+      );
+
+    document.head.appendChild(script);
+  });
+}
+
+function obtenerElementoMapaContenedor() {
+  let elemento =
+    $('containerMap');
+
+  if (!elemento) {
+    return null;
+  }
+
+  if (
+    elemento.tagName &&
+    elemento.tagName.toLowerCase() === 'img'
+  ) {
+    const nuevoMapa =
+      document.createElement('div');
+
+    nuevoMapa.id =
+      'containerMap';
+
+    nuevoMapa.className =
+      'container-leaflet-map';
+
+    nuevoMapa.setAttribute(
+      'aria-label',
+      'Ubicación del contenedor'
+    );
+
+    elemento.replaceWith(
+      nuevoMapa
+    );
+
+    elemento =
+      nuevoMapa;
+  }
+
+  elemento.classList.add(
+    'container-leaflet-map'
+  );
+
+  if (!elemento.style.height) {
+    elemento.style.height =
+      '320px';
+  }
+
+  if (!elemento.style.minHeight) {
+    elemento.style.minHeight =
+      '320px';
+  }
+
+  elemento.style.width =
+    '100%';
+
+  return elemento;
+}
+
+async function mostrarMapaContenedor(item) {
+  const mapElement =
+    obtenerElementoMapaContenedor();
+
+  if (!mapElement) {
+    return;
+  }
+
+  try {
+    await cargarLeafletDinamicamente();
+  } catch (error) {
+    mapElement.innerHTML = `
+      <div class="container-map-empty">
+        <i class="bi bi-exclamation-triangle"></i>
+        <span>
+          No se pudo cargar el mapa.
+        </span>
+      </div>
+    `;
+
+    console.error(error);
+    return;
+  }
+
+  const lat =
+    Number(item.latitud);
+
+  const lng =
+    Number(item.longitud);
+
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng)
+  ) {
+    if (containerLeafletMap) {
+      containerLeafletMap.remove();
+      containerLeafletMap = null;
+      containerLeafletMarker = null;
+    }
+
+    mapElement.innerHTML = `
+      <div class="container-map-empty">
+        <i class="bi bi-geo-alt"></i>
+        <span>
+          Este contenedor no tiene coordenadas registradas.
+        </span>
+      </div>
+    `;
+
+    return;
+  }
+
+  if (containerLeafletMap) {
+    containerLeafletMap.remove();
+    containerLeafletMap = null;
+    containerLeafletMarker = null;
+  }
+
+  mapElement.innerHTML = '';
+
+  containerLeafletMap =
+    window.L.map(
+      mapElement,
+      {
+        zoomControl: true,
+        attributionControl: true
+      }
+    ).setView(
+      [lat, lng],
+      18
+    );
+
+  window.L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+      maxZoom: 19,
+      attribution:
+        '&copy; OpenStreetMap contributors'
+    }
+  ).addTo(
+    containerLeafletMap
+  );
+
+  containerLeafletMarker =
+    window.L.marker(
+      [lat, lng]
+    )
+      .addTo(
+        containerLeafletMap
+      )
+      .bindPopup(
+        `
+          <strong>${escapeHtml(
+          item.codigo
+        )}</strong>
+          ${item.calle
+          ? `<br>${escapeHtml(
+            item.calle
+          )}`
+          : ''
+        }
+          ${item.barrio
+          ? `<br>${escapeHtml(
+            item.barrio
+          )}`
+          : ''
+        }
+          ${item.circuito
+          ? `<br>Circuito: ${escapeHtml(
+            item.circuito
+          )}`
+          : ''
+        }
+        `
+      );
+
+  requestAnimationFrame(
+    () => {
+      containerLeafletMap
+        ?.invalidateSize();
+
+      containerLeafletMarker
+        ?.openPopup();
+    }
+  );
+
+  setTimeout(
+    () => {
+      containerLeafletMap
+        ?.invalidateSize();
+    },
+    250
+  );
 }
 
 async function showContainer(id) {
@@ -1493,20 +1726,28 @@ async function showContainer(id) {
       );
   }
 
-  $('replaceContainerBtn')?.classList.toggle(
-  'd-none',
-  !item.activo || item.estado !== 'incendiado'
-);
 
-$('editContainerBtn')?.classList.toggle(
-  'd-none',
-  !item.activo
-);
+  const reemplazable =
+    item.activo &&
+    ['roto', 'incendiado'].includes(
+      String(item.estado).toLowerCase()
+    );
 
-$('removeContainerBtn')?.classList.toggle(
-  'd-none',
-  !item.activo
-);
+  $('replaceContainerBtn')
+    ?.classList.toggle(
+      'd-none',
+      !reemplazable
+    );
+
+  $('editContainerBtn')?.classList.toggle(
+    'd-none',
+    !item.activo
+  );
+
+  $('removeContainerBtn')?.classList.toggle(
+    'd-none',
+    !item.activo
+  );
 
   if (dataGrid) {
     dataGrid.innerHTML = [
@@ -1578,8 +1819,8 @@ $('removeContainerBtn')?.classList.toggle(
 
           <strong>
             ${collectionDetailLabel(
-              item
-            )}
+        item
+      )}
           </strong>
         </div>
       `,
@@ -1601,13 +1842,7 @@ $('removeContainerBtn')?.classList.toggle(
       `Contenedor ${item.codigo}`;
   }
 
-  if (map) {
-    map.src =
-      item.mapa;
-
-    map.alt =
-      `Ubicación de ${item.codigo}`;
-  }
+  await mostrarMapaContenedor(item);
 
   renderHistory(
     item
@@ -1623,7 +1858,7 @@ function cargarSelect(
   if (
     !select ||
     select.tagName.toLowerCase() !==
-      'select'
+    'select'
   ) {
     return;
   }
@@ -1631,8 +1866,8 @@ function cargarSelect(
   select.innerHTML = `
     <option value="">
       ${escapeHtml(
-        placeholder
-      )}
+    placeholder
+  )}
     </option>
 
     ${opciones.join('')}
@@ -1663,6 +1898,40 @@ function municipiosCatalogo() {
         'es'
       )
   );
+}
+
+function actualizarBarriosFormulario(
+  seleccionado = ''
+) {
+  if (!form) return;
+
+  const municipio = form.elements['municipio'];
+  const barrio = form.elements['barrio'];
+
+  if (!municipio || !barrio) return;
+
+  const municipioActual = String(
+    municipio.value || ''
+  ).trim().toUpperCase();
+
+  const barrios = BARRIOS_POR_MUNICIPIO[municipioActual] || [];
+
+  cargarSelect(
+    barrio,
+    barrios.map(
+      nombre => `
+        <option value="${escapeHtml(nombre)}">
+          ${escapeHtml(nombre)}
+        </option>
+      `
+    ),
+    seleccionado,
+    municipioActual
+      ? 'Seleccionar barrio'
+      : 'Seleccionar municipio primero'
+  );
+
+  barrio.disabled = !municipioActual;
 }
 
 function actualizarCircuitosFormulario(
@@ -1708,12 +1977,12 @@ function actualizarCircuitosFormulario(
       ruta => `
         <option
           value="${escapeHtml(
-            ruta.circuito
-          )}"
+        ruta.circuito
+      )}"
         >
           ${escapeHtml(
-            ruta.circuito
-          )}
+        ruta.circuito
+      )}
         </option>
       `
     ),
@@ -1731,7 +2000,8 @@ function actualizarCircuitosFormulario(
 
 function prepararCatalogosForm(
   municipioSeleccionado = '',
-  circuitoSeleccionado = ''
+  circuitoSeleccionado = '',
+  barrioSeleccionado = ''
 ) {
   if (!form) return;
 
@@ -1742,14 +2012,14 @@ function prepararCatalogosForm(
       item => `
         <option
           value="${escapeHtml(
-            item.tipo
-          )}"
+        item.tipo
+      )}"
         >
           ${escapeHtml(
-            label(
-              item.tipo
-            )
-          )}
+        label(
+          item.tipo
+        )
+      )}
         </option>
       `
     ),
@@ -1767,12 +2037,12 @@ function prepararCatalogosForm(
       municipio => `
         <option
           value="${escapeHtml(
-            municipio
-          )}"
+        municipio
+      )}"
         >
           Municipio ${escapeHtml(
-            municipio
-          )}
+        municipio
+      )}
         </option>
       `
     ),
@@ -1789,14 +2059,14 @@ function prepararCatalogosForm(
       estado => `
         <option
           value="${escapeHtml(
-            estado
-          )}"
+        estado
+      )}"
         >
           ${escapeHtml(
-            label(
-              estado
-            )
-          )}
+        label(
+          estado
+        )
+      )}
         </option>
       `
     ),
@@ -1809,6 +2079,10 @@ function prepararCatalogosForm(
 
   actualizarCircuitosFormulario(
     circuitoSeleccionado
+  );
+
+  actualizarBarriosFormulario(
+    barrioSeleccionado
   );
 }
 
@@ -1845,15 +2119,23 @@ function fillForm(item = null) {
 
   prepararCatalogosForm(
     item?.municipio || '',
-    item?.circuito || ''
+    item?.circuito || '',
+    item?.barrio || ''
   );
 
   mostrarMensajeFormulario();
 
-  if (
-    !item ||
-    !form
-  ) {
+  if (!form) {
+    return;
+  }
+
+  if (!item) {
+    const hoy = new Date();
+    const yyyy = hoy.getFullYear();
+    const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dd = String(hoy.getDate()).padStart(2, '0');
+    form.elements['ultimo_registro'].value = `${yyyy}-${mm}-${dd}`;
+    form.elements['dias_sin_recoleccion'].value = 0;
     return;
   }
 
@@ -1984,18 +2266,6 @@ function obtenerPayloadFormulario() {
   };
 
   if (
-    String(
-      data.dias_sin_recoleccion ??
-      ''
-    ).trim()
-  ) {
-    payload.dias_sin_recoleccion =
-      Number(
-        data.dias_sin_recoleccion
-      );
-  }
-
-  if (
     data.esquina_2 !==
     undefined
   ) {
@@ -2054,7 +2324,13 @@ $('replaceContainerBtn')?.addEventListener('click', () => {
     container => container.id === selectedId
   );
 
-  if (!item || !item.activo || item.estado !== 'incendiado') {
+  if (
+    !item ||
+    !item.activo ||
+    !['roto', 'incendiado'].includes(
+      String(item.estado).toLowerCase()
+    )
+  ) {
     return;
   }
 
@@ -2089,7 +2365,13 @@ replaceContainerForm?.addEventListener('submit', async event => {
     container => container.id === selectedId
   );
 
-  if (!item || !item.activo || item.estado !== 'incendiado') {
+  if (
+    !item ||
+    !item.activo ||
+    !['roto', 'incendiado'].includes(
+      String(item.estado).toLowerCase()
+    )
+  ) {
     return;
   }
 
@@ -2201,11 +2483,29 @@ $('removeContainerBtn')
 
 form
   ?.elements
+  ?.['ultimo_registro']
+  ?.addEventListener('change', event => {
+    const valor = event.target.value;
+    if (!valor) {
+      form.elements['dias_sin_recoleccion'].value = 0;
+      return;
+    }
+
+    const fecha = new Date(`${valor}T00:00:00`);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const dias = Math.max(0, Math.floor((hoy - fecha) / 86400000));
+    form.elements['dias_sin_recoleccion'].value = dias;
+  });
+
+form
+  ?.elements
   ?.['municipio']
   ?.addEventListener(
     'change',
     () => {
       actualizarCircuitosFormulario();
+      actualizarBarriosFormulario();
     }
   );
 
@@ -2222,10 +2522,10 @@ form?.addEventListener(
         item =>
           item.codigo
             .toUpperCase() ===
-            payload.codigo
-              .toUpperCase() &&
+          payload.codigo
+            .toUpperCase() &&
           item.id !==
-            editingId
+          editingId
       );
 
     if (duplicate) {
@@ -2240,29 +2540,29 @@ form?.addEventListener(
       const result =
         editingId
           ? await requestGestion(
-              `/api/contenedores/${editingId}`,
-              {
-                method:
-                  'PUT',
+            `/api/contenedores/${editingId}`,
+            {
+              method:
+                'PUT',
 
-                body:
-                  JSON.stringify(
-                    payload
-                  )
-              }
-            )
+              body:
+                JSON.stringify(
+                  payload
+                )
+            }
+          )
           : await requestGestion(
-              '/api/contenedores',
-              {
-                method:
-                  'POST',
+            '/api/contenedores',
+            {
+              method:
+                'POST',
 
-                body:
-                  JSON.stringify(
-                    payload
-                  )
-              }
-            );
+              body:
+                JSON.stringify(
+                  payload
+                )
+            }
+          );
 
       const id =
         Number(
@@ -2376,11 +2676,11 @@ document.addEventListener(
 
     const entry =
       container?.historial[
-        Number(
-          historyButton
-            .dataset
-            .historyEntry
-        )
+      Number(
+        historyButton
+          .dataset
+          .historyEntry
+      )
       ];
 
     if (!entry) return;
@@ -2404,21 +2704,21 @@ document.addEventListener(
             <div>
               <span class="truck-kicker">
                 ${escapeHtml(
-                  container.codigo
-                )}
+          container.codigo
+        )}
               </span>
 
               <h3>
                 ${escapeHtml(
-                  entry.tipo
-                )}
+          entry.tipo
+        )}
               </h3>
             </div>
 
             <span class="truck-status">
               ${escapeHtml(
-                entry.estado
-              )}
+          entry.estado
+        )}
             </span>
           </div>
 
@@ -2429,8 +2729,8 @@ document.addEventListener(
 
             <p>
               ${escapeHtml(
-                entry.detalle
-              )}
+          entry.detalle
+        )}
             </p>
           </div>
         `;
@@ -2465,9 +2765,9 @@ async function iniciarContenedores() {
             class="text-center py-4 text-muted-custom"
           >
             ${escapeHtml(
-              error.message ||
-              'No se pudieron cargar los contenedores.'
-            )}
+        error.message ||
+        'No se pudieron cargar los contenedores.'
+      )}
           </td>
         </tr>
       `;
@@ -2476,3 +2776,17 @@ async function iniciarContenedores() {
 }
 
 iniciarContenedores();
+
+setInterval(async () => {
+  try {
+    const idSeleccionado = selectedId;
+    await recargarDatos();
+    prepararFiltrosContenedores();
+    renderTable();
+    if (idSeleccionado && containers.some(item => item.id === idSeleccionado)) {
+      await showContainer(idSeleccionado);
+    }
+  } catch (error) {
+    console.warn('No se pudo refrescar contenedores automáticamente:', error);
+  }
+}, 60000);

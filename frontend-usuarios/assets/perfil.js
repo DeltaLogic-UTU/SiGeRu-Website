@@ -11,7 +11,6 @@ function showProfileMessage(text, error = false) {
     message.style.display = 'block';
 }
 
-// Se envía el token JWT guardado en localStorage mediante el header Authorization: Bearer.
 async function apiRequest(path, method = 'GET', body = null) {
     const headers = {
         'Accept': 'application/json'
@@ -75,7 +74,7 @@ async function cargarPerfil() {
         if (!response.ok || !result.success) {
             showProfileMessage(
                 result.message ||
-                    'No se pudo cargar el perfil.',
+                'No se pudo cargar el perfil.',
                 true
             );
             return;

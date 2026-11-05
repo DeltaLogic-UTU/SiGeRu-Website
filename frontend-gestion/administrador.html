@@ -1,26 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>Gestión | SiGeRU</title>
 
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  >
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
-    rel="stylesheet"
-  >
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 
-  <!-- Estilos de Leaflet para el mapa interactivo del administrador -->
-  <link
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    rel="stylesheet"
-  >
+  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
 
   <link href="assets/style.css?v=4" rel="stylesheet">
 </head>
@@ -28,30 +19,15 @@
 <body class="admin-dashboard-body">
 
   <header class="site-header">
-    <nav class="navbar navbar-expand-xl">
+    <nav class="navbar navbar-expand-xxl">
       <div class="container-fluid px-3">
 
-        <a
-          class="navbar-brand logo-link"
-          href="administrador.html"
-          aria-label="Inicio de Gestión SiGeRU"
-        >
-          <img
-            src="../resources/logo.png"
-            class="brand-logo"
-            alt="Logo de SiGeRU"
-          >
+        <a class="navbar-brand logo-link" href="administrador.html" aria-label="Inicio de Gestión SiGeRU">
+          <img src="../resources/logo.png" class="brand-logo" alt="Logo de SiGeRU">
         </a>
 
-        <button
-          class="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#gestionNav"
-          aria-controls="gestionNav"
-          aria-expanded="false"
-          aria-label="Abrir navegación"
-        >
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#gestionNav"
+          aria-controls="gestionNav" aria-expanded="false" aria-label="Abrir navegación">
           <span class="navbar-toggler-icon"></span>
         </button>
 
@@ -59,13 +35,19 @@
           <ul class="navbar-nav ms-auto align-items-xl-center">
 
             <li class="nav-item">
-              <button
-                class="nav-link active"
-                data-map-focus
-                type="button"
-              >
+              <button class="nav-link active" data-map-focus type="button">
                 <i class="bi bi-map"></i>
                 Mapa
+              </button>
+            </li>
+
+            <li class="nav-item">
+              <button class="nav-link" type="button" data-bs-toggle="modal" data-bs-target="#mensajesAdminModal">
+
+                <i class="bi bi-chat-dots"></i>
+                Mensajes
+
+                <span id="mensajesAdminTotalPendientes" class="badge rounded-pill bg-success ms-1" hidden>0</span>
               </button>
             </li>
 
@@ -84,10 +66,7 @@
             </li>
 
             <li class="nav-item">
-              <button class="nav-link" type="button">
-                <i class="bi bi-graph-up-arrow"></i>
-                Estadísticas
-              </button>
+              <a class="nav-link" href="estadisticas.html"><i class="bi bi-graph-up-arrow"></i> Estadísticas</a>
             </li>
 
             <li class="nav-item">
@@ -105,10 +84,7 @@
             </li>
 
             <li class="nav-item">
-              <button class="nav-link" type="button">
-                <i class="bi bi-signpost-split"></i>
-                Rutas
-              </button>
+              <a class="nav-link" href="rutas.html"><i class="bi bi-signpost-split"></i> Rutas</a>
             </li>
 
             <li class="nav-item">
@@ -133,45 +109,28 @@
             </li>
 
             <li class="nav-item">
-              <button
-                class="nav-link"
-                data-open-requests
-                type="button"
-              >
+              <button class="nav-link" data-open-requests type="button">
                 <i class="bi bi-person-check"></i>
                 Solicitudes
               </button>
             </li>
 
             <li class="nav-item ms-xl-2">
-              <a
-                class="nav-link profile-nav-link"
-                href="perfil.html"
-                aria-label="Editar mi usuario"
-                title="Mi usuario"
-              >
+              <a class="nav-link profile-nav-link" href="perfil.html" aria-label="Editar mi usuario" title="Mi usuario">
                 <i class="bi bi-person-circle"></i>
                 <span class="visually-hidden">Mi usuario</span>
               </a>
             </li>
 
             <li class="nav-item ms-xl-2 mt-2 mt-xl-0">
-              <button
-                class="theme-toggle"
-                data-theme-toggle
-                type="button"
-                aria-label="Cambiar tema"
-              ></button>
+              <button class="theme-toggle" data-theme-toggle type="button" aria-label="Cambiar tema"></button>
             </li>
 
             <li class="nav-item mt-2 mt-xl-0 logout-item">
-              <a
-                class="nav-link logout-link"
-                data-logout
-                href="../landing-page/login.html"
-              >
-                <i class="bi bi-box-arrow-right"></i>
-                <span>Cerrar sesión</span>
+              <a class="nav-link logout-link" id="btnLogout" href="../landing-page/login.html"
+                aria-label="Cerrar sesión" title="Cerrar sesión">
+                <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+                <span class="visually-hidden">Cerrar sesión</span>
               </a>
             </li>
 
@@ -185,30 +144,19 @@
 
   <main>
 
-    <section
-      class="status-bar"
-      aria-label="Resumen del turno"
-    >
+    <section class="status-bar" aria-label="Resumen del turno">
       <div class="container-fluid px-3">
 
         <div class="status-grid">
 
           <label>
             Día
-            <input
-              class="form-control form-control-sm"
-              type="date"
-              readonly
-            >
+            <input class="form-control form-control-sm" type="date" readonly>
           </label>
 
           <label>
             Hora
-            <input
-              class="form-control form-control-sm"
-              type="time"
-              readonly
-            >
+            <input class="form-control form-control-sm" type="time" readonly>
           </label>
 
           <label>
@@ -241,45 +189,26 @@
     </section>
 
 
-    <section
-      class="operation-layout container-fluid px-3 pb-3"
-      id="mapa"
-    >
+    <section class="operation-layout container-fluid px-3 pb-3" id="mapa">
 
       <aside class="vehicle-panel">
 
-        <div
-          class="panel-switcher"
-          aria-label="Cambiar panel operativo"
-        >
+        <div class="panel-switcher" aria-label="Cambiar panel operativo">
 
-          <button
-            class="panel-switch-btn active"
-            data-panel-view="camiones"
-            type="button"
-            aria-label="Ver camiones"
-            title="Camiones"
-          >
+          <button class="panel-switch-btn active" data-panel-view="camiones" type="button" aria-label="Ver camiones"
+            title="Camiones">
             <i class="bi bi-truck"></i>
           </button>
 
-          <button
-            class="panel-switch-btn"
-            data-panel-view="cuadrillas"
-            type="button"
-            aria-label="Ver cuadrillas"
-            title="Cuadrillas"
-          >
+          <button class="panel-switch-btn" data-panel-view="cuadrillas" type="button" aria-label="Ver cuadrillas"
+            title="Cuadrillas">
             <i class="bi bi-people-fill"></i>
           </button>
 
         </div>
 
 
-        <div
-          class="panel-title"
-          id="sidePanelTitle"
-        >
+        <div class="panel-title" id="sidePanelTitle">
           Camiones en turno
         </div>
 
@@ -291,10 +220,7 @@
         </div>
 
 
-        <div
-          class="d-none"
-          id="crewList"
-        >
+        <div class="d-none" id="crewList">
           <p class="p-3 mb-0 text-muted">
             Cargando cuadrillas...
           </p>
@@ -305,35 +231,25 @@
 
       <div class="map-panel">
 
-        <!-- Lienzo donde Leaflet dibuja el mapa operativo interactivo -->
-        <div
-          id="adminMapCanvas"
-          class="admin-map-canvas"
-          aria-label="Mapa operativo interactivo de SiGeRU"
-        ></div>
+        <div id="adminMapCanvas" class="admin-map-canvas" aria-label="Mapa operativo interactivo de SiGeRU"></div>
 
-        <!-- Barra de herramientas superior derecha del mapa -->
         <div class="map-top-tools">
-          <button
-            id="btnCrearContenedorMapa"
-            class="btn-map-tool btn-map-green"
-            type="button"
-          >
+          <button id="btnCrearContenedorMapa" class="btn-map-tool btn-map-green" type="button">
             <i class="bi bi-plus-circle"></i>
             <span>Crear contenedor</span>
           </button>
 
-          <button
-            id="btnCrearCircuitoMapa"
-            class="btn-map-tool btn-map-blue"
-            type="button"
-          >
+          <button id="btnEditarContenedorMapa" class="btn-map-tool btn-map-blue" type="button">
+            <i class="bi bi-pencil-square"></i>
+            <span>Editar contenedor</span>
+          </button>
+
+          <button id="btnCrearCircuitoMapa" class="btn-map-tool btn-map-blue" type="button">
             <i class="bi bi-bounding-box"></i>
             <span>Crear circuito</span>
           </button>
         </div>
 
-        <!-- Barra flotante central que guía mientras se marcan los puntos del circuito -->
         <div id="circuitoDrawingBar" class="circuito-drawing-bar d-none">
           <span class="drawing-info">
             <i class="bi bi-pin-map-fill"></i>
@@ -350,7 +266,6 @@
           </button>
         </div>
 
-        <!-- Barra flotante para seleccionar uno o más circuitos y generar la ruta del camión -->
         <div id="rutaBuilderBar" class="circuito-drawing-bar d-none">
           <span class="drawing-info">
             <i class="bi bi-sign-turn-right-fill"></i>
@@ -366,12 +281,8 @@
           </button>
         </div>
 
-        <!-- Pestaña flotante que se abre al hacer clic en el mapa para cargar el nuevo contenedor -->
-        <div
-          id="formContenedorMapaWrap"
-          class="map-floating-form d-none"
-          aria-label="Formulario para crear contenedor en el mapa"
-        >
+        <div id="formContenedorMapaWrap" class="map-floating-form d-none"
+          aria-label="Formulario para crear contenedor en el mapa">
           <div class="map-floating-head">
             <strong>Nuevo contenedor</strong>
             <span id="mapContCircuitoBadge" class="badge-circuito-auto">Circuito: auto</span>
@@ -380,13 +291,8 @@
           <form id="formContenedorMapa">
             <label>
               Código del contenedor
-              <input
-                type="text"
-                id="mapContCodigo"
-                class="form-control form-control-sm"
-                placeholder="Ej: CONT-101"
-                required
-              >
+              <input type="text" id="mapContCodigo" class="form-control form-control-sm" placeholder="Ej: CONT-101"
+                required>
             </label>
 
             <label>
@@ -431,12 +337,8 @@
           </form>
         </div>
 
-        <!-- Pestaña flotante para guardar el circuito delimitado -->
-        <div
-          id="formCircuitoMapaWrap"
-          class="map-floating-form d-none"
-          aria-label="Formulario para delimitar circuito en el mapa"
-        >
+        <div id="formCircuitoMapaWrap" class="map-floating-form d-none"
+          aria-label="Formulario para delimitar circuito en el mapa">
           <div class="map-floating-head">
             <strong id="mapCircuitoTitulo">Nuevo circuito</strong>
           </div>
@@ -444,33 +346,20 @@
           <form id="formCircuitoMapa">
             <label>
               Código del circuito
-              <input
-                type="text"
-                id="mapCircuitoCodigo"
-                class="form-control form-control-sm"
-                placeholder="Ej: CH_101"
-                required
-              >
+              <input type="text" id="mapCircuitoCodigo" class="form-control form-control-sm" placeholder="Ej: CH_101"
+                required>
             </label>
 
             <label>
               Zona o barrio de referencia (opcional)
-              <input
-                type="text"
-                id="mapCircuitoZona"
-                class="form-control form-control-sm"
-                placeholder="Ej: Pocitos Central"
-              >
+              <input type="text" id="mapCircuitoZona" class="form-control form-control-sm"
+                placeholder="Ej: Pocitos Central">
             </label>
 
             <label>
               Descripción (opcional)
-              <input
-                type="text"
-                id="mapCircuitoDesc"
-                class="form-control form-control-sm"
-                placeholder="Ej: Delimitación de ruta y recolección"
-              >
+              <input type="text" id="mapCircuitoDesc" class="form-control form-control-sm"
+                placeholder="Ej: Delimitación de ruta y recolección">
             </label>
 
             <small id="mapCircuitoAviso" class="map-floating-note">
@@ -491,45 +380,26 @@
           </form>
         </div>
 
-        <!-- Leyenda con la escala de 5 colores de contenedores, incidencias y reclamos -->
-        <div
-          class="map-legend"
-          aria-label="Leyenda del mapa"
-        >
+        <div class="map-legend" aria-label="Leyenda del mapa">
 
           <span>
             <i class="legend-dot level-verde"></i>
-            Verde: hasta 2 días
+            Verde: 0 a 2 días
           </span>
 
           <span>
             <i class="legend-dot level-amarillo"></i>
-            Amarillo: 3er día
-          </span>
-
-          <span>
-            <i class="legend-dot level-naranja"></i>
-            Naranja: 4to día
+            Amarillo: 3 a 5 días
           </span>
 
           <span>
             <i class="legend-dot level-rojo"></i>
-            Rojo: 5to día
-          </span>
-
-          <span>
-            <i class="legend-dot level-negro"></i>
-            Negro: 6 o más días
-          </span>
-
-          <span>
-            <i class="legend-dot incident"></i>
-            Incidencias
+            Rojo: 6 o más días
           </span>
 
           <span>
             <i class="legend-dot claim"></i>
-            Reclamos
+            Incidencia o reclamo
           </span>
 
         </div>
@@ -537,186 +407,115 @@
       </div>
 
 
-      <!-- Panel inferior compacto: datos del camión organizados en columnas de hasta 3 filas -->
-      <section
-        class="vehicle-detail"
-        id="vehicleDetail"
-        aria-label="Detalle del camión seleccionado"
-      >
+      <section class="vehicle-detail" id="vehicleDetail" aria-label="Detalle del camión seleccionado">
 
         <div class="detail-grid">
 
-          <!-- Columna 1: identificación y estado (3 filas) -->
           <div class="detail-group">
 
             <label>
               Camión
-              <input
-                class="form-control form-control-sm"
-                id="detailVehicle"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="detailVehicle" readonly value="—">
             </label>
 
             <label>
               Chofer asignado
-              <input
-                class="form-control form-control-sm"
-                id="detailDriver"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="detailDriver" readonly value="—">
+            </label>
+
+            <label>
+              Licencia del chofer
+              <input class="form-control form-control-sm" id="detailDriverLicense" readonly value="—">
+            </label>
+
+            <label>
+              Contacto del chofer
+              <input class="form-control form-control-sm" id="detailDriverContact" readonly value="—">
             </label>
 
             <label>
               Se encuentra
-              <input
-                class="form-control form-control-sm"
-                id="detailStatus"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="detailStatus" readonly value="—">
             </label>
 
           </div>
 
 
-          <!-- Columna 2: ubicación, turno y circuito (3 filas) -->
           <div class="detail-group">
 
             <label>
               Ubicación
-              <input
-                class="form-control form-control-sm"
-                id="detailLocation"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="detailLocation" readonly value="—">
             </label>
 
             <label>
               Turno
-              <input
-                class="form-control form-control-sm"
-                id="detailTurn"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="detailTurn" readonly value="—">
             </label>
 
             <label>
               Circuito asignado
-              <input
-                class="form-control form-control-sm"
-                id="detailCircuit"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="detailCircuit" readonly value="—">
             </label>
 
           </div>
 
 
-          <!-- Columna 3: progreso de contenedores (3 filas) -->
           <div class="detail-group">
 
             <label>
               Cantidad de contenedores
-              <input
-                class="form-control form-control-sm"
-                id="detailAssigned"
-                readonly
-                value="0"
-              >
+              <input class="form-control form-control-sm" id="detailAssigned" readonly value="0">
             </label>
 
             <label>
               Contenedores recolectados
-              <input
-                class="form-control form-control-sm"
-                id="detailCollected"
-                readonly
-                value="0"
-              >
+              <input class="form-control form-control-sm" id="detailCollected" readonly value="0">
             </label>
 
             <label>
               Contenedores faltantes
-              <input
-                class="form-control form-control-sm"
-                id="detailPending"
-                readonly
-                value="0"
-              >
+              <input class="form-control form-control-sm" id="detailPending" readonly value="0">
             </label>
 
           </div>
 
 
-          <!-- Columna 4: carga y kilometraje (3 filas) -->
           <div class="detail-group">
 
             <label>
               Peso recolectado
-              <input
-                class="form-control form-control-sm"
-                id="detailWeight"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="detailWeight" readonly value="—">
             </label>
 
             <label>
               Capacidad del camión
-              <input
-                class="form-control form-control-sm"
-                id="detailCapacity"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="detailCapacity" readonly value="—">
             </label>
 
             <label>
               Total kilómetros recorridos
-              <input
-                class="form-control form-control-sm"
-                id="detailKm"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="detailKm" readonly value="—">
             </label>
 
           </div>
 
 
-          <!-- Columna 5: horarios del turno -->
           <div class="detail-group">
 
             <label>
               Hora inicio turno
-              <input
-                class="form-control form-control-sm"
-                id="detailStart"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="detailStart" readonly value="—">
             </label>
 
             <label>
               Hora final turno
-              <input
-                class="form-control form-control-sm"
-                id="detailEnd"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="detailEnd" readonly value="—">
             </label>
 
           </div>
 
 
-          <!-- Columna de acompañantes -->
           <div class="detail-group companions">
 
             <span class="detail-label">
@@ -730,125 +529,71 @@
           </div>
 
 
-            <!-- Acciones sobre el camión -->
           <div class="detail-actions">
 
-            <button
-              class="btn btn-primary btn-sm"
-              id="btnAsignarRutaMapa"
-              type="button"
-            >
+            <button class="btn btn-primary btn-sm" id="btnAsignarRutaMapa" type="button">
               Asignar ruta
             </button>
 
-            <button
-              class="btn btn-outline btn-sm"
-              id="btnEnviarRutaChofer"
-              type="button"
-            >
+            <button class="btn btn-outline btn-sm" id="btnEnviarRutaChofer" type="button">
               Enviar ruta a chofer
             </button>
 
-            <button
-              class="btn btn-outline btn-sm"
-              id="btnQuitarRutaMapa"
-              type="button"
-            >
+            <button class="btn btn-outline btn-sm" id="btnQuitarRutaMapa" type="button">
               Quitar ruta
             </button>
 
           </div>
-         </div>
-      </section>  
+        </div>
+      </section>
 
 
-      <section
-        class="vehicle-detail d-none"
-        id="crewDetail"
-        aria-label="Detalle de la cuadrilla seleccionada"
-      >
+      <section class="vehicle-detail d-none" id="crewDetail" aria-label="Detalle de la cuadrilla seleccionada">
 
         <div class="crew-detail-grid">
 
-          <!-- Columna 1 de cuadrilla (3 filas) -->
           <div class="detail-group">
 
             <label>
               Cuadrilla
-              <input
-                class="form-control form-control-sm"
-                id="crewCode"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="crewCode" readonly value="—">
             </label>
 
             <label>
               Jefe asignado
-              <input
-                class="form-control form-control-sm"
-                id="crewChief"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="crewChief" readonly value="—">
             </label>
 
             <label>
               Ubicación
-              <input
-                class="form-control form-control-sm"
-                id="crewLocation"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="crewLocation" readonly value="—">
             </label>
 
           </div>
 
 
-          <!-- Columna 2 de cuadrilla (3 filas) -->
           <div class="detail-group">
 
             <label>
               Estado
-              <input
-                class="form-control form-control-sm"
-                id="crewStatus"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="crewStatus" readonly value="—">
             </label>
 
             <label>
               Turno
-              <input
-                class="form-control form-control-sm"
-                id="crewTurn"
-                readonly
-                value="—"
-              >
+              <input class="form-control form-control-sm" id="crewTurn" readonly value="—">
             </label>
 
             <div class="time-row">
 
               <label>
                 Hora inicio
-                <input
-                  class="form-control form-control-sm"
-                  id="crewStart"
-                  readonly
-                  value="—"
-                >
+                <input class="form-control form-control-sm" id="crewStart" readonly value="—">
               </label>
 
               <label>
                 Hora final
-                <input
-                  class="form-control form-control-sm"
-                  id="crewEnd"
-                  readonly
-                  value="—"
-                >
+                <input class="form-control form-control-sm" id="crewEnd" readonly value="—">
               </label>
 
             </div>
@@ -862,10 +607,7 @@
               Circuitos asignados
             </span>
 
-            <div
-              class="info-list"
-              id="crewCircuits"
-            ></div>
+            <div class="info-list" id="crewCircuits"></div>
 
           </div>
 
@@ -876,37 +618,22 @@
               Integrantes de cuadrilla
             </span>
 
-            <div
-              class="info-list"
-              id="crewMembers"
-            ></div>
+            <div class="info-list" id="crewMembers"></div>
 
           </div>
 
 
           <div class="detail-actions crew-actions">
 
-            <button
-              class="btn btn-primary btn-sm"
-              data-crew-action="asignar_circuito"
-              type="button"
-            >
+            <button class="btn btn-primary btn-sm" data-crew-action="asignar_circuito" type="button">
               Asignar circuito
             </button>
 
-            <button
-              class="btn btn-outline btn-sm"
-              data-crew-action="editar_circuito"
-              type="button"
-            >
+            <button class="btn btn-outline btn-sm" data-crew-action="editar_circuito" type="button">
               Editar circuito
             </button>
 
-            <button
-              class="btn btn-outline btn-sm"
-              data-crew-action="asignar_reclamo"
-              type="button"
-            >
+            <button class="btn btn-outline btn-sm" data-crew-action="asignar_reclamo" type="button">
               Asignar reclamo
             </button>
 
@@ -921,13 +648,7 @@
   </main>
 
 
-  <div
-    class="modal fade"
-    id="operacionModal"
-    tabindex="-1"
-    aria-labelledby="operacionModalTitulo"
-    aria-hidden="true"
-  >
+  <div class="modal fade" id="operacionModal" tabindex="-1" aria-labelledby="operacionModalTitulo" aria-hidden="true">
 
     <div class="modal-dialog modal-dialog-centered">
 
@@ -936,53 +657,31 @@
         <div class="modal-header">
 
           <div>
-            <span
-              class="modal-kicker"
-              id="operacionModalKicker"
-            >
+            <span class="modal-kicker" id="operacionModalKicker">
               Gestión
             </span>
 
-            <h2
-              class="modal-title fs-5"
-              id="operacionModalTitulo"
-            >
+            <h2 class="modal-title fs-5" id="operacionModalTitulo">
               Operación
             </h2>
           </div>
 
-          <button
-            class="btn-close"
-            data-bs-dismiss="modal"
-            type="button"
-            aria-label="Cerrar"
-          ></button>
+          <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="Cerrar"></button>
 
         </div>
 
 
         <form id="operacionForm">
 
-          <div
-            class="modal-body"
-            id="operacionModalBody"
-          ></div>
+          <div class="modal-body" id="operacionModalBody"></div>
 
           <div class="modal-footer">
 
-            <button
-              class="btn btn-outline"
-              data-bs-dismiss="modal"
-              type="button"
-            >
+            <button class="btn btn-outline" data-bs-dismiss="modal" type="button">
               Cancelar
             </button>
 
-            <button
-              class="btn btn-primary"
-              id="operacionSubmit"
-              type="submit"
-            >
+            <button class="btn btn-primary" id="operacionSubmit" type="submit">
               Guardar
             </button>
 
@@ -997,13 +696,8 @@
   </div>
 
 
-  <div
-    class="modal fade"
-    id="solicitudesModal"
-    tabindex="-1"
-    aria-labelledby="solicitudesModalTitulo"
-    aria-hidden="true"
-  >
+  <div class="modal fade" id="solicitudesModal" tabindex="-1" aria-labelledby="solicitudesModalTitulo"
+    aria-hidden="true">
 
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
 
@@ -1016,20 +710,12 @@
               Gestión de accesos
             </span>
 
-            <h2
-              class="modal-title fs-5"
-              id="solicitudesModalTitulo"
-            >
+            <h2 class="modal-title fs-5" id="solicitudesModalTitulo">
               Solicitudes de acceso
             </h2>
           </div>
 
-          <button
-            class="btn-close"
-            data-bs-dismiss="modal"
-            type="button"
-            aria-label="Cerrar"
-          ></button>
+          <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="Cerrar"></button>
 
         </div>
 
@@ -1081,10 +767,7 @@
           </div>
 
 
-          <p
-            class="text-muted-custom mt-3 mb-0"
-            id="solicitudesEstado"
-          ></p>
+          <p class="text-muted-custom mt-3 mb-0" id="solicitudesEstado"></p>
 
         </div>
 
@@ -1095,18 +778,76 @@
   </div>
 
 
+  <div class="modal fade" id="mensajesAdminModal" tabindex="-1" aria-labelledby="mensajesAdminTitulo"
+    aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content admin-modal">
+
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="mensajesAdminTitulo">
+            <i class="bi bi-chat-dots"></i>
+            Comunicación con cuadrillas y operarios
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label for="mensajesAdminBuscar" class="form-label">
+                Integrantes
+              </label>
+              <input type="search" class="form-control form-control-sm mb-2" id="mensajesAdminBuscar"
+                placeholder="Buscar integrante...">
+
+              <div class="list-group" id="mensajesAdminContactos" style="max-height:380px;overflow-y:auto">
+                <p class="text-muted small">Cargando contactos...</p>
+              </div>
+            </div>
+
+            <div class="col-md-8">
+              <h3 class="fs-6 fw-bold" id="mensajesAdminContactoActual">
+                Seleccioná un integrante
+              </h3>
+
+              <div id="mensajesAdminHistorial" class="border rounded-3 p-3 mb-3" style="height:320px;overflow-y:auto"
+                aria-label="Historial de conversación">
+                Seleccioná una conversación.
+              </div>
+
+              <p id="mensajesAdminEstado" class="small" role="status" aria-live="polite"></p>
+
+              <form id="mensajesAdminForm">
+                <label for="mensajesAdminTexto" class="form-label">
+                  Respuesta
+                </label>
+                <textarea id="mensajesAdminTexto" class="form-control mb-2" rows="3" maxlength="2000" required disabled
+                  placeholder="Escribí un mensaje..."></textarea>
+
+                <button id="mensajesAdminEnviar" type="submit" class="btn btn-success btn-sm" disabled>
+                  <i class="bi bi-send"></i>
+                  Enviar mensaje
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Librería Leaflet para renderizar el mapa operativo -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-   <!-- Libreria para convertir coordenadas UTM de montevideo a latitud/longitud -->
-   <script
-    src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js"> 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js">
   </script>
 
   <script src="assets/base.js?v=3"></script>
   <script src="assets/app.js?v=4"></script>
-  <script src="assets/solicitudes.js?v=3"></script>
+  <script src="assets/solicitudes.js"></script>
+  <script src="assets/mensajeria-admin.js"></script>
 
 </body>
+
 </html>

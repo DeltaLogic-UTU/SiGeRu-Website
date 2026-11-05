@@ -1,16 +1,26 @@
 const API_SOLICITUDES = 'http://127.0.0.1:8000';
 
-const solicitudesNavButtons = document.querySelectorAll('[data-open-requests]');
-const solicitudesTableBody = document.getElementById('solicitudesTableBody');
-const solicitudesEstado = document.getElementById('solicitudesEstado');
-const solicitudesModalElement = document.getElementById('solicitudesModal');
+const solicitudesNavButtons =
+  document.querySelectorAll('[data-open-requests]');
 
-const solicitudesModal = solicitudesModalElement
-  ? bootstrap.Modal.getOrCreateInstance(solicitudesModalElement)
-  : null;
+const solicitudesTableBody =
+  document.getElementById('solicitudesTableBody');
+
+const solicitudesEstado =
+  document.getElementById('solicitudesEstado');
+
+const solicitudesModalElement =
+  document.getElementById('solicitudesModal');
+
+const solicitudesModal =
+  solicitudesModalElement && typeof bootstrap !== 'undefined'
+    ? bootstrap.Modal.getOrCreateInstance(solicitudesModalElement)
+    : null;
+
+const motivosSolicitudes = new Map();
 
 function escapeRequestValue(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
@@ -19,23 +29,20 @@ function escapeRequestValue(value) {
   })[character]);
 }
 
-// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
 async function apiSolicitudes(path, method = 'GET') {
   const headers = {
     'Accept': 'application/json'
   };
 
   const token = localStorage.getItem('access_token');
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(
     `${API_SOLICITUDES}${path}`,
-    {
-      method,
-      headers
-    }
+    { method, headers }
   );
 
   let result = {};
@@ -49,21 +56,38 @@ async function apiSolicitudes(path, method = 'GET') {
     };
   }
 
-  return {
-    response,
-    result
-  };
+  return { response, result };
+}
+
+function formatearFechaSolicitud(fecha) {
+  const valor = new Date(fecha);
+
+  return Number.isNaN(valor.getTime())
+    ? 'Sin fecha'
+    : valor.toLocaleString('es-UY');
 }
 
 function renderRequests(requests) {
-  const pending = requests.filter(
-    (item) =>
-      String(item.estado || '').toLowerCase() ===
-      'pendiente'
+  if (!solicitudesTableBody || !solicitudesEstado) return;
+
+  const pending = (
+    Array.isArray(requests) ? requests : []
+  ).filter(
+    item => String(item.estado || '').toLowerCase() === 'pendiente'
   );
 
+  motivosSolicitudes.clear();
+
+  pending.forEach(request => {
+    motivosSolicitudes.set(String(request.id_solicitud), {
+      nombre: `${request.nombre || ''} ${request.apellido || ''}`.trim(),
+      motivo: String(request.motivo ?? '').trim() ||
+        'No se indicó un motivo.'
+    });
+  });
+
   solicitudesTableBody.innerHTML = pending.length
-    ? pending.map((request) => `
+    ? pending.map(request => `
       <tr>
         <td>
           <strong>
@@ -85,28 +109,40 @@ function renderRequests(requests) {
         </td>
 
         <td>
-          ${new Date(
-            request.fecha_solicitud
-          ).toLocaleString('es-UY')}
+          ${escapeRequestValue(
+      formatearFechaSolicitud(request.fecha_solicitud)
+    )}
         </td>
 
         <td>
-          <div class="d-flex gap-2 flex-wrap">
+          <div class="d-flex gap-2 flex-wrap align-items-center">
+
+            <button
+              class="btn btn-outline btn-sm solicitud-motivo-boton"
+              type="button"
+              data-solicitud-motivo="${escapeRequestValue(request.id_solicitud)}"
+              title="Ver motivo del registro"
+              aria-label="Ver motivo del registro"
+            >
+              <i class="bi bi-chat-left-text" aria-hidden="true"></i>
+            </button>
+
             <button
               class="btn btn-primary btn-sm"
-              data-solicitud-aprobar="${request.id_solicitud}"
               type="button"
+              data-solicitud-aprobar="${escapeRequestValue(request.id_solicitud)}"
             >
               Aprobar
             </button>
 
             <button
               class="btn btn-outline btn-sm"
-              data-solicitud-rechazar="${request.id_solicitud}"
               type="button"
+              data-solicitud-rechazar="${escapeRequestValue(request.id_solicitud)}"
             >
               Rechazar
             </button>
+
           </div>
         </td>
       </tr>
@@ -123,13 +159,140 @@ function renderRequests(requests) {
     `${pending.length} solicitud(es) pendiente(s).`;
 }
 
-async function cargarSolicitudes() {
-  if (!solicitudesTableBody) {
+function mostrarMotivoSolicitud(id, botonOrigen) {
+  const solicitud = motivosSolicitudes.get(String(id));
+
+  if (!solicitud || !solicitudesModalElement) return;
+
+  if (
+    solicitudesModalElement.querySelector('.solicitud-motivo-fondo')
+  ) {
     return;
   }
 
-  solicitudesEstado.textContent =
-    'Cargando solicitudes...';
+  const fondo = document.createElement('div');
+  fondo.className = 'solicitud-motivo-fondo';
+
+  fondo.innerHTML = `
+    <section
+      class="solicitud-motivo-cuadro"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="solicitudMotivoTitulo"
+      aria-describedby="solicitudMotivoTexto"
+    >
+      <div class="solicitud-motivo-cabecera">
+        <h3 id="solicitudMotivoTitulo">
+          <i class="bi bi-chat-left-text" aria-hidden="true"></i>
+          Motivo del registro
+        </h3>
+
+        <button
+          type="button"
+          class="solicitud-motivo-x"
+          data-cerrar-motivo
+          aria-label="Cerrar ventana"
+        >
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <p class="solicitud-motivo-persona"></p>
+
+      <div
+        class="solicitud-motivo-texto"
+        id="solicitudMotivoTexto"
+      ></div>
+
+      <div class="solicitud-motivo-pie">
+        <button
+          type="button"
+          class="btn btn-primary btn-sm"
+          data-cerrar-motivo
+        >
+          Cerrar
+        </button>
+      </div>
+    </section>
+  `;
+
+  fondo.querySelector('.solicitud-motivo-persona').textContent =
+    solicitud.nombre;
+
+  fondo.querySelector('.solicitud-motivo-texto').textContent =
+    solicitud.motivo;
+
+  const botones = [...fondo.querySelectorAll('button')];
+
+  const cerrar = () => {
+    document.removeEventListener(
+      'keydown',
+      manejarTeclado,
+      true
+    );
+
+    solicitudesModalElement.removeEventListener(
+      'hide.bs.modal',
+      cerrar
+    );
+
+    fondo.remove();
+    botonOrigen?.focus();
+  };
+
+  const manejarTeclado = event => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      cerrar();
+    } else if (event.key === 'Tab') {
+      const primero = botones[0];
+      const ultimo = botones[botones.length - 1];
+
+      if (
+        event.shiftKey &&
+        document.activeElement === primero
+      ) {
+        event.preventDefault();
+        ultimo.focus();
+      } else if (
+        !event.shiftKey &&
+        document.activeElement === ultimo
+      ) {
+        event.preventDefault();
+        primero.focus();
+      }
+    }
+  };
+
+  fondo.querySelectorAll('[data-cerrar-motivo]').forEach(
+    boton => boton.addEventListener('click', cerrar)
+  );
+
+  fondo.addEventListener('click', event => {
+    if (event.target === fondo) cerrar();
+  });
+
+  solicitudesModalElement.appendChild(fondo);
+
+  solicitudesModalElement.addEventListener(
+    'hide.bs.modal',
+    cerrar
+  );
+
+  document.addEventListener(
+    'keydown',
+    manejarTeclado,
+    true
+  );
+
+  botones[0].focus();
+}
+
+async function cargarSolicitudes() {
+  if (!solicitudesTableBody || !solicitudesEstado) return;
+
+  solicitudesEstado.textContent = 'Cargando solicitudes...';
 
   try {
     const { response, result } =
@@ -150,12 +313,11 @@ async function cargarSolicitudes() {
 
     if (!response.ok || !result.success) {
       solicitudesEstado.textContent =
-        result.message ||
-        'No se pudieron cargar las solicitudes.';
+        result.message || 'No se pudieron cargar las solicitudes.';
       return;
     }
 
-    renderRequests(result.data || []);
+    renderRequests(result.data);
 
   } catch (error) {
     console.error(error);
@@ -166,17 +328,17 @@ async function cargarSolicitudes() {
 }
 
 async function resolverSolicitud(id, accion, button) {
-  button?.setAttribute('disabled', '');
+  if (button?.disabled || !solicitudesEstado) return;
 
-  solicitudesEstado.textContent =
-    'Procesando solicitud...';
+  if (button) button.disabled = true;
+
+  solicitudesEstado.textContent = 'Procesando solicitud...';
 
   try {
-    const { response, result } =
-      await apiSolicitudes(
-        `/api/solicitudes/${id}/${accion}`,
-        'POST'
-      );
+    const { response, result } = await apiSolicitudes(
+      `/api/solicitudes/${encodeURIComponent(id)}/${accion}`,
+      'POST'
+    );
 
     if (response.status === 401) {
       window.location.replace(
@@ -187,59 +349,74 @@ async function resolverSolicitud(id, accion, button) {
 
     if (!response.ok || !result.success) {
       solicitudesEstado.textContent =
-        result.message ||
-        'La solicitud no pudo ser procesada.';
+        result.message || 'La solicitud no pudo ser procesada.';
 
-      button?.removeAttribute('disabled');
+      if (button) button.disabled = false;
       return;
     }
 
-    solicitudesEstado.textContent =
+    const mensaje = result.message || (
       accion === 'aprobar'
         ? 'Solicitud aprobada correctamente.'
-        : 'Solicitud rechazada correctamente.';
+        : 'Solicitud rechazada correctamente.'
+    );
 
     await cargarSolicitudes();
+
+    solicitudesEstado.textContent = mensaje;
+    solicitudesEstado.dataset.estado =
+      mensaje.includes('pero no se pudo enviar el correo')
+        ? 'aviso'
+        : 'ok';
 
   } catch (error) {
     console.error(error);
 
     solicitudesEstado.textContent =
-      'No se pudo conectar con la API de usuarios.';
+      'Ocurrió un error al procesar la solicitud. Intente nuevamente.';
 
-    button?.removeAttribute('disabled');
+    solicitudesEstado.dataset.estado = 'error';
+
+    if (button) button.disabled = false;
   }
 }
 
-solicitudesNavButtons.forEach((button) => {
+solicitudesNavButtons.forEach(button => {
   button.addEventListener('click', async () => {
     await cargarSolicitudes();
     solicitudesModal?.show();
   });
 });
 
-document.addEventListener('click', (event) => {
-  const approve =
-    event.target.closest('[data-solicitud-aprobar]');
+document.addEventListener('click', event => {
+  const boton = event.target.closest('[data-solicitud-motivo]');
 
-  if (approve) {
-    resolverSolicitud(
-      approve.dataset.solicitudAprobar,
-      'aprobar',
-      approve
+  if (boton) {
+    mostrarMotivoSolicitud(
+      boton.dataset.solicitudMotivo,
+      boton
     );
-
     return;
   }
 
-  const reject =
-    event.target.closest('[data-solicitud-rechazar]');
+  const aprobar = event.target.closest('[data-solicitud-aprobar]');
 
-  if (reject) {
+  if (aprobar) {
     resolverSolicitud(
-      reject.dataset.solicitudRechazar,
+      aprobar.dataset.solicitudAprobar,
+      'aprobar',
+      aprobar
+    );
+    return;
+  }
+
+  const rechazar = event.target.closest('[data-solicitud-rechazar]');
+
+  if (rechazar) {
+    resolverSolicitud(
+      rechazar.dataset.solicitudRechazar,
       'rechazar',
-      reject
+      rechazar
     );
   }
 });

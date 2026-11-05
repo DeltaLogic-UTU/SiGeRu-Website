@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,8 +8,9 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
-  <link href="assets/style.css?v=4" rel="stylesheet">
+  <link href="assets/style.css?v=5" rel="stylesheet">
 </head>
+
 <body class="chofer-dashboard-body">
   <header class="site-header">
     <div class="container-fluid px-3">
@@ -22,7 +24,7 @@
         </button>
         <div class="collapse navbar-collapse" id="mainNav">
           <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
-            
+
             <li class="nav-item">
               <button class="nav-link active" id="navFocusMapaChofer" type="button">
                 <i class="bi bi-map"></i>
@@ -30,7 +32,8 @@
               </button>
             </li>
             <li class="nav-item">
-              <button class="nav-link btn btn-link" id="btnAbrirHistorialRutas" type="button" data-bs-toggle="modal" data-bs-target="#modalHistorialRutas">
+              <button class="nav-link btn btn-link" id="btnAbrirHistorialRutas" type="button" data-bs-toggle="modal"
+                data-bs-target="#modalHistorialRutas">
                 <i class="bi bi-clock-history"></i>
                 <span>Historial de rutas</span>
               </button>
@@ -57,7 +60,6 @@
   </header>
 
   <main>
-    <!-- Barra superior del chofer (mismo formato que el Administrador) -->
     <section class="chofer-status-bar" aria-label="Resumen de jornada del chofer">
       <div class="container-fluid px-3">
         <div class="chofer-status-grid">
@@ -104,10 +106,8 @@
       </div>
     </section>
 
-    <!-- Distribución operativa: Panel lateral izquierdo, Mapa interactivo central y Detalle inferior del camión -->
     <section class="chofer-operation-layout container-fluid px-3 pb-2" id="mapaChoferSection">
 
-      <!-- Panel lateral izquierdo: Controles del chofer y paradas -->
       <aside class="chofer-control-panel">
         <div class="chofer-panel-title">
           <i class="bi bi-truck"></i> Control de Recorrido
@@ -123,14 +123,13 @@
             <p id="choferMapaCircuitos" class="mb-0">Verificando ruta asignada...</p>
           </div>
 
-          <!-- Tarjeta del contenedor donde está parado el camión -->
           <div class="chofer-box" id="choferParadaBox">
             <span class="chofer-box-tag">Parada actual</span>
             <h4 id="choferContenedorActual">En Base Cantón del Buceo</h4>
-            <p id="choferContenedorDetalle" class="mb-0">Hacé clic en "Iniciar recorrido" para avanzar por la ruta hacia el primer contenedor.</p>
+            <p id="choferContenedorDetalle" class="mb-0">Hacé clic en "Iniciar recorrido" para avanzar por la ruta hacia
+              el primer contenedor.</p>
           </div>
 
-          <!-- Botones de acción del chofer -->
           <div class="chofer-actions-stack">
             <button id="btnIniciarViajeChofer" class="btn btn-primary w-100" type="button">
               <i class="bi bi-play-circle-fill"></i> Iniciar recorrido
@@ -144,12 +143,17 @@
               <i class="bi bi-exclamation-triangle-fill"></i> No levantado / Agregar incidencia
             </button>
 
+            <button id="btnReportarIncidenciaCamion" class="btn btn-outline-warning w-100" type="button"
+              data-bs-toggle="modal" data-bs-target="#modalIncidenciaCamion">
+              <i class="bi bi-tools"></i>
+              Reportar incidencia del camión
+            </button>
+
             <button id="btnFinalizarRecorridoChofer" class="btn btn-outline-danger w-100 mt-2 d-none" type="button">
               <i class="bi bi-stop-circle-fill"></i> Finalizar recorrido
             </button>
           </div>
 
-          <!-- Formulario desplegable cuando no se pudo levantar o hay incidencia -->
           <div id="formIncidenciaChoferWrap" class="chofer-box d-none">
             <span class="chofer-box-tag text-danger">Registrar incidencia en contenedor</span>
 
@@ -166,7 +170,8 @@
               <select id="incidenciaMotivoChofer" class="form-select form-select-sm">
                 <option value="Vehículo mal estacionado bloqueando">Vehículo mal estacionado bloqueando</option>
                 <option value="Contenedor roto o dañado">Contenedor roto o dañado</option>
-                <option value="Contenedor desbordado / residuos en piso">Contenedor desbordado / residuos en piso</option>
+                <option value="Contenedor desbordado / residuos en piso">Contenedor desbordado / residuos en piso
+                </option>
                 <option value="Contenedor vandalizado / incendiado">Contenedor vandalizado / incendiado</option>
                 <option value="Calle cortada / inaccesible">Calle cortada / inaccesible</option>
                 <option value="Residuos impropios (escombros / poda)">Residuos impropios (escombros / poda)</option>
@@ -175,7 +180,8 @@
 
             <label class="mt-2">
               Detalle adicional (opcional)
-              <input id="incidenciaDetalleChofer" type="text" class="form-control form-control-sm" placeholder="Ej: Auto frente al contenedor...">
+              <input id="incidenciaDetalleChofer" type="text" class="form-control form-control-sm"
+                placeholder="Ej: Auto frente al contenedor...">
             </label>
 
             <div class="d-flex gap-2 mt-2">
@@ -188,7 +194,6 @@
             </div>
           </div>
 
-          <!-- Lista de paradas de la ruta -->
           <div class="chofer-stops-wrap">
             <span class="chofer-box-tag px-1">Contenedores en la ruta</span>
             <div id="choferListaParadas" class="chofer-stops-list">
@@ -198,11 +203,9 @@
         </div>
       </aside>
 
-      <!-- Mapa interactivo del chofer -->
       <div class="chofer-map-panel" style="min-height: 460px;">
         <div id="choferMapCanvas" class="chofer-map-canvas" style="width: 100%; height: 100%; min-height: 460px;"></div>
 
-        <!-- Panel de navegación GPS estilo Waze -->
         <div id="wazeNavHud" class="waze-nav-hud">
           <div class="waze-nav-card">
             <div class="waze-maneuver-col">
@@ -220,7 +223,8 @@
               </div>
             </div>
             <div class="waze-controls-col">
-              <button id="btnVozNav" class="btn-waze-sound active" type="button" title="Voz de navegación activada (clic para silenciar)">
+              <button id="btnVozNav" class="btn-waze-sound active" type="button"
+                title="Voz de navegación activada (clic para silenciar)">
                 <i class="bi bi-volume-up-fill" id="iconoVozNav"></i>
               </button>
               <button id="btnVelocidadSim" class="btn-waze-sound" type="button" title="Velocidad del simulador: 20ms">
@@ -230,13 +234,11 @@
           </div>
         </div>
 
-        <!-- Velocímetro flotante estilo Waze -->
         <div class="waze-speed-widget" id="wazeSpeedWidget">
           <span class="waze-speed-val" id="wazeSpeedVal">0</span>
           <span class="waze-speed-lbl">KM/H</span>
         </div>
 
-        <!-- Botones superiores derechos del mapa -->
         <div class="chofer-map-tools">
           <button id="btnCentrarMiCamion" class="btn-chofer-tool btn-chofer-blue" type="button">
             <i class="bi bi-crosshair"></i>
@@ -248,18 +250,14 @@
           </button>
         </div>
 
-        <!-- Leyenda inferior izquierda del mapa -->
         <div class="chofer-map-legend" aria-label="Leyenda del mapa">
-          <span><i class="legend-dot level-verde"></i> Verde: hasta 2 días</span>
-          <span><i class="legend-dot level-amarillo"></i> Amarillo: 3er día</span>
-          <span><i class="legend-dot level-naranja"></i> Naranja: 4to día</span>
-          <span><i class="legend-dot level-rojo"></i> Rojo: 5to día / Levantado</span>
-          <span><i class="legend-dot level-negro"></i> Negro: 6 o más días</span>
+          <span><i class="legend-dot level-verde"></i> Verde: 0 a 2 días</span>
+          <span><i class="legend-dot level-amarillo"></i> Amarillo: 3 a 5 días</span>
+          <span><i class="legend-dot level-rojo"></i> Rojo: 6 o más días</span>
           <span><i class="legend-dot claim"></i> No levantado (Incidencia)</span>
         </div>
       </div>
 
-      <!-- Panel inferior compacto de detalle del camión (mismo diseño que Administrador) -->
       <section class="chofer-vehicle-detail" aria-label="Detalle del camión del chofer">
         <div class="chofer-detail-grid">
           <div class="chofer-detail-group">
@@ -341,43 +339,119 @@
 
     </section>
   </main>
-  
-  
-  <div class="modal fade" id="modalHistorialRutas" tabindex="-1" aria-labelledby="modalHistorialRutasLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalHistorialRutasLabel"><i class="bi bi-clock-history"></i> Historial de Recorridos</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th>Fecha y Hora</th>
-                <th>Circuito</th>
-                <th>Estado</th>
-                <th>Levantados</th>
-                <th>No Levantados</th>
-                <th>Distancia</th>
-                <th>Tiempo</th>
-              </tr>
-            </thead>
-            <tbody id="tablaHistorialRutasBody">
-              <!-- Se rellena dinámicamente -->
-            </tbody>
-          </table>
+
+
+  <div class="modal fade" id="modalHistorialRutas" tabindex="-1" aria-labelledby="modalHistorialRutasLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalHistorialRutasLabel"><i class="bi bi-clock-history"></i> Historial de
+            Recorridos</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <div class="modal-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Fecha y Hora</th>
+                  <th>Circuito</th>
+                  <th>Estado</th>
+                  <th>Levantados</th>
+                  <th>No Levantados</th>
+                  <th>Distancia</th>
+                  <th>Tiempo</th>
+                </tr>
+              </thead>
+              <tbody id="tablaHistorialRutasBody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
+  <div class="modal fade" id="modalIncidenciaCamion" tabindex="-1" aria-labelledby="modalIncidenciaCamionLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
 
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalIncidenciaCamionLabel">
+            <i class="bi bi-tools"></i>
+            Reportar incidencia del camión
+          </h5>
+
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <form id="formIncidenciaCamion" enctype="multipart/form-data">
+
+          <div class="modal-body">
+
+            <div class="mb-3">
+              <label for="incidenciaCamionTipo" class="form-label">
+                Tipo de incidencia
+              </label>
+
+              <select id="incidenciaCamionTipo" name="tipo" class="form-select" required>
+                <option value="">Seleccionar problema</option>
+                <option value="Falla mecánica">Falla mecánica</option>
+                <option value="Problema de motor">Problema de motor</option>
+                <option value="Problema de frenos">Problema de frenos</option>
+                <option value="Neumático dañado">Neumático dañado</option>
+                <option value="Falla hidráulica">Falla hidráulica</option>
+                <option value="Falla eléctrica">Falla eléctrica</option>
+                <option value="Accidente">Accidente</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="incidenciaCamionDescripcion" class="form-label">
+                Descripción del problema
+              </label>
+
+              <textarea id="incidenciaCamionDescripcion" name="descripcion" class="form-control" rows="3"
+                maxlength="1000" placeholder="Describí qué ocurrió con el camión..." required></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label for="incidenciaCamionFoto" class="form-label">
+                Fotografía (opcional)
+              </label>
+
+              <input id="incidenciaCamionFoto" name="foto" type="file" class="form-control"
+                accept="image/jpeg,image/png,image/webp">
+            </div>
+
+            <div id="mensajeIncidenciaCamion" class="alert d-none" role="alert" aria-live="polite"></div>
+
+          </div>
+
+          <div class="modal-footer">
+
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              Cancelar
+            </button>
+
+            <button id="btnGuardarIncidenciaCamion" type="submit" class="btn btn-warning">
+              <i class="bi bi-check-circle"></i>
+              Registrar incidencia
+            </button>
+
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -385,4 +459,5 @@
   <script src="assets/simulador-chofer.js?v=20ms"></script>
   <script src="assets/app.js?v=20ms"></script>
 </body>
+
 </html>

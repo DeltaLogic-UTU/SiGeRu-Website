@@ -91,8 +91,8 @@ function selectField(
             ${String(option) === String(value) ? 'selected' : ''}
           >
             ${escapePersonnel(
-              option.charAt(0).toUpperCase() + option.slice(1)
-            )}
+    option.charAt(0).toUpperCase() + option.slice(1)
+  )}
           </option>
         `).join('')}
       </select>
@@ -157,7 +157,7 @@ async function requestUsuarios(
 
     return { response, result };
   } catch (err) {
-    // Si falló 127.0.0.1 intentar con localhost o viceversa
+
     const altHost = API_USUARIOS_PERSONAL.includes('127.0.0.1')
       ? API_USUARIOS_PERSONAL.replace('127.0.0.1', 'localhost')
       : API_USUARIOS_PERSONAL.replace('localhost', '127.0.0.1');
@@ -416,8 +416,8 @@ async function loadPersonnel() {
           >
             <i class="bi bi-exclamation-triangle me-2"></i>
             ${escapePersonnel(
-              error.message
-            )}
+        error.message
+      )}
           </td>
         </tr>
       `;
@@ -432,7 +432,7 @@ function botonesUsuario(
 ) {
   const baja =
     mostrarBaja &&
-    item.estado !== 'inactivo'
+      item.estado !== 'inactivo'
       ? `
         <button
           class="btn btn-outline btn-sm"
@@ -505,7 +505,7 @@ function renderPersonnel() {
     personnelBody.innerHTML =
       rows.length
         ? rows.map(
-            (item, index) => `
+          (item, index) => `
               <tr>
                 <td>
                   <strong>
@@ -513,7 +513,22 @@ function renderPersonnel() {
                   </strong>
                 </td>
                 <td>
-                  <span class="badge ${item.rol === 'chofer' ? 'bg-primary' : (item.rol === 'administrador' ? 'bg-danger' : (item.rol === 'supervisor' ? 'bg-warning text-dark' : 'bg-secondary'))}">
+                 <span
+                 class="badge ${item.rol === 'chofer'
+              ? 'bg-primary'
+              : item.rol === 'administrador'
+                ? 'bg-danger'
+                : item.rol === 'supervisor'
+                  ? 'bg-warning text-dark'
+                  : item.rol === 'cuadrilla'
+                    ? 'bg-success'
+                    : item.rol === 'operario'
+                      ? 'bg-info text-dark'
+                      : item.rol === 'barrendero'
+                        ? 'personnel-role-purple'
+                        : 'bg-secondary'
+            }"
+                >
                     ${escapePersonnel(item.rol ? item.rol.charAt(0).toUpperCase() + item.rol.slice(1) : 'Personal')}
                   </span>
                 </td>
@@ -533,7 +548,7 @@ function renderPersonnel() {
                 </td>
               </tr>
             `
-          ).join('')
+        ).join('')
         : `
           <tr>
             <td colspan="6" class="text-center py-4">
@@ -560,60 +575,60 @@ function renderPersonnel() {
     personnelBody.innerHTML =
       rows.length
         ? rows.map(
-            (item, index) => `
+          (item, index) => `
               <tr>
                 <td>
                   <strong>
                     ${escapePersonnel(
-                      item.nombre
-                    )}
+            item.nombre
+          )}
                     ${escapePersonnel(
-                      item.apellido
-                    )}
+            item.apellido
+          )}
                   </strong>
                 </td>
 
                 <td>
                   ${escapePersonnel(
-                    item.documento ||
-                    '—'
-                  )}
+            item.documento ||
+            '—'
+          )}
                 </td>
 
                 <td>
                   ${escapePersonnel(
-                    item.estado ||
-                    '—'
-                  )}
+            item.estado ||
+            '—'
+          )}
                 </td>
 
                 <td>
                   ${escapePersonnel(
-                    item.responsableDe.length
-                      ? item.responsableDe.join(
-                          ' / '
-                        )
-                      : '—'
-                  )}
+            item.responsableDe.length
+              ? item.responsableDe.join(
+                ' / '
+              )
+              : '—'
+          )}
                 </td>
 
                 <td>
                   ${escapePersonnel(
-                    item.email ||
-                    '—'
-                  )}
+            item.email ||
+            '—'
+          )}
                 </td>
 
                 <td>
                   ${botonesUsuario(
-                    item,
-                    index,
-                    false
-                  )}
+            item,
+            index,
+            false
+          )}
                 </td>
               </tr>
             `
-          ).join('')
+        ).join('')
         : `
           <tr>
             <td
@@ -643,56 +658,56 @@ function renderPersonnel() {
     personnelBody.innerHTML =
       rows.length
         ? rows.map(
-            (item, index) => `
+          (item, index) => `
               <tr>
                 <td>
                   <strong>
                     ${escapePersonnel(
-                      item.nombre
-                    )}
+            item.nombre
+          )}
                     ${escapePersonnel(
-                      item.apellido
-                    )}
+            item.apellido
+          )}
                   </strong>
                 </td>
 
                 <td>
                   ${escapePersonnel(
-                    item.documento ||
-                    '—'
-                  )}
+            item.documento ||
+            '—'
+          )}
                 </td>
 
                 <td>
                   ${escapePersonnel(
-                    item.estado ||
-                    '—'
-                  )}
+            item.estado ||
+            '—'
+          )}
                 </td>
 
                 <td>
                   ${escapePersonnel(
-                    item.licencia ||
-                    'Sin registrar'
-                  )}
+            item.licencia ||
+            'Sin registrar'
+          )}
                 </td>
 
                 <td>
                   ${escapePersonnel(
-                    item.email ||
-                    '—'
-                  )}
+            item.email ||
+            '—'
+          )}
                 </td>
 
                 <td>
                   ${botonesUsuario(
-                    item,
-                    index
-                  )}
+            item,
+            index
+          )}
                 </td>
               </tr>
             `
-          ).join('')
+        ).join('')
         : `
           <tr>
             <td
@@ -720,49 +735,49 @@ function renderPersonnel() {
   personnelBody.innerHTML =
     rows.length
       ? rows.map(
-          (item, index) => `
+        (item, index) => `
             <tr>
               <td>
                 <strong>
                   ${escapePersonnel(
-                    item.nombre
-                  )}
+          item.nombre
+        )}
                   ${escapePersonnel(
-                    item.apellido
-                  )}
+          item.apellido
+        )}
                 </strong>
               </td>
 
               <td>
                 ${escapePersonnel(
-                  item.documento ||
-                  '—'
-                )}
+          item.documento ||
+          '—'
+        )}
               </td>
 
               <td>
                 ${escapePersonnel(
-                  item.estado ||
-                  '—'
-                )}
+          item.estado ||
+          '—'
+        )}
               </td>
 
               <td>
                 ${escapePersonnel(
-                  item.email ||
-                  '—'
-                )}
+          item.email ||
+          '—'
+        )}
               </td>
 
               <td>
                 ${botonesUsuario(
-                  item,
-                  index
-                )}
+          item,
+          index
+        )}
               </td>
             </tr>
           `
-        ).join('')
+      ).join('')
       : `
         <tr>
           <td
@@ -778,9 +793,9 @@ function renderPersonnel() {
 function openPersonnel(index) {
   const item =
     personnelState.data[
-      personnelState.current
+    personnelState.current
     ]?.[
-      Number(index)
+    Number(index)
     ];
 
   if (!item) {
@@ -868,9 +883,9 @@ function openPersonnel(index) {
 function openPersonnelEdit(index) {
   const item =
     personnelState.data[
-      personnelState.current
+    personnelState.current
     ]?.[
-      Number(index)
+    Number(index)
     ];
 
   if (!item) {
@@ -988,70 +1003,70 @@ function openPersonnelCreate() {
 
   personnelEditFields.innerHTML = `
     ${inputField(
-      'nombre',
-      'Nombre'
-    )}
+    'nombre',
+    'Nombre'
+  )}
 
     ${inputField(
-      'apellido',
-      'Apellido'
-    )}
+    'apellido',
+    'Apellido'
+  )}
 
     ${inputField(
-      'documento',
-      'Documento'
-    )}
+    'documento',
+    'Documento'
+  )}
 
     ${inputField(
-      'telefono',
-      'Teléfono'
-    )}
+    'telefono',
+    'Teléfono'
+  )}
 
     ${inputField(
-      'email',
-      'Correo',
-      '',
-      'email'
-    )}
+    'email',
+    'Correo',
+    '',
+    'email'
+  )}
 
     ${selectField(
-      'rol',
-      'Rol',
-      rolInicial,
-      [
-        'cuadrilla',
-        'chofer',
-        'operario',
-        'barrendero'
-      ]
-    )}
+    'rol',
+    'Rol',
+    rolInicial,
+    [
+      'cuadrilla',
+      'chofer',
+      'operario',
+      'barrendero'
+    ]
+  )}
 
     <div
       data-personnel-license
       class="d-none"
     >
       ${inputField(
-        'licencia',
-        'Licencia',
-        '',
-        'text',
-        false
-      )}
+    'licencia',
+    'Licencia',
+    '',
+    'text',
+    false
+  )}
     </div>
 
     ${inputField(
-      'password',
-      'Contraseña',
-      '',
-      'password'
-    )}
+    'password',
+    'Contraseña',
+    '',
+    'password'
+  )}
 
     ${inputField(
-      'password_confirm',
-      'Confirmar contraseña',
-      '',
-      'password'
-    )}
+    'password_confirm',
+    'Confirmar contraseña',
+    '',
+    'password'
+  )}
   `;
 
   const rol =
@@ -1198,11 +1213,11 @@ async function crearUsuario() {
 
           licencia:
             data.rol ===
-            'chofer'
+              'chofer'
               ? String(
-                  data.licencia ||
-                  ''
-                ).trim()
+                data.licencia ||
+                ''
+              ).trim()
               : null,
 
           password:
@@ -1267,9 +1282,9 @@ async function crearUsuario() {
 async function actualizarUsuario() {
   const item =
     personnelState.data[
-      personnelState.current
+    personnelState.current
     ]?.[
-      personnelState.editIndex
+    personnelState.editIndex
     ];
 
   if (!item) {
@@ -1332,11 +1347,11 @@ async function actualizarUsuario() {
 
           licencia:
             item.rol ===
-            'chofer'
+              'chofer'
               ? String(
-                  data.licencia ||
-                  ''
-                ).trim()
+                data.licencia ||
+                ''
+              ).trim()
               : null
         }
       );
@@ -1386,9 +1401,9 @@ async function darDeBajaUsuario(
 
   const item =
     personnelState.data[
-      personnelState.current
+    personnelState.current
     ]?.[
-      Number(index)
+    Number(index)
     ];
 
   if (

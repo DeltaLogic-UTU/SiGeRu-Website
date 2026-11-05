@@ -1,213 +1,522 @@
 <!DOCTYPE html>
 <html lang="es">
- <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>
-   Operario | SiGeRU
-  </title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
-  <link href="assets/style.css" rel="stylesheet"/>
- </head>
- <body>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Operario | SiGeRU</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <link href="assets/style.css" rel="stylesheet">
+  <link href="assets/operario-extra.css?v=1" rel="stylesheet">
+</head>
+
+<body>
+
+
   <header class="site-header">
-   <div class="container">
-    <nav class="navbar navbar-expand-lg py-2 py-lg-3">
-     <div aria-label="Ir al inicio de SiGeRU" class="navbar-brand logo-link" >
-      <img alt="Logo de SiGeRU" class="brand-logo" src="../resources/logo.png"/>
-     </div>
-     <button aria-controls="mainNav" aria-expanded="false" aria-label="Abrir navegación" class="navbar-toggler" data-bs-target="#mainNav" data-bs-toggle="collapse" type="button">
-      <span class="navbar-toggler-icon">
-      </span>
-     </button>
-     <div class="collapse navbar-collapse" id="mainNav">
-      <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
-       <li class="nav-item">
-        <a class="nav-link" href="operario.html">
-         Inicio
-        </a>
-       </li>
-       <li class="nav-item mt-2 mt-lg-0">
-        <button class="theme-toggle" data-theme-toggle="" type="button">
-        </button>
-       </li>
-      <li class="nav-item mt-2 mt-lg-0">
-        <a class="nav-link logout-link" data-logout href="../landing-page/login.html">
-         <i class="bi bi-box-arrow-right"></i>
-         <span>Cerrar sesión</span>
-        </a>
-       </li>
-      </ul>
-     </div>
-    </nav>
-   </div>
-  </header>
-  <main>
-   <section class="hero" id="resumen">
-    <div class="container hero-grid">
-     <div>
-      <span class="tag">
-       Espacio del operario
-      </span>
-      <h1>
-       Instalaciones e
-       <span>
-        insumos
-       </span>
-      </h1>
-      <p>
-       Consultá capacidad, tipos de residuos recibidos y recursos necesarios para el trabajo diario.
-      </p>
-      <div class="hero-actions">
-       <a class="btn btn-primary" href="#estado">
-        Ver estado operativo
-       </a>
-       <a class="btn btn-outline" href="../landing-page/index.html#contacto">
-        Contactar soporte
-       </a>
-      </div>
-     </div>
-     <div class="dashboard-preview">
-      <div class="preview-top">
-       <strong>
-        Resumen de instalación
-       </strong>
-       <div class="dots">
-        <span>
-        </span>
-        <span>
-        </span>
-        <span>
-        </span>
-       </div>
-      </div>
-      <div class="feature-board">
-       <div class="feature-row">
-        <div aria-hidden="true" class="feature-icon">
-         <i aria-hidden="true" class="bi bi-building">
-         </i>
-        </div>
-        <div>
-         <strong>
-          Centro operativo
-         </strong>
-         <p>
-          Instalación habilitada para recepción.
-         </p>
-        </div>
-        <span class="feature-state">
-         Activo
-        </span>
-       </div>
-       <div class="feature-row">
-        <div aria-hidden="true" class="feature-icon">
-         <i aria-hidden="true" class="bi bi-bar-chart">
-         </i>
-        </div>
-        <div>
-         <strong>
-          Capacidad al 72%
-         </strong>
-         <p>
-          Nivel registrado para la jornada.
-         </p>
-        </div>
-        <span class="feature-state">
-         Control
-        </span>
-       </div>
-       <div class="feature-row">
-        <div aria-hidden="true" class="feature-icon">
-         <i aria-hidden="true" class="bi bi-box-seam">
-         </i>
-        </div>
-        <div>
-         <strong>
-          2 insumos bajos
-         </strong>
-         <p>
-          Elementos que requieren reposición.
-         </p>
-        </div>
-        <span class="feature-state">
-         Aviso
-        </span>
-       </div>
-      </div>
-     </div>
-    </div>
-   </section>
-   <section id="estado">
     <div class="container">
-     <div class="section-title center">
-      <h2>
-       Estado operativo
-      </h2>
-      <p>
-       Datos principales para organizar el funcionamiento de la instalación.
-      </p>
-     </div>
-     <div class="cards three">
-      <article class="card">
-       <div aria-hidden="true" class="card-icon">
-        <i aria-hidden="true" class="bi bi-building">
-        </i>
-       </div>
-       <h3>
-        Capacidad
-       </h3>
-       <p>
-        Consulta del nivel disponible en centros o vertederos.
-       </p>
-      </article>
-      <article class="card">
-       <div aria-hidden="true" class="card-icon">
-        <i aria-hidden="true" class="bi bi-recycle">
-        </i>
-       </div>
-       <h3>
-        Residuos recibidos
-       </h3>
-       <p>
-        Clasificación de los materiales gestionados.
-       </p>
-      </article>
-      <article class="card">
-       <div aria-hidden="true" class="card-icon">
-        <i aria-hidden="true" class="bi bi-box-seam">
-        </i>
-       </div>
-       <h3>
-        Inventario
-       </h3>
-       <p>
-        Estado de insumos y repuestos de uso operativo.
-       </p>
-      </article>
-     </div>
+
+      <nav class="navbar navbar-expand-lg py-2 py-lg-3">
+
+        <div class="navbar-brand logo-link" aria-label="SiGeRU">
+          <img class="brand-logo" src="../resources/logo.png" alt="Logo de SiGeRU">
+        </div>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+          aria-controls="mainNav" aria-expanded="false" aria-label="Abrir navegación">
+
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="mainNav">
+
+
+          <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2 op-nav">
+
+            <li class="nav-item">
+              <a class="nav-link active op-nav-home" href="operario.html" aria-current="page">
+
+                <i class="bi bi-house-door" aria-hidden="true"></i>
+                <span>Inicio</span>
+              </a>
+            </li>
+
+            <li class="nav-item op-nav-action">
+              <button class="theme-toggle" data-theme-toggle type="button" aria-label="Cambiar tema"
+                title="Cambiar tema">
+
+                <i class="bi bi-sun" aria-hidden="true"></i>
+              </button>
+            </li>
+
+            <li class="nav-item op-nav-action op-nav-exit">
+              <a class="nav-link logout-link" data-logout href="../landing-page/login.html" aria-label="Cerrar sesión"
+                title="Cerrar sesión">
+
+                <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+              </a>
+            </li>
+
+          </ul>
+
+
+        </div>
+      </nav>
+
     </div>
-   </section>
+  </header>
+
+
+
+  <main>
+
+
+    <section class="hero" id="resumen">
+
+      <div class="container hero-grid">
+
+        <div>
+
+          <span class="tag">
+            Espacio del operario
+          </span>
+
+          <h1>
+            Instalaciones e
+            <span>insumos</span>
+          </h1>
+
+          <p>
+            Consultá el estado de tu instalación asignada,
+            su capacidad, los tipos de residuos y los
+            recursos disponibles para el trabajo diario.
+          </p>
+
+          <div class="hero-actions">
+
+            <button class="btn btn-primary" type="button" id="btnEstadoOperativo">
+
+              <i class="bi bi-building-check me-2"></i>
+              Ver estado operativo
+            </button>
+
+            <button class="btn btn-outline" type="button" id="btnContactarSoporte">
+
+              <i class="bi bi-chat-dots me-2"></i>
+              Contactar soporte
+            </button>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="dashboard-preview">
+
+          <div class="preview-top">
+
+            <strong>
+              Panel del operario
+            </strong>
+
+            <div class="dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+
+          </div>
+
+          <div class="feature-board">
+
+            <div class="feature-row">
+
+              <div class="feature-icon" aria-hidden="true">
+                <i class="bi bi-building"></i>
+              </div>
+
+              <div>
+                <strong>
+                  Mi instalación
+                </strong>
+                <p>
+                  Consultá la instalación asignada
+                  por Administración.
+                </p>
+              </div>
+
+              <span class="feature-state">
+                Consultar
+              </span>
+
+            </div>
+
+
+            <div class="feature-row">
+
+              <div class="feature-icon" aria-hidden="true">
+                <i class="bi bi-bar-chart"></i>
+              </div>
+
+              <div>
+                <strong>
+                  Estado y capacidad
+                </strong>
+                <p>
+                  Revisá la información operativa
+                  registrada en el sistema.
+                </p>
+              </div>
+
+              <span class="feature-state">
+                Estado
+              </span>
+
+            </div>
+
+
+            <div class="feature-row">
+
+              <div class="feature-icon" aria-hidden="true">
+                <i class="bi bi-box-seam"></i>
+              </div>
+
+              <div>
+                <strong>
+                  Inventario de insumos
+                </strong>
+                <p>
+                  Consultá existencias y estado
+                  de los artículos registrados.
+                </p>
+              </div>
+
+              <span class="feature-state">
+                Insumos
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+
+
+    <section id="estado">
+
+      <div class="container">
+
+        <div class="section-title center">
+
+          <h2>
+            Estado operativo
+          </h2>
+
+          <p>
+            Herramientas para consultar los datos
+            de tu instalación y comunicarte con Administración.
+          </p>
+
+        </div>
+
+
+        <div class="cards three">
+
+          <article class="card">
+
+            <div class="card-icon" aria-hidden="true">
+              <i class="bi bi-building"></i>
+            </div>
+
+            <h3>
+              Instalación asignada
+            </h3>
+
+            <p>
+              Consultá el nombre, ubicación, estado,
+              capacidad y tipo de residuos de
+              tu instalación.
+            </p>
+
+          </article>
+
+
+          <article class="card">
+
+            <div class="card-icon" aria-hidden="true">
+              <i class="bi bi-box-seam"></i>
+            </div>
+
+            <h3>
+              Inventario
+            </h3>
+
+            <p>
+              Revisá los insumos registrados,
+              sus cantidades y condiciones
+              cuando la instalación disponga
+              de inventario.
+            </p>
+
+          </article>
+
+
+          <article class="card">
+
+            <div class="card-icon" aria-hidden="true">
+              <i class="bi bi-chat-dots"></i>
+            </div>
+
+            <h3>
+              Soporte
+            </h3>
+
+            <p>
+              Comunicate directamente con
+              Administración mediante mensajes
+              privados y consultá las respuestas.
+            </p>
+
+          </article>
+
+        </div>
+
+      </div>
+
+    </section>
+
   </main>
-  <footer>
-   <div class="container footer-grid">
-    <p>
-     SiGeRU · Operario
-    </p>
-    <div class="footer-links">
-     <a href="../landing-page/index.html#contacto">
-      Contacto
-     </a>
-     <a data-logout="" href="operario.html">
-      Salir
-     </a>
+
+
+
+  <div class="modal fade op-modal" id="modalEstadoOperario" tabindex="-1" aria-labelledby="modalEstadoOperarioTitulo"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+
+      <div class="modal-content">
+
+        <div class="modal-header">
+
+          <div>
+
+            <h2 class="modal-title fs-5" id="modalEstadoOperarioTitulo">
+
+              <i class="bi bi-building-check me-2"></i>
+              Mi instalación
+            </h2>
+
+            <small class="op-subtitle">
+              Estado operativo y recursos asignados
+            </small>
+
+          </div>
+
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar">
+          </button>
+
+        </div>
+
+
+        <div class="modal-body">
+
+          <div id="opEstadoMensaje" class="op-notice" role="status">
+            Consultando instalación...
+          </div>
+
+
+          <div id="opInstalacionContenido"></div>
+
+
+          <div class="op-inventario-heading">
+
+            <div>
+
+              <h3>
+                <i class="bi bi-box-seam"></i>
+                Consultar insumos
+              </h3>
+
+              <p>
+                Existencias registradas en tu instalación.
+              </p>
+
+            </div>
+
+            <button type="button" class="op-refresh" id="opActualizarEstado" aria-label="Actualizar datos"
+              title="Actualizar datos">
+
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+
+          </div>
+
+
+          <input type="search" id="opBuscarInsumo" class="form-control op-search" aria-label="Buscar insumos"
+            placeholder="Buscar insumo por nombre, tipo o estado...">
+
+
+          <div id="opInventarioContenido" class="op-inventario">
+
+            Cargando inventario...
+
+          </div>
+
+        </div>
+
+
+        <div class="modal-footer">
+
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+
+            Cerrar
+          </button>
+
+        </div>
+
+      </div>
     </div>
-   </div>
+  </div>
+
+
+
+
+  <div class="modal fade op-modal" id="modalSoporteOperario" tabindex="-1" aria-labelledby="modalSoporteOperarioTitulo"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+
+      <div class="modal-content">
+
+        <div class="modal-header">
+
+          <div>
+
+            <h2 class="modal-title fs-5" id="modalSoporteOperarioTitulo">
+
+              <i class="bi bi-chat-dots me-2"></i>
+              Contactar soporte
+            </h2>
+
+            <small class="op-subtitle">
+              Comunicación privada con Administración
+            </small>
+
+          </div>
+
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar">
+          </button>
+
+        </div>
+
+
+        <div class="modal-body">
+
+          <label class="form-label" for="opSoporteContacto">
+
+            Administrador
+          </label>
+
+          <select class="form-select mb-3" id="opSoporteContacto">
+
+            <option value="">
+              Cargando administradores...
+            </option>
+
+          </select>
+
+
+          <div id="opSoporteMensajes" class="op-chat-mensajes" role="log" aria-label="Mensajes de soporte">
+
+            Seleccioná un administrador.
+
+          </div>
+
+
+          <p id="opSoporteEstado" class="op-chat-estado" role="status" aria-live="polite">
+          </p>
+
+
+          <form id="opSoporteForm">
+
+            <label class="form-label" for="opSoporteTexto">
+
+              Escribir mensaje
+            </label>
+
+            <textarea id="opSoporteTexto" class="form-control mb-2" placeholder="Escribí tu consulta..." rows="3"
+              maxlength="2000" required disabled></textarea>
+
+
+            <div class="op-chat-actions">
+
+              <small>
+                Máximo 2000 caracteres.
+              </small>
+
+              <button type="submit" class="btn btn-primary" id="opSoporteEnviar" disabled>
+
+                <i class="bi bi-send me-1"></i>
+                Enviar mensaje
+              </button>
+
+            </div>
+
+          </form>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+
+
+  <footer>
+
+    <div class="container footer-grid">
+
+      <p>
+        SiGeRU · Operario
+      </p>
+
+      <div class="footer-links">
+
+        <a href="../landing-page/index.html#contacto">
+          Contacto
+        </a>
+
+        <a data-logout href="../landing-page/login.html">
+          Salir
+        </a>
+
+      </div>
+
+    </div>
+
   </footer>
+
+
+
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
   </script>
-  <script src="assets/app.js">
-  </script>
- </body>
-</html>
 
+  <script src="assets/app.js"></script>
+
+  <script src="assets/operario-extra.js?v=1" defer></script>
+
+</body>
+
+</html>

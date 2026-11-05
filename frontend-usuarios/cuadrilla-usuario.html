@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Panel de Cuadrillas | SiGeRu</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+
+  <link href="assets/style.css" rel="stylesheet">
+  <link href="assets/cuadrilla-panel.css" rel="stylesheet">
+
+  <style>
+    .cq-brand-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .cq-brand-user .cq-brand {
+      margin-right: 0;
+      flex-shrink: 0;
+    }
+
+    .cq-header-user {
+      color: var(--cq-text, inherit);
+      font-size: .85rem;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 240px;
+    }
+
+    .cq-map-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .cq-main {
+      padding-top: 8px !important;
+    }
+
+    .cq-summary {
+      margin-top: 0 !important;
+      margin-bottom: 10px !important;
+    }
+
+    @media(max-width:767px) {
+      .cq-brand-user {
+        gap: 7px;
+      }
+
+      .cq-header-user {
+        font-size: .75rem;
+        max-width: 115px;
+      }
+
+      .cq-map-actions {
+        gap: 5px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="site-header cq-header">
+    <div class="container-fluid cq-header-container">
+      <nav class="navbar cq-navbar" aria-label="Navegación principal">
+
+        <div class="cq-brand-user">
+          <a class="navbar-brand logo-link cq-brand" href="cuadrilla.html">
+            <img src="../resources/logo.png" alt="SiGeRu" class="brand-logo">
+          </a>
+          <span id="cqUser" class="cq-header-user">Cargando usuario…</span>
+        </div>
+
+        <div class="cq-header-navigation">
+          <a href="#cqTasksSection" class="cq-nav-link">
+            <i class="bi bi-list-check"></i>
+            <span>Tareas</span>
+          </a>
+
+          <a href="#cqMapSection" class="cq-nav-link">
+            <i class="bi bi-map"></i>
+            <span>Mapa</span>
+          </a>
+
+          <a href="#cqEquipoSection" class="cq-nav-link">
+            <i class="bi bi-people"></i>
+            <span>Equipo</span>
+          </a>
+
+          <a href="cuadrilla-en-curso.html" class="cq-nav-link">
+            <i class="bi bi-play-circle"></i>
+            <span>En curso</span>
+          </a>
+
+          <a href="#cqHistorySection" class="cq-nav-link">
+            <i class="bi bi-clock-history"></i>
+            <span>Historial</span>
+          </a>
+
+          <a href="#cqMessagesSection" class="cq-nav-link">
+            <i class="bi bi-chat-dots"></i>
+            <span>Mensajes</span>
+          </a>
+        </div>
+
+        <div class="cq-header-actions">
+          <button type="button" class="theme-toggle cq-theme-button" data-theme-toggle aria-label="Cambiar tema">
+          </button>
+
+          <a href="../landing-page/login.html" class="logout-link cq-logout-button" data-logout
+            aria-label="Cerrar sesión" title="Cerrar sesión">
+            <i class="bi bi-box-arrow-right"></i>
+          </a>
+        </div>
+
+      </nav>
+    </div>
+  </header>
+
+  <main class="cq-main" id="cqMain">
+
+    <div id="cqAlert" class="alert d-none" role="status" aria-live="polite">
+    </div>
+
+    <section class="cq-summary mb-3" aria-label="Resumen de tareas">
+      <div class="row g-2">
+
+        <div class="col-4">
+          <div class="cq-metric">
+            <div class="cq-metric-value" id="cqClaimsCount">—</div>
+            <div class="cq-metric-label">
+              Reclamos pendientes
+            </div>
+          </div>
+        </div>
+
+        <div class="col-4">
+          <div class="cq-metric">
+            <div class="cq-metric-value" id="cqIncidentsCount">—</div>
+            <div class="cq-metric-label">
+              Incidencias pendientes
+            </div>
+          </div>
+        </div>
+
+        <div class="col-4">
+          <div class="cq-metric">
+            <div class="cq-metric-value" id="cqTasksCount">—</div>
+            <div class="cq-metric-label">
+              Total pendiente
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <div class="cq-dashboard-layout">
+
+      <section class="cq-card cq-section cq-map-area" id="cqMapSection">
+
+        <div class="cq-card-head">
+          <h2>
+            <i class="bi bi-map"></i>
+            Mapa operativo
+          </h2>
+
+          <div class="cq-map-actions">
+            <button type="button" id="cqRefresh" class="btn btn-outline-success btn-sm">
+              <i class="bi bi-arrow-clockwise"></i> Actualizar datos
+            </button>
+            <button type="button" id="cqMapFit" class="btn btn-outline-success btn-sm">
+              <i class="bi bi-arrows-fullscreen"></i> Centrar mapa
+            </button>
+          </div>
+        </div>
+
+        <div class="cq-map-controls">
+          <label>
+            <input type="checkbox" id="cqShowCircuitos" checked>
+            Circuitos
+          </label>
+
+          <label>
+            <input type="checkbox" id="cqShowContainers" checked>
+            Contenedores
+          </label>
+
+          <label>
+            <input type="checkbox" id="cqShowTasks" checked>
+            Tareas
+          </label>
+
+          <label>
+            <input type="checkbox" id="cqShowTrucks" checked>
+            Camiones
+          </label>
+        </div>
+
+        <div id="cqMap" role="region" aria-label="Mapa operativo de cuadrillas">
+        </div>
+
+        <p id="cqMapNote" class="cq-map-note mt-2 mb-0"></p>
+      </section>
+
+      <section class="cq-card cq-section cq-tasks-area" id="cqTasksSection">
+
+        <div class="cq-card-head">
+          <h2>
+            <i class="bi bi-list-check"></i>
+            Tareas asignadas
+          </h2>
+
+          <span id="cqTasksSummary" class="cq-small"></span>
+        </div>
+
+        <div class="cq-task-filters">
+          <input id="cqTaskSearch" class="form-control form-control-sm cq-search" type="search"
+            aria-label="Buscar tareas" placeholder="Buscar tarea, barrio o contenedor">
+
+          <select id="cqTaskType" class="form-select form-select-sm" aria-label="Filtrar por tipo">
+            <option value="all">Todas las tareas</option>
+            <option value="reclamo">Reclamos</option>
+            <option value="incidencia">Incidencias</option>
+          </select>
+
+          <select id="cqTaskCrew" class="form-select form-select-sm" aria-label="Filtrar por cuadrilla">
+            <option value="all">Todas mis cuadrillas</option>
+          </select>
+        </div>
+
+        <div id="cqTasks" class="cq-scroll"></div>
+      </section>
+
+      <section class="cq-card cq-section cq-detail-area" id="cqTaskDetailSection">
+
+        <div class="cq-card-head">
+          <h2>
+            <i class="bi bi-card-checklist"></i>
+            Detalle de tarea
+          </h2>
+        </div>
+
+        <div id="cqTaskDetail">
+          <div class="cq-empty">
+            Seleccioná una tarea para consultar su información.
+          </div>
+        </div>
+      </section>
+
+      <section class="cq-card cq-section cq-team-area" id="cqEquipoSection">
+
+        <div class="cq-card-head">
+          <h2>
+            <i class="bi bi-people"></i>
+            Mi equipo
+          </h2>
+        </div>
+
+        <div id="cqCrews"></div>
+
+        <div class="cq-subsection">
+          <h3>
+            <i class="bi bi-truck"></i>
+            Camiones vinculados
+          </h3>
+
+          <div id="cqTrucks"></div>
+        </div>
+      </section>
+
+      <section class="cq-card cq-section cq-routes-area" id="cqRoutesSection">
+
+        <div class="cq-card-head">
+          <h2>
+            <i class="bi bi-signpost-split"></i>
+            Circuitos y rutas
+          </h2>
+        </div>
+
+        <div id="cqRoutes"></div>
+
+        <div class="cq-subsection">
+          <h3>
+            <i class="bi bi-geo-alt"></i>
+            Contenedores por circuito
+          </h3>
+
+          <div id="cqContainersSummary"></div>
+        </div>
+      </section>
+
+      <section class="cq-card cq-section cq-history-area" id="cqHistorySection">
+
+        <div class="cq-card-head">
+          <h2>
+            <i class="bi bi-clock-history"></i>
+            Historial de trabajos
+          </h2>
+
+          <button type="button" id="cqHistoryRefresh" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-arrow-clockwise"></i>
+            Actualizar
+          </button>
+        </div>
+
+        <div id="cqHistory" class="cq-scroll"></div>
+      </section>
+
+      <section class="cq-card cq-section cq-messages-area" id="cqMessagesSection">
+
+        <div class="cq-card-head">
+          <h2>
+            <i class="bi bi-chat-dots"></i>
+            Mensajes
+          </h2>
+        </div>
+
+        <label for="chatCuadrillaContacto" class="form-label">
+          Contacto de Administración
+        </label>
+
+        <select id="chatCuadrillaContacto" class="form-select form-select-sm mb-2">
+          <option value="">Cargando contactos…</option>
+        </select>
+
+        <div id="chatCuadrillaMensajes" class="cq-chat mb-2" role="log" aria-label="Conversación">
+        </div>
+
+        <p id="chatCuadrillaEstado" class="cq-small" role="status">
+        </p>
+
+        <form id="chatCuadrillaForm">
+          <label for="chatCuadrillaTexto" class="form-label">
+            Escribir mensaje
+          </label>
+
+          <textarea id="chatCuadrillaTexto" class="form-control mb-2" rows="3" maxlength="2000" required disabled>
+          </textarea>
+
+          <button type="submit" id="chatCuadrillaEnviar" class="btn btn-success btn-sm" disabled>
+            <i class="bi bi-send"></i>
+            Enviar mensaje
+          </button>
+        </form>
+      </section>
+
+    </div>
+  </main>
+
+  <div class="modal fade cq-modal" id="cqDetailModal" tabindex="-1" aria-labelledby="cqDetailTitle" aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="cqDetailTitle">
+            Detalle de tarea
+          </h2>
+
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar">
+          </button>
+        </div>
+
+        <div class="modal-body" id="cqDetailBody"></div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cerrar
+          </button>
+
+          <button type="button" class="btn btn-success" id="cqDetailResolve">
+            <i class="bi bi-check2-circle"></i>
+            Resolver tarea
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade cq-modal" id="cqResolveModal" tabindex="-1" aria-labelledby="cqResolveTitle"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+
+        <form id="cqResolveForm" enctype="multipart/form-data">
+
+          <div class="modal-header">
+            <h2 class="modal-title fs-5" id="cqResolveTitle">
+              Resolver tarea
+            </h2>
+
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar">
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <p id="cqResolveInfo" class="cq-small mb-3"></p>
+
+            <label for="cqResolveText" class="form-label">
+              Trabajo realizado
+            </label>
+
+            <textarea id="cqResolveText" class="form-control" rows="4" minlength="5" required
+              placeholder="Describí cómo se resolvió la tarea…"></textarea>
+
+            <div id="cqResolvePhotoGroup" class="mt-3" hidden>
+              <label for="cqResolvePhoto" class="form-label">
+                Fotografía del trabajo realizado (opcional)
+              </label>
+
+              <input id="cqResolvePhoto" class="form-control" type="file" accept="image/jpeg,image/png,image/webp">
+
+              <div class="form-text">
+                JPG, PNG o WebP. Máximo 5 MB.
+              </div>
+
+              <img id="cqResolvePhotoPreview" class="cq-photo-preview mt-2 d-none" alt="Vista previa de fotografía">
+            </div>
+
+            <div id="cqResolveError" class="alert alert-danger d-none mt-3" role="alert">
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+              Cancelar
+            </button>
+
+            <button type="submit" class="btn btn-success" id="cqResolveSave">
+              <i class="bi bi-check-circle"></i>
+              Completar tarea
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade cq-modal" id="cqInfoModal" tabindex="-1" aria-labelledby="cqInfoTitle" aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="cqInfoTitle">
+            Información
+          </h2>
+
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar">
+          </button>
+        </div>
+
+        <div class="modal-body" id="cqInfoBody"></div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cerrar
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script src="assets/app.js"></script>
+  <script src="assets/cuadrilla-panel.js"></script>
+  <script src="assets/mensajeria-cuadrilla.js"></script>
+  <script src="assets/cuadrilla-ventanas.js"></script>
+
+</body>
+
+</html>

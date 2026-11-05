@@ -1,9 +1,3 @@
-/**
- * Módulo de navegación GPS y simulación interactiva estilo Waze para el Chofer.
- * - Guía paso a paso por las calles con indicaciones de giro (doblar a la izquierda, derecha, recto).
- * - Asistente de voz en tiempo real con Web Speech API (español).
- * - Velocímetro dinámico, orientación 3D del camión y detección de paradas en contenedores.
- */
 (function () {
   const COORD_BASE = [-34.899286, -56.129414];
   const COORD_VERTEDERO = [-34.851019, -56.099007];
@@ -11,7 +5,7 @@
   let vozHabilitada = true;
   let ultimoTextoHablado = '';
   let ultimoMomentoHablado = 0;
-  let intervaloPasoMs = 600; // Avance a 500ms configurado por usuario
+  let intervaloPasoMs = 600;
 
   let estadoSimulacion = {
     timer: null,
@@ -63,18 +57,16 @@
       return;
     }
     const ahora = Date.now();
-    // No repetir la misma instrucción si ya se dijo recientemente
     if (texto === ultimoTextoHablado && ahora - ultimoMomentoHablado < 20000) {
       return;
     }
-    // Si la voz está hablando actualmente, NO cancelar: dejar que termine de hablar completo
     if (window.speechSynthesis.speaking || vozHablando) {
       return;
     }
     try {
       const u = new SpeechSynthesisUtterance(texto);
       u.lang = 'es-UY';
-      u.rate = 0.92; // Ritmo pausado y claro
+      u.rate = 0.92;
       u.pitch = 1.0;
       const voces = window.speechSynthesis.getVoices();
       const vozEs = voces.find(v => v.lang.startsWith('es'));
@@ -106,7 +98,6 @@
       resultado.push([lat1, lng1]);
 
       const distM = distanciaMetros(lat1, lng1, lat2, lng2);
-      // Puntos fluidos cada 10 metros para desplazamiento ágil
       const pasos = Math.min(18, Math.floor(distM / 10));
       for (let p = 1; p <= pasos; p++) {
         const t = p / (pasos + 1);
@@ -154,7 +145,6 @@
     return indices;
   }
 
-  // Detecta el próximo giro buscando hacia adelante en los puntos de la calle
   function detectarProximaManiobra(idxActual) {
     const { puntosRuta, paradasIndices, indiceParadaActual, contenedores } = estadoSimulacion;
     const totalPuntos = puntosRuta.length;
@@ -172,7 +162,6 @@
 
     const posActual = puntosRuta[idxActual];
 
-    // 1. Verificamos si la próxima parada de contenedor está cerca
     if (indiceParadaActual < paradasIndices.length) {
       const idxParada = paradasIndices[indiceParadaActual];
       let distParadaM = 0;
@@ -184,7 +173,6 @@
       const codCont = contenedorObjetivo?.codigo || (`Contenedor #${indiceParadaActual + 1}`);
 
       if (distParadaM <= 140) {
-        // Solo avisa una vez con anticipación prudente al acercarse al contenedor
         if (distParadaM <= 70 && distParadaM >= 25) {
           if (idUltimaParadaHablada !== indiceParadaActual && (Date.now() - ultimoMomentoVoz > 12000)) {
             decirVoz(`Próxima parada en contenedor ${codCont}`);
@@ -205,7 +193,6 @@
       }
     }
 
-    // 2. Buscamos el próximo giro significativo por ángulo entre tramos (lookahead de hasta 220 metros)
     let distAcumuladaM = 0;
 
     for (let k = idxActual + 1; k < totalPuntos - 1; k++) {
@@ -222,8 +209,6 @@
         const iconoGiro = esDerecha ? 'bi-arrow-90deg-right' : 'bi-arrow-90deg-left';
         const tipoMani = esDerecha ? 'turn-right' : 'turn-left';
 
-        // Avisos de voz estilo Waze: solo cuando se acerca a doblar (entre 40 y 85 metros),
-        // y se habla UNA SOLA VEZ por esquina para no aturdir ni repetir en bucle
         if (distAcumuladaM <= 85 && distAcumuladaM >= 30) {
           if (idUltimaEsquinaHablada !== k && (Date.now() - ultimoMomentoVoz > 10000)) {
             decirVoz(`En ${Math.round(distAcumuladaM)} metros, ${textoGiro}`);
@@ -244,7 +229,6 @@
       }
     }
 
-    // 3. Si no hay curvas cerradas próximas, continuar recto
     return {
       tipoMani: 'straight',
       icono: 'bi-arrow-up',
@@ -304,19 +288,16 @@
       return;
     }
 
-    // Avanzamos un punto en la ruta
     estadoSimulacion.indicePuntoActual += 1;
     const idxActual = estadoSimulacion.indicePuntoActual;
     const coordActual = puntosRuta[idxActual];
     const coordSig = puntosRuta[Math.min(idxActual + 1, puntosRuta.length - 1)];
 
-    // Calculamos rumbo actual para orientar el camión hacia donde dobla
     if (coordActual && coordSig) {
       const nuevoRumbo = Math.round(calcularRumbo(coordActual[0], coordActual[1], coordSig[0], coordSig[1]));
       estadoSimulacion.rumboActual = nuevoRumbo;
     }
 
-    // Posicionamos el camión y rotamos la flecha de orientación GPS
     if (marcadorCamion && coordActual) {
       marcadorCamion.setLatLng(coordActual);
       const arrowElem = document.getElementById('wazeTruckArrowRing');
@@ -325,22 +306,18 @@
       }
     }
 
-    // Centramos la cámara suavemente sobre el camión (estilo Waze)
     if (mapa && coordActual) {
       mapa.panTo(coordActual, { animate: false });
     }
 
-    // Calculamos avance en Km
     const progreso = idxActual / Math.max(1, puntosRuta.length - 1);
     const kmActuales = Number((distanciaTotalKm * progreso).toFixed(2));
     if (typeof onAvanceKm === 'function') {
       onAvanceKm(kmActuales, coordActual[0], coordActual[1]);
     }
 
-    // Detectamos la próxima maniobra (giro a la izquierda / derecha / llegada)
     const navInfo = detectarProximaManiobra(idxActual);
 
-    // Variamos la velocidad simulada (desacelera antes de doblar o frenar)
     if (navInfo.tipoMani === 'arrive' && navInfo.distanciaM < 30) {
       estadoSimulacion.velocidadActualKmH = Math.max(8, Math.round(navInfo.distanciaM * 0.7));
     } else if (navInfo.distanciaM < 30 && (navInfo.tipoMani === 'turn-left' || navInfo.tipoMani === 'turn-right')) {
@@ -356,7 +333,6 @@
       onNavUpdate(navInfo);
     }
 
-    // Verificamos llegada al contenedor
     if (indiceParadaActual < paradasIndices.length) {
       const idxObjetivoContenedor = paradasIndices[indiceParadaActual];
       if (idxActual >= idxObjetivoContenedor) {
@@ -408,11 +384,11 @@
       let baseGeometria = Array.isArray(config.geometriaCalles) && config.geometriaCalles.length > 1
         ? config.geometriaCalles
         : [
-            COORD_BASE,
-            ...contenedores.map(c => [Number(c.latitud), Number(c.longitud)]),
-            COORD_VERTEDERO,
-            COORD_BASE
-          ];
+          COORD_BASE,
+          ...contenedores.map(c => [Number(c.latitud), Number(c.longitud)]),
+          COORD_VERTEDERO,
+          COORD_BASE
+        ];
 
       const puntosRuta = densificarPuntos(baseGeometria);
       const paradasIndices = calcularIndicesDeParadas(puntosRuta, contenedores);
@@ -508,11 +484,16 @@
     const txtVel = document.getElementById('txtVelocidadSim');
     if (btnVel) {
       const velocidades = [
-        { label: '20ms', ms: 20, title: 'Velocidad: 20ms' },
-        { label: 'Rápido', ms: 80, title: 'Velocidad rápida' },
-        { label: 'Pausado', ms: 280, title: 'Velocidad pausada' }
+        { label: 'Normal', ms: 600, title: 'Velocidad normal' },
+        { label: 'Rápido', ms: 120, title: 'Velocidad rápida' },
+        { label: 'Lento', ms: 1200, title: 'Velocidad lenta' }
       ];
       let velIdx = 0;
+      if (txtVel) {
+        txtVel.textContent = 'Normal';
+      }
+
+      btnVel.title = 'Velocidad normal';
       btnVel.addEventListener('click', () => {
         velIdx = (velIdx + 1) % velocidades.length;
         const vel = velocidades[velIdx];

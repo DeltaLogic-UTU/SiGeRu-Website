@@ -22,7 +22,6 @@ function rolPermitido(rol) {
     );
 }
 
-// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
 async function requestPerfilGestion(
     path,
     method = 'GET',

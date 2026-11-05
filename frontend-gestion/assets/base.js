@@ -12,9 +12,7 @@ function updateThemeButtons() {
     document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
         const isLight = root.dataset.theme === 'light';
 
-        button.innerHTML =
-            `<i class="bi ${isLight ? 'bi-moon' : 'bi-sun'}" aria-hidden="true"></i>` +
-            `<span>${isLight ? 'Oscuro' : 'Claro'}</span>`;
+        button.innerHTML = `<i class="bi ${isLight ? 'bi-moon' : 'bi-sun'}" aria-hidden="true"></i>`;
 
         button.setAttribute(
             'aria-label',
@@ -33,7 +31,6 @@ document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
     });
 });
 
-// Funciones para leer y borrar el token JWT en localStorage (disponibles en todas las vistas de Gestión).
 const TOKEN_KEY = 'access_token';
 
 function getToken() {

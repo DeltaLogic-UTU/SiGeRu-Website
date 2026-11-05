@@ -3,19 +3,18 @@ const API_GESTION =
 
 const $ =
   id =>
-    document.getElementById(
-      id
-    );
+    document.getElementById(id);
 
 let incidencias = [];
 let cuadrillas = [];
+let containerTypes = [];
 
-// Se eliminó la variable csrfToken porque ya no se usa CSRF.
 let incidentBusy = false;
+let incidentToReplace = null;
 
 const state = {
   tab: 'camiones',
-  resolucion: 'todas'
+  resolucion: 'activas'
 };
 
 const body =
@@ -30,12 +29,30 @@ const form =
 const resolutionFilter =
   $('incidentResolutionFilter');
 
-const modal =
-  bootstrap.Modal
-    .getOrCreateInstance(
-      $('incidentModal')
-    );
+const incidentModalElement =
+  $('incidentModal');
 
+const modal =
+  incidentModalElement
+    ? bootstrap.Modal
+      .getOrCreateInstance(
+        incidentModalElement
+      )
+    : null;
+
+const replaceForm =
+  $('incidentReplaceContainerForm');
+
+const replaceModalElement =
+  $('incidentReplaceContainerModal');
+
+const replaceModal =
+  replaceModalElement
+    ? bootstrap.Modal
+      .getOrCreateInstance(
+        replaceModalElement
+      )
+    : null;
 
 function esc(value) {
   return String(
@@ -59,9 +76,7 @@ function validId(value) {
     Number(value);
 
   if (
-    !Number.isSafeInteger(
-      id
-    ) ||
+    !Number.isSafeInteger(id) ||
     id < 1
   ) {
     throw new Error(
@@ -89,29 +104,35 @@ function formatDate(value) {
 }
 
 
+function normalized(value) {
+  return String(
+    value || ''
+  )
+    .trim()
+    .toLowerCase();
+}
+
+
 function responseError(
   data,
   statusCode
 ) {
   const errors =
     data?.errors &&
-    typeof data.errors ===
-      'object'
+      typeof data.errors === 'object'
       ? Object.values(
-          data.errors
+        data.errors
+      )
+        .flat()
+        .filter(
+          error =>
+            typeof error ===
+            'string'
         )
-          .flat()
-          .filter(
-            error =>
-              typeof error ===
-              'string'
-          )
       : [];
 
   if (errors.length) {
-    return errors.join(
-      '\n'
-    );
+    return errors.join('\n');
   }
 
   if (data?.message) {
@@ -138,7 +159,6 @@ function responseError(
 }
 
 
-// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
 async function requestJson(
   url,
   {
@@ -151,9 +171,14 @@ async function requestJson(
       'application/json'
   };
 
-  const token = localStorage.getItem('access_token');
+  const token =
+    localStorage.getItem(
+      'access_token'
+    );
+
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers['Authorization'] =
+      `Bearer ${token}`;
   }
 
   if (
@@ -176,18 +201,18 @@ async function requestJson(
           headers,
 
           ...(
-            body !==
-            undefined
+            body !== undefined
               ? {
-                  body:
-                    JSON.stringify(
-                      body
-                    )
-                }
+                body:
+                  JSON.stringify(
+                    body
+                  )
+              }
               : {}
           )
         }
       );
+
   } catch {
     throw new Error(
       'No se pudo conectar con Laravel.'
@@ -199,6 +224,7 @@ async function requestJson(
   try {
     data =
       await response.json();
+
   } catch {
     throw new Error(
       'Laravel no devolvió una respuesta válida.'
@@ -220,60 +246,93 @@ async function requestJson(
   return data;
 }
 
-
 function currentResourceType() {
   return state.tab ===
     'camiones'
-      ? 'camion'
-      : 'contenedor';
+    ? 'camion'
+    : 'contenedor';
+}
+
+
+function incidentsForCurrentTab() {
+  let rows =
+    [...incidencias];
+
+  if (
+    state.tab ===
+    'contenedores'
+  ) {
+    rows =
+      rows.filter(
+        item => {
+          const tipo =
+            normalized(
+              item.tipo
+            );
+
+          return (
+            tipo === 'rotura' ||
+            tipo === 'incendio'
+          );
+        }
+      );
+  }
+
+  return rows;
 }
 
 
 function filteredIncidents() {
-  if (
-    state.resolucion ===
-    'resueltas'
-  ) {
-    return incidencias.filter(
-      item =>
-        item.estado ===
-        'Resuelta'
-    );
-  }
+  const rows =
+    incidentsForCurrentTab();
+
 
   if (
     state.resolucion ===
-    'pendientes'
+    'activas'
   ) {
-    return incidencias.filter(
+    return rows.filter(
       item =>
         item.estado !==
         'Resuelta'
     );
   }
 
-  return incidencias;
+  if (
+    state.resolucion ===
+    'historial'
+  ) {
+    return rows.filter(
+      item =>
+        item.estado ===
+        'Resuelta'
+    );
+  }
+
+  return rows;
 }
 
-
 function summary() {
+  const rows =
+    incidentsForCurrentTab();
+
   return {
     abiertas:
-      incidencias.filter(
+      rows.filter(
         item =>
           item.estado ===
           'Abierta'
       ).length,
 
     curso:
-      incidencias.filter(
+      rows.filter(
         item =>
           item.estado ===
           'En curso'
       ).length,
 
     resueltas:
-      incidencias.filter(
+      rows.filter(
         item =>
           item.estado ===
           'Resuelta'
@@ -311,38 +370,48 @@ function renderSummary() {
         class="incident-summary"
         data-incident-summary
       >
+
         <div>
-          <span>Abiertas</span>
+          <span>
+            Abiertas
+          </span>
+
           <strong>
             ${counts.abiertas}
           </strong>
         </div>
 
         <div>
-          <span>En curso</span>
+          <span>
+            En curso
+          </span>
+
           <strong>
             ${counts.curso}
           </strong>
         </div>
 
         <div>
-          <span>Resueltas</span>
+          <span>
+            Resueltas
+          </span>
+
           <strong>
             ${counts.resueltas}
           </strong>
         </div>
+
       </div>
     `
   );
 }
-
 
 function responsableVisible(
   item
 ) {
   if (
     item.tipo_recurso ===
-      'contenedor' &&
+    'contenedor' &&
     item.id_cuadrilla
   ) {
     return (
@@ -357,20 +426,32 @@ function responsableVisible(
   );
 }
 
-
 function render() {
   const rows =
     filteredIncidents();
+
+  const historial =
+    state.resolucion ===
+    'historial';
 
   const incidentTitle =
     $('incidentTitle');
 
   if (incidentTitle) {
-    incidentTitle.textContent =
-      state.tab ===
-      'camiones'
-        ? 'Incidencias de camiones'
-        : 'Incidencias de contenedores';
+    if (historial) {
+      incidentTitle.textContent =
+        state.tab ===
+          'camiones'
+          ? 'Historial de incidencias de camiones'
+          : 'Historial de incidencias de contenedores';
+
+    } else {
+      incidentTitle.textContent =
+        state.tab ===
+          'camiones'
+          ? 'Incidencias de camiones'
+          : 'Incidencias de contenedores';
+    }
   }
 
   if (head) {
@@ -379,14 +460,15 @@ function render() {
         <th>Recurso</th>
         <th>Tipo</th>
         <th>Estado</th>
-        <th>
-          Fecha de reporte
-        </th>
-        <th>
-          Fecha de resolución
-        </th>
+        <th>Fecha de reporte</th>
+        <th>Fecha de resolución</th>
         <th>Responsable</th>
-        <th>Administrar</th>
+        <th>
+          ${historial
+        ? 'Detalle'
+        : 'Administrar'
+      }
+        </th>
       </tr>
     `;
   }
@@ -395,53 +477,54 @@ function render() {
     body.innerHTML =
       rows.length
         ? rows.map(
-            item => `
+          item => `
               <tr>
+
                 <td>
                   <strong>
                     ${esc(
-                      item.recurso ||
-                      'Sin recurso'
-                    )}
+            item.recurso ||
+            'Sin recurso'
+          )}
                   </strong>
                 </td>
 
                 <td>
                   ${esc(
-                    item.tipo ||
-                    '—'
-                  )}
+            item.tipo ||
+            '—'
+          )}
                 </td>
 
                 <td>
                   ${esc(
-                    item.estado ||
-                    '—'
-                  )}
+            item.estado ||
+            '—'
+          )}
                 </td>
 
                 <td>
                   ${esc(
-                    formatDate(
-                      item.fecha_reporte
-                    )
-                  )}
+            formatDate(
+              item.fecha_reporte
+            )
+          )}
                 </td>
 
                 <td>
                   ${esc(
-                    formatDate(
-                      item.fecha_resolucion
-                    )
-                  )}
+            formatDate(
+              item.fecha_resolucion
+            )
+          )}
                 </td>
 
                 <td>
                   ${esc(
-                    responsableVisible(
-                      item
-                    )
-                  )}
+            responsableVisible(
+              item
+            )
+          )}
                 </td>
 
                 <td>
@@ -451,24 +534,34 @@ function render() {
                     type="button"
                   >
                     <i
-                      class="bi bi-clipboard-check"
+                      class="bi ${historial
+              ? 'bi-eye'
+              : 'bi-clipboard-check'
+            }"
                       aria-hidden="true"
                     ></i>
 
-                    Administrar
+                    ${historial
+              ? 'Ver'
+              : 'Administrar'
+            }
                   </button>
                 </td>
+
               </tr>
             `
-          ).join('')
+        ).join('')
+
         : `
             <tr>
               <td
                 colspan="7"
                 class="text-center py-4"
               >
-                No hay incidencias
-                para este filtro.
+                ${historial
+          ? 'No hay incidencias resueltas en el historial.'
+          : 'No hay incidencias activas.'
+        }
               </td>
             </tr>
           `;
@@ -476,7 +569,6 @@ function render() {
 
   renderSummary();
 }
-
 
 async function loadIncidents() {
   if (body) {
@@ -508,15 +600,15 @@ async function loadIncidents() {
         result.data
       )
         ? result.data.map(
-            item => ({
-              ...item,
+          item => ({
+            ...item,
 
-              id_incidencia:
-                validId(
-                  item.id_incidencia
-                )
-            })
-          )
+            id_incidencia:
+              validId(
+                item.id_incidencia
+              )
+          })
+        )
         : [];
 
     render();
@@ -532,8 +624,8 @@ async function loadIncidents() {
             class="text-center py-4"
           >
             ${esc(
-              error.message
-            )}
+        error.message
+      )}
           </td>
         </tr>
       `;
@@ -542,7 +634,6 @@ async function loadIncidents() {
     renderSummary();
   }
 }
-
 
 async function loadCrews() {
   const result =
@@ -553,15 +644,15 @@ async function loadCrews() {
   cuadrillas =
     Array.isArray(result)
       ? result
-      : (
-          Array.isArray(
-            result?.data
-          )
-            ? result.data
-            : []
-        );
-}
 
+      : (
+        Array.isArray(
+          result?.data
+        )
+          ? result.data
+          : []
+      );
+}
 
 function fillIncidentCrew(
   selected = ''
@@ -579,33 +670,76 @@ function fillIncidentCrew(
     </option>
 
     ${cuadrillas.map(
-      cuadrilla => `
+    cuadrilla => `
         <option
           value="${esc(
-            cuadrilla.id_cuadrilla
-          )}"
+      cuadrilla.id_cuadrilla
+    )}"
         >
           ${esc(
-            cuadrilla.id_cuadrilla
-          )}
-          ${
-            cuadrilla.responsable
-              ? ` · ${esc(
-                  cuadrilla.responsable
-                )}`
-              : ''
-          }
+      cuadrilla.id_cuadrilla
+    )}
+
+          ${cuadrilla.responsable
+        ? ` · ${esc(
+          cuadrilla.responsable
+        )}`
+        : ''
+      }
         </option>
       `
-    ).join('')}
+  ).join('')}
   `;
 
   select.value =
     selected || '';
 }
 
+async function loadContainerTypes() {
+  const result =
+    await requestJson(
+      `${API_GESTION}/api/contenedores/catalogos`
+    );
 
-function openManagement(id) {
+  containerTypes =
+    Array.isArray(
+      result?.data?.tipos
+    )
+      ? result.data.tipos
+      : [];
+}
+
+function setManagementReadOnly(
+  readOnly
+) {
+  [
+    $('incidentState'),
+    $('incidentResponsible'),
+    $('incidentCrew'),
+    $('incidentResolution')
+  ].forEach(
+    element => {
+      if (element) {
+        element.disabled =
+          readOnly;
+      }
+    }
+  );
+
+  const submit =
+    form?.querySelector(
+      'button[type="submit"]'
+    );
+
+  if (submit) {
+    submit.classList.toggle(
+      'd-none',
+      readOnly
+    );
+  }
+}
+
+async function openManagement(id) {
   const incidentId =
     validId(id);
 
@@ -624,12 +758,32 @@ function openManagement(id) {
     item.tipo_recurso ===
     'contenedor';
 
+  const tipoIncidencia =
+    normalized(
+      item.tipo
+    );
+
+  const esRoturaOIncendio =
+    tipoIncidencia ===
+    'rotura' ||
+    tipoIncidencia ===
+    'incendio';
+
+  const esHistorial =
+    item.estado ===
+    'Resuelta';
+
+  incidentToReplace =
+    null;
+
   $('incidentId').value =
     item.id_incidencia;
 
   $('incidentModalTitle')
     .textContent =
-    `${item.recurso || 'Recurso'} · ${item.tipo || 'Incidencia'}`;
+    `${item.recurso || 'Recurso'} · ${item.tipo ||
+    'Incidencia'
+    }`;
 
   $('incidentResourceText')
     .textContent =
@@ -677,6 +831,7 @@ function openManagement(id) {
       item.id_cuadrilla ||
       ''
     );
+
   } else {
     $('incidentResponsible')
       .value =
@@ -684,9 +839,331 @@ function openManagement(id) {
       '';
   }
 
-  modal.show();
+  setManagementReadOnly(
+    esHistorial
+  );
+
+  $('replaceIncidentContainerBtn')
+    ?.classList.add(
+      'd-none'
+    );
+
+  if (
+    esContenedor &&
+    esRoturaOIncendio &&
+    !esHistorial &&
+    Number(item.id_contenedor) > 0
+  ) {
+    try {
+      const result =
+        await requestJson(
+          `${API_GESTION}/api/contenedores/${item.id_contenedor}`
+        );
+
+      const container =
+        result?.data;
+
+      const estadoContenedor =
+        normalized(
+          container?.estado
+        );
+
+      const reemplazable =
+        Boolean(
+          container?.activo
+        ) &&
+        (
+          estadoContenedor ===
+          'roto' ||
+          estadoContenedor ===
+          'incendiado'
+        );
+
+      if (reemplazable) {
+        incidentToReplace = {
+          incidenciaId:
+            item.id_incidencia,
+
+          contenedorId:
+            Number(
+              item.id_contenedor
+            ),
+
+          codigo:
+            container.codigo ||
+            item.recurso ||
+            '',
+
+          modelo:
+            container.modelo ||
+            '',
+
+          tipo:
+            container.tipo ||
+            '',
+
+          capacidad:
+            Number(
+              container.capacidad ||
+              0
+            )
+        };
+
+        $('replaceIncidentContainerBtn')
+          ?.classList.remove(
+            'd-none'
+          );
+      }
+
+    } catch (error) {
+      console.warn(
+        'No se pudo comprobar el contenedor:',
+        error.message
+      );
+    }
+  }
+
+  modal?.show();
 }
 
+$('replaceIncidentContainerBtn')
+  ?.addEventListener(
+    'click',
+
+    () => {
+      if (
+        !incidentToReplace ||
+        !replaceForm ||
+        !replaceModal
+      ) {
+        return;
+      }
+
+      replaceForm.reset();
+
+      const originalCode =
+        $('incidentReplaceOriginalCode');
+
+      if (originalCode) {
+        originalCode.textContent =
+          incidentToReplace.codigo;
+      }
+
+      const typeSelect =
+        replaceForm
+          .elements['tipo'];
+
+      if (typeSelect) {
+        typeSelect.innerHTML =
+          containerTypes.map(
+            tipo => `
+              <option
+                value="${esc(
+              tipo.tipo
+            )}"
+              >
+                ${esc(
+              tipo.tipo
+            )}
+              </option>
+            `
+          ).join('');
+
+        typeSelect.value =
+          incidentToReplace.tipo;
+      }
+
+      if (
+        replaceForm
+          .elements['modelo']
+      ) {
+        replaceForm
+          .elements['modelo']
+          .value =
+          incidentToReplace.modelo;
+      }
+
+      if (
+        replaceForm
+          .elements['capacidad']
+      ) {
+        replaceForm
+          .elements['capacidad']
+          .value =
+          incidentToReplace.capacidad;
+      }
+
+      const message =
+        $('incidentReplaceMessage');
+
+      if (message) {
+        message.textContent = '';
+
+        message.classList.add(
+          'd-none'
+        );
+      }
+
+      if (
+        incidentModalElement &&
+        incidentModalElement
+          .classList
+          .contains('show')
+      ) {
+        incidentModalElement
+          .addEventListener(
+            'hidden.bs.modal',
+
+            () => {
+              replaceModal.show();
+            },
+
+            {
+              once: true
+            }
+          );
+
+        modal.hide();
+
+      } else {
+        replaceModal.show();
+      }
+    }
+  );
+
+replaceForm
+  ?.addEventListener(
+    'submit',
+
+    async event => {
+      event.preventDefault();
+
+      if (!incidentToReplace) {
+        return;
+      }
+
+      const data =
+        new FormData(
+          replaceForm
+        );
+
+      const payload = {
+        codigo:
+          String(
+            data.get('codigo') ||
+            ''
+          )
+            .trim()
+            .toUpperCase(),
+
+        modelo:
+          String(
+            data.get('modelo') ||
+            ''
+          ).trim(),
+
+        tipo:
+          String(
+            data.get('tipo') ||
+            ''
+          ).trim(),
+
+        capacidad:
+          Number(
+            data.get(
+              'capacidad'
+            )
+          )
+      };
+
+      const message =
+        $('incidentReplaceMessage');
+
+      const submit =
+        replaceForm.querySelector(
+          '[type="submit"]'
+        );
+
+      if (submit) {
+        submit.disabled =
+          true;
+      }
+
+      try {
+        const incidenciaId =
+          incidentToReplace
+            .incidenciaId;
+
+        await requestJson(
+          `${API_GESTION}/api/contenedores/${incidentToReplace.contenedorId}/reemplazar`,
+          {
+            method:
+              'POST',
+
+            body:
+              payload
+          }
+        );
+
+        if (
+          replaceModalElement
+        ) {
+          replaceModalElement
+            .addEventListener(
+              'hidden.bs.modal',
+
+              async () => {
+                incidentToReplace =
+                  null;
+
+                await loadIncidents();
+
+                const sigueExistiendo =
+                  incidencias.some(
+                    item =>
+                      item.id_incidencia ===
+                      incidenciaId
+                  );
+
+                if (sigueExistiendo) {
+                  await openManagement(
+                    incidenciaId
+                  );
+                }
+              },
+
+              {
+                once: true
+              }
+            );
+
+          replaceModal.hide();
+
+        } else {
+          incidentToReplace =
+            null;
+
+          await loadIncidents();
+        }
+
+      } catch (error) {
+        if (message) {
+          message.textContent =
+            error.message;
+
+          message.classList.remove(
+            'd-none'
+          );
+        }
+
+      } finally {
+        if (submit) {
+          submit.disabled =
+            false;
+        }
+      }
+    }
+  );
 
 form?.addEventListener(
   'submit',
@@ -713,6 +1190,13 @@ form?.addEventListener(
       );
 
     if (!item) {
+      return;
+    }
+
+    if (
+      item.estado ===
+      'Resuelta'
+    ) {
       return;
     }
 
@@ -745,6 +1229,7 @@ form?.addEventListener(
         $('incidentCrew')
           ?.value ||
         null;
+
     } else {
       payload.responsable =
         $('incidentResponsible')
@@ -768,8 +1253,7 @@ form?.addEventListener(
         }
       );
 
-      modal.hide();
-
+      modal?.hide();
       await loadIncidents();
 
     } catch (error) {
@@ -789,10 +1273,10 @@ form?.addEventListener(
   }
 );
 
-
 resolutionFilter
   ?.addEventListener(
     'change',
+
     () => {
       state.resolucion =
         resolutionFilter
@@ -801,7 +1285,6 @@ resolutionFilter
       render();
     }
   );
-
 
 document
   .querySelectorAll(
@@ -848,7 +1331,6 @@ document
       )
   );
 
-
 document.addEventListener(
   'click',
 
@@ -871,14 +1353,13 @@ document.addEventListener(
       );
 
     if (button) {
-      openManagement(
+      void openManagement(
         button.dataset
           .manageIncident
       );
     }
   }
 );
-
 
 async function init() {
   if (
@@ -889,10 +1370,14 @@ async function init() {
   }
 
   try {
-    await loadCrews();
+    await Promise.all([
+      loadCrews(),
+      loadContainerTypes()
+    ]);
+
   } catch (error) {
     console.error(
-      'Cuadrillas:',
+      'Datos auxiliares:',
       error.message
     );
   }

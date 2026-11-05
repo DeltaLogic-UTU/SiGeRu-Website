@@ -3,239 +3,114 @@ const API_GESTION = 'http://127.0.0.1:8001';
 let crews = [];
 let responsables = [];
 
-const crewState = {
-  selectedId: null
-};
+const crewState = { selectedId: null };
 
-const crewBody =
-  document.getElementById(
-    'crewTableBody'
-  );
+const $ = id => document.getElementById(id);
 
-const membersBody =
-  document.getElementById(
-    'crewMembersBody'
-  );
+const crewBody = $('crewTableBody');
+const membersBody = $('crewMembersBody');
+const cleaningHistoryBody = $('crewCleaningHistoryBody');
+const claimsHistoryBody = $('crewClaimsHistoryBody');
+const incidentsHistoryBody = $('crewIncidentsHistoryBody');
 
-const cleaningHistoryBody =
-  document.getElementById(
-    'crewCleaningHistoryBody'
-  );
-
-const claimsHistoryBody =
-  document.getElementById(
-    'crewClaimsHistoryBody'
-  );
-
-const incidentsHistoryBody =
-  document.getElementById(
-    'crewIncidentsHistoryBody'
-  );
-
-const crewModal =
-  bootstrap.Modal.getOrCreateInstance(
-    document.getElementById(
-      'crewModal'
-    )
-  );
-
-const memberModal =
-  bootstrap.Modal.getOrCreateInstance(
-    document.getElementById(
-      'memberModal'
-    )
-  );
+const crewModal = bootstrap.Modal.getOrCreateInstance($('crewModal'));
+const memberModal = bootstrap.Modal.getOrCreateInstance($('memberModal'));
 
 const esc = value =>
-  String(value ?? '').replace(
-    /[&<>"']/g,
-    character =>
-      ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-      })[character]
-  );
+  String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  })[character]);
 
-const emptyRow = (
-  columns,
-  message = 'Sin registros.'
-) =>
-  `<tr><td colspan="${columns}" class="text-center py-3 text-muted-custom">${message}</td></tr>`;
+const emptyRow = (columns, message = 'Sin registros.') =>
+  `<tr><td colspan="${columns}" class="text-center py-3 text-muted-custom">${esc(message)}</td></tr>`;
 
 const selectedCrew = () =>
-  crews.find(
-    item =>
-      item.id ===
-      crewState.selectedId
-  );
+  crews.find(item => item.id === crewState.selectedId);
 
 function obtenerData(result) {
-  if (Array.isArray(result)) {
-    return result;
-  }
-
-  if (
-    Array.isArray(
-      result?.data
-    )
-  ) {
-    return result.data;
-  }
-
+  if (Array.isArray(result)) return result;
+  if (Array.isArray(result?.data)) return result.data;
   return [];
 }
 
-// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
-async function requestGestion(
-  url,
-  options = {}
-) {
-  const token = localStorage.getItem('access_token');
+async function requestGestion(url, options = {}) {
+  const token = typeof getToken === 'function'
+    ? getToken()
+    : localStorage.getItem('access_token');
 
-  const settings = {
-    method:
-      options.method || 'GET',
+  if (!token) {
+    throw new Error('No hay una sesión activa. Iniciá sesión.');
+  }
 
-    headers: {
-      Accept:
-        'application/json',
+  const method = (options.method || 'GET').toUpperCase();
 
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {})
-    }
+  const headers = {
+    Accept: 'application/json',
+    Authorization: `Bearer ${token}`,
+    ...(options.body !== undefined
+      ? { 'Content-Type': 'application/json' }
+      : {}),
+    ...(options.headers || {})
   };
 
-  if (
-    options.body !==
-    undefined
-  ) {
-    settings.body =
-      options.body;
-  }
-
-  if (
-    [
-      'POST',
-      'PUT',
-      'PATCH',
-      'DELETE'
-    ].includes(
-      settings.method
-    )
-  ) {
-    settings.headers = {
-      ...settings.headers,
-
-      'Content-Type':
-        'application/json'
-    };
-  }
-
-  const response =
-    await fetch(
-      `${API_GESTION}${url}`,
-      settings
-    );
-
-  let result = {};
+  let response;
 
   try {
-    result =
-      await response.json();
+    response = await fetch(`${API_GESTION}${url}`, {
+      method,
+      headers,
+      ...(options.body !== undefined
+        ? { body: options.body }
+        : {})
+    });
   } catch {
-    result = {};
+    throw new Error('No se pudo conectar con la API de Gestión.');
   }
 
-  if (!response.ok) {
-    let message =
-      result.message ||
-      'No se pudo completar la operación.';
+  const result = await response.json().catch(() => ({}));
 
-    if (result.errors) {
-      const firstError =
-        Object.values(
-          result.errors
-        )[0];
-
-      if (
-        Array.isArray(
-          firstError
-        ) &&
-        firstError.length
-      ) {
-        message =
-          firstError[0];
-      }
-    }
+  if (!response.ok || result.success === false) {
+    const errores = result.errors
+      ? Object.values(result.errors).flat().filter(Boolean).join(' ')
+      : '';
 
     throw new Error(
-      message
+      errores ||
+      result.message ||
+      `Error HTTP ${response.status}`
     );
   }
 
   return result;
 }
 
-function convertirIntegrante(
-  item
-) {
+
+function convertirIntegrante(item) {
   return {
-    id_usuario:
-      Number(
-        item.id_usuario
-      ),
-
-    nombre:
-      [
-        item.nombre || '',
-        item.apellido || ''
-      ]
-        .join(' ')
-        .trim(),
-
-    estado:
-      item.estado ||
-      'Activo',
-
-    fecha:
-      String(
-        item.fecha_asignacion ||
-        ''
-      ).slice(0, 10) ||
-      '—'
+    id_usuario: Number(item.id_usuario),
+    nombre: [
+      item.nombre || '',
+      item.apellido || ''
+    ].join(' ').trim(),
+    estado: item.estado || 'Activo',
+    fecha: String(item.fecha_asignacion || '')
+      .slice(0, 10) || '—'
   };
 }
 
-function convertirCuadrilla(
-  item
-) {
+function convertirCuadrilla(item) {
   return {
-    id:
-      item.id_cuadrilla,
-
-    id_responsable:
-      item.id_responsable,
-
-    responsable:
-      item.responsable ||
-      'Sin responsable',
-
-    turno:
-      item.turno || '',
-
-    estado:
-      item.estado || '',
-
-    ubicacion:
-      item.ubicacion_actual ||
-      item.ubicacion ||
-      '',
-
+    id: item.id_cuadrilla,
+    id_responsable: item.id_responsable,
+    responsable: item.responsable || 'Sin responsable',
+    turno: item.turno || '',
+    estado: item.estado || '',
+    ubicacion: item.ubicacion_actual || item.ubicacion || '',
     integrantes: [],
-
     historiales: {
       limpieza: [],
       reclamos: [],
@@ -244,101 +119,58 @@ function convertirCuadrilla(
   };
 }
 
-async function cargarIntegrantesCuadrilla(
-  crew
-) {
-  const result =
-    await requestGestion(
-      `/api/cuadrillas/${encodeURIComponent(
-        crew.id
-      )}/integrantes`
-    );
+async function cargarIntegrantesCuadrilla(crew) {
+  const result = await requestGestion(
+    `/api/cuadrillas/${encodeURIComponent(crew.id)}/integrantes`
+  );
 
-  crew.integrantes =
-    obtenerData(result).map(
-      convertirIntegrante
-    );
+  crew.integrantes = obtenerData(result).map(convertirIntegrante);
 }
 
-async function cargarHistorialesCuadrilla(
-  crew
-) {
-  const result =
-    await requestGestion(
-      `/api/cuadrillas/${encodeURIComponent(
-        crew.id
-      )}/historiales`
-    );
+async function cargarHistorialesCuadrilla(crew) {
+  const result = await requestGestion(
+    `/api/cuadrillas/${encodeURIComponent(crew.id)}/historiales`
+  );
 
-  const data =
-    result?.data || {};
+  const data = result?.data || {};
 
   crew.historiales = {
-    limpieza:
-      Array.isArray(
-        data.limpieza
-      )
-        ? data.limpieza
-        : [],
-
-    reclamos:
-      Array.isArray(
-        data.reclamos
-      )
-        ? data.reclamos
-        : [],
-
-    incidencias:
-      Array.isArray(
-        data.incidencias
-      )
-        ? data.incidencias
-        : []
+    limpieza: Array.isArray(data.limpieza) ? data.limpieza : [],
+    reclamos: Array.isArray(data.reclamos) ? data.reclamos : [],
+    incidencias: Array.isArray(data.incidencias) ? data.incidencias : []
   };
 }
 
-async function cargarDetalleCuadrilla(
-  crew
-) {
-  await Promise.all([
-    cargarIntegrantesCuadrilla(
-      crew
-    ),
-
-    cargarHistorialesCuadrilla(
-      crew
-    )
+async function cargarDetalleCuadrilla(crew) {
+  const resultados = await Promise.allSettled([
+    cargarIntegrantesCuadrilla(crew),
+    cargarHistorialesCuadrilla(crew)
   ]);
+
+  for (let i = 0; i < resultados.length; i++) {
+    if (resultados[i].status === 'rejected') {
+      console.error(
+        i === 0
+          ? `Error de integrantes (${crew.id}):`
+          : `Error de historiales (${crew.id}):`,
+        resultados[i].reason
+      );
+    }
+  }
 }
 
 async function cargarCuadrillas() {
-  const result =
-    await requestGestion(
-      '/api/cuadrillas'
-    );
+  const result = await requestGestion('/api/cuadrillas');
 
-  crews =
-    obtenerData(result).map(
-      convertirCuadrilla
-    );
+  crews = obtenerData(result).map(convertirCuadrilla);
 
-  await Promise.all(
-    crews.map(
-      cargarDetalleCuadrilla
-    )
-  );
+  await Promise.all(crews.map(cargarDetalleCuadrilla));
 
   if (
     !crewState.selectedId ||
-    !crews.some(
-      item =>
-        item.id ===
-        crewState.selectedId
-    )
+    !crews.some(item => item.id === crewState.selectedId)
   ) {
-    crewState.selectedId =
-      crews[0]?.id ||
-      null;
+    crewState.selectedId = crews[0]?.id || null;
   }
 
   renderCrews();
@@ -346,1377 +178,656 @@ async function cargarCuadrillas() {
 }
 
 async function cargarResponsables() {
-  const result =
-    await requestGestion(
-      '/api/cuadrillas/responsables'
-    );
-
-  responsables =
-    obtenerData(result);
+  const result = await requestGestion('/api/cuadrillas/responsables');
+  responsables = obtenerData(result);
 }
 
-async function cargarIntegrantesDisponibles(
-  idCuadrilla
-) {
-  const result =
-    await requestGestion(
-      `/api/cuadrillas/${encodeURIComponent(
-        idCuadrilla
-      )}/integrantes-disponibles`
-    );
-
-  return obtenerData(
-    result
+async function cargarIntegrantesDisponibles(idCuadrilla) {
+  const result = await requestGestion(
+    `/api/cuadrillas/${encodeURIComponent(idCuadrilla)}/integrantes-disponibles`
   );
+
+  return obtenerData(result);
 }
 
-function prepararSelectorResponsable(
-  idSeleccionado = ''
-) {
-  let campo =
-    document.getElementById(
-      'crewChiefInput'
-    );
+function prepararSelectorResponsable(idSeleccionado = '') {
+  let campo = $('crewChiefInput');
+  if (!campo) return;
 
-  if (!campo) {
-    return;
-  }
-
-  if (
-    campo.tagName
-      .toLowerCase() !==
-    'select'
-  ) {
-    const select =
-      document.createElement(
-        'select'
-      );
-
-    select.id =
-      campo.id;
-
-    select.name =
-      campo.name;
-
-    select.className =
-      campo.className;
-
-    select.required =
-      true;
-
-    campo.replaceWith(
-      select
-    );
-
-    campo =
-      select;
+  if (campo.tagName.toLowerCase() !== 'select') {
+    const select = document.createElement('select');
+    select.id = campo.id;
+    select.name = campo.name;
+    select.className = campo.className;
+    select.required = true;
+    campo.replaceWith(select);
+    campo = select;
   }
 
   campo.innerHTML = `
-    <option value="">
-      Seleccionar barrendero
-    </option>
-
-    ${responsables
-      .map(
-        usuario => {
-          const selected =
-            String(
-              usuario.id_usuario
-            ) ===
-            String(
-              idSeleccionado
-            );
-
-          return `
-            <option
-              value="${esc(
-                usuario.id_usuario
-              )}"
-              ${
-                selected
-                  ? 'selected'
-                  : ''
-              }
-            >
-              ${esc(
-                usuario.nombre
-              )}
-              ${esc(
-                usuario.apellido
-              )}
-            </option>
-          `;
-        }
-      )
-      .join('')}
+    <option value="">Seleccionar barrendero</option>
+    ${responsables.map(usuario => `
+      <option
+        value="${esc(usuario.id_usuario)}"
+        ${String(usuario.id_usuario) === String(idSeleccionado)
+      ? 'selected' : ''}>
+        ${esc(usuario.nombre)} ${esc(usuario.apellido)}
+      </option>
+    `).join('')}
   `;
 }
 
-async function prepararSelectorIntegrante(
-  idSeleccionado = ''
-) {
-  const crew =
-    selectedCrew();
+async function prepararSelectorIntegrante(idSeleccionado = '') {
+  const crew = selectedCrew();
+  if (!crew) return;
 
-  if (!crew) {
-    return;
+  let campo = $('memberName');
+  if (!campo) return;
+
+  if (campo.tagName.toLowerCase() !== 'select') {
+    const select = document.createElement('select');
+    select.id = campo.id;
+    select.name = campo.name;
+    select.className = campo.className;
+    select.required = true;
+    campo.replaceWith(select);
+    campo = select;
   }
 
-  let campo =
-    document.getElementById(
-      'memberName'
-    );
-
-  if (!campo) {
-    return;
-  }
-
-  if (
-    campo.tagName
-      .toLowerCase() !==
-    'select'
-  ) {
-    const select =
-      document.createElement(
-        'select'
-      );
-
-    select.id =
-      campo.id;
-
-    select.name =
-      campo.name;
-
-    select.className =
-      campo.className;
-
-    select.required =
-      true;
-
-    campo.replaceWith(
-      select
-    );
-
-    campo =
-      select;
-  }
-
-  const disponibles =
-    await cargarIntegrantesDisponibles(
-      crew.id
-    );
-
-  const opciones = [
-    ...disponibles
-  ];
+  const disponibles = await cargarIntegrantesDisponibles(crew.id);
+  const opciones = [...disponibles];
 
   if (idSeleccionado) {
-    const actual =
-      crew.integrantes.find(
-        integrante =>
-          String(
-            integrante.id_usuario
-          ) ===
-          String(
-            idSeleccionado
-          )
-      );
+    const actual = crew.integrantes.find(
+      integrante =>
+        String(integrante.id_usuario) === String(idSeleccionado)
+    );
 
-    const existe =
-      opciones.some(
-        usuario =>
-          String(
-            usuario.id_usuario
-          ) ===
-          String(
-            idSeleccionado
-          )
-      );
+    const existe = opciones.some(
+      usuario =>
+        String(usuario.id_usuario) === String(idSeleccionado)
+    );
 
-    if (
-      actual &&
-      !existe
-    ) {
+    if (actual && !existe) {
       opciones.unshift({
-        id_usuario:
-          actual.id_usuario,
-
-        nombre:
-          actual.nombre,
-
-        apellido:
-          ''
+        id_usuario: actual.id_usuario,
+        nombre: actual.nombre,
+        apellido: ''
       });
     }
   }
 
   campo.innerHTML = `
-    <option value="">
-      Seleccionar barrendero
-    </option>
-
-    ${opciones
-      .map(
-        usuario => {
-          const selected =
-            String(
-              usuario.id_usuario
-            ) ===
-            String(
-              idSeleccionado
-            );
-
-          return `
-            <option
-              value="${esc(
-                usuario.id_usuario
-              )}"
-              ${
-                selected
-                  ? 'selected'
-                  : ''
-              }
-            >
-              ${esc(
-                usuario.nombre
-              )}
-              ${esc(
-                usuario.apellido ||
-                ''
-              )}
-            </option>
-          `;
-        }
-      )
-      .join('')}
+    <option value="">Seleccionar barrendero</option>
+    ${opciones.map(usuario => `
+      <option
+        value="${esc(usuario.id_usuario)}"
+        ${String(usuario.id_usuario) === String(idSeleccionado)
+      ? 'selected' : ''}>
+        ${esc(usuario.nombre)} ${esc(usuario.apellido || '')}
+      </option>
+    `).join('')}
   `;
 }
 
-function historyCount(
-  crew
-) {
+function historyCount(crew) {
   return (
-    crew.historiales
-      .limpieza.length +
-
-    crew.historiales
-      .reclamos.length +
-
-    crew.historiales
-      .incidencias.length
+    crew.historiales.limpieza.length +
+    crew.historiales.reclamos.length +
+    crew.historiales.incidencias.length
   );
 }
 
 function renderCrews() {
-  if (!crewBody) {
-    return;
-  }
+  if (!crewBody) return;
 
   if (!crews.length) {
-    crewBody.innerHTML =
-      emptyRow(
-        8,
-        'No hay cuadrillas registradas.'
-      );
-
+    crewBody.innerHTML = emptyRow(
+      8,
+      'No hay cuadrillas registradas.'
+    );
     return;
   }
 
-  crewBody.innerHTML =
-    crews
-      .map(
-        item => `
-          <tr
-            class="${
-              item.id ===
-              crewState.selectedId
-                ? 'table-active'
-                : ''
-            }"
-            data-crew-select="${esc(
-              item.id
-            )}"
-          >
-            <td>
-              <strong>
-                ${esc(
-                  item.id
-                )}
-              </strong>
-            </td>
+  crewBody.innerHTML = crews.map(item => `
+    <tr
+      class="${item.id === crewState.selectedId ? 'table-active' : ''}"
+      data-crew-select="${esc(item.id)}">
 
-            <td>
-              ${esc(
-                item.responsable
-              )}
-            </td>
+      <td><strong>${esc(item.id)}</strong></td>
+      <td>${esc(item.responsable)}</td>
+      <td>${esc(item.turno)}</td>
+      <td>${esc(item.estado)}</td>
+      <td>${esc(item.ubicacion)}</td>
+      <td>${historyCount(item)}</td>
+      <td>${item.integrantes.length}</td>
 
-            <td>
-              ${esc(
-                item.turno
-              )}
-            </td>
+      <td>
+        <div class="d-flex gap-2">
+          <button
+            class="btn btn-outline btn-sm"
+            data-crew-edit="${esc(item.id)}"
+            type="button"
+            aria-label="Editar ${esc(item.id)}">
+            <i class="bi bi-pencil"></i>
+          </button>
 
-            <td>
-              ${esc(
-                item.estado
-              )}
-            </td>
-
-            <td>
-              ${esc(
-                item.ubicacion
-              )}
-            </td>
-
-            <td>
-              ${historyCount(
-                item
-              )}
-            </td>
-
-            <td>
-              ${
-                item.integrantes
-                  .length
-              }
-            </td>
-
-            <td>
-              <div class="d-flex gap-2">
-
-                <button
-                  class="btn btn-outline btn-sm"
-                  data-crew-edit="${esc(
-                    item.id
-                  )}"
-                  type="button"
-                  aria-label="Editar ${esc(
-                    item.id
-                  )}"
-                >
-                  <i class="bi bi-pencil"></i>
-                </button>
-
-                <button
-                  class="btn btn-outline btn-sm"
-                  data-crew-delete="${esc(
-                    item.id
-                  )}"
-                  type="button"
-                  aria-label="Eliminar ${esc(
-                    item.id
-                  )}"
-                >
-                  <i class="bi bi-trash"></i>
-                </button>
-
-              </div>
-            </td>
-          </tr>
-        `
-      )
-      .join('');
+          <button
+            class="btn btn-outline btn-sm"
+            data-crew-delete="${esc(item.id)}"
+            type="button"
+            aria-label="Eliminar ${esc(item.id)}">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
 }
 
 function renderDetails() {
-  const crew =
-    selectedCrew();
+  const crew = selectedCrew();
 
   if (!crew) {
     if (membersBody) {
-      membersBody.innerHTML =
-        emptyRow(
-          4,
-          'Seleccioná una cuadrilla.'
-        );
+      membersBody.innerHTML = emptyRow(
+        4, 'Seleccioná una cuadrilla.'
+      );
     }
 
-    if (
-      cleaningHistoryBody
-    ) {
-      cleaningHistoryBody
-        .innerHTML =
-        emptyRow(3);
+    if (cleaningHistoryBody) {
+      cleaningHistoryBody.innerHTML = emptyRow(3);
     }
 
-    if (
-      claimsHistoryBody
-    ) {
-      claimsHistoryBody
-        .innerHTML =
-        emptyRow(3);
+    if (claimsHistoryBody) {
+      claimsHistoryBody.innerHTML = emptyRow(3);
     }
 
-    if (
-      incidentsHistoryBody
-    ) {
-      incidentsHistoryBody
-        .innerHTML =
-        emptyRow(6);
+    if (incidentsHistoryBody) {
+      incidentsHistoryBody.innerHTML = emptyRow(6);
     }
 
     return;
   }
 
-  const title =
-    document.getElementById(
-      'crewMembersTitle'
-    );
+  const title = $('crewMembersTitle');
 
   if (title) {
-    title.textContent =
-      `Integrantes de ${crew.id}`;
+    title.textContent = `Integrantes de ${crew.id}`;
   }
+
 
   if (membersBody) {
-    membersBody.innerHTML =
-      crew.integrantes.length
-        ? crew.integrantes
-            .map(
-              (
-                member,
-                index
-              ) => `
-                <tr>
+    membersBody.innerHTML = crew.integrantes.length
+      ? crew.integrantes.map((member, index) => `
+        <tr>
+          <td><strong>${esc(member.nombre)}</strong></td>
+          <td>${esc(member.estado)}</td>
+          <td>${esc(member.fecha)}</td>
+          <td>
+            <div class="d-flex gap-2">
+              <button
+                class="btn btn-outline btn-sm"
+                data-member-edit="${index}"
+                type="button"
+                aria-label="Editar integrante">
+                <i class="bi bi-pencil"></i>
+              </button>
 
-                  <td>
-                    <strong>
-                      ${esc(
-                        member.nombre
-                      )}
-                    </strong>
-                  </td>
-
-                  <td>
-                    ${esc(
-                      member.estado
-                    )}
-                  </td>
-
-                  <td>
-                    ${esc(
-                      member.fecha
-                    )}
-                  </td>
-
-                  <td>
-                    <div class="d-flex gap-2">
-
-                      <button
-                        class="btn btn-outline btn-sm"
-                        data-member-edit="${index}"
-                        type="button"
-                        aria-label="Editar integrante"
-                      >
-                        <i class="bi bi-pencil"></i>
-                      </button>
-
-                      <button
-                        class="btn btn-outline btn-sm"
-                        data-member-delete="${index}"
-                        type="button"
-                        aria-label="Quitar integrante"
-                      >
-                        <i class="bi bi-trash"></i>
-                      </button>
-
-                    </div>
-                  </td>
-
-                </tr>
-              `
-            )
-            .join('')
-        : emptyRow(
-            4,
-            'Sin integrantes.'
-          );
+              <button
+                class="btn btn-outline btn-sm"
+                data-member-delete="${index}"
+                type="button"
+                aria-label="Quitar integrante">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join('')
+      : emptyRow(4, 'Sin integrantes.');
   }
 
-  if (
-    cleaningHistoryBody
-  ) {
-    cleaningHistoryBody
-      .innerHTML =
-      crew.historiales
-        .limpieza.length
-        ? crew.historiales
-            .limpieza
-            .map(
-              item => `
-                <tr>
 
-                  <td>
-                    ${esc(
-                      item.circuito
-                    )}
-                  </td>
-
-                  <td>
-                    ${esc(
-                      item.asignacion
-                    )}
-                  </td>
-
-                  <td>
-                    ${esc(
-                      item.finalizacion
-                    )}
-                  </td>
-
-                </tr>
-              `
-            )
-            .join('')
+  if (cleaningHistoryBody) {
+    cleaningHistoryBody.innerHTML =
+      crew.historiales.limpieza.length
+        ? crew.historiales.limpieza.map(item => `
+          <tr>
+            <td>${esc(item.circuito)}</td>
+            <td>${esc(item.asignacion)}</td>
+            <td>${esc(item.finalizacion)}</td>
+          </tr>
+        `).join('')
         : emptyRow(3);
   }
 
-  if (
-    claimsHistoryBody
-  ) {
-    claimsHistoryBody
-      .innerHTML =
-      crew.historiales
-        .reclamos.length
-        ? crew.historiales
-            .reclamos
-            .map(
-              item => `
-                <tr>
 
-                  <td>
-                    ${esc(
-                      item.reclamo
-                    )}
-                  </td>
-
-                  <td>
-                    ${esc(
-                      item.asignacion
-                    )}
-                  </td>
-
-                  <td>
-                    ${esc(
-                      item.finalizacion
-                    )}
-                  </td>
-
-                </tr>
-              `
-            )
-            .join('')
+  if (claimsHistoryBody) {
+    claimsHistoryBody.innerHTML =
+      crew.historiales.reclamos.length
+        ? crew.historiales.reclamos.map(item => `
+          <tr>
+            <td>${esc(item.reclamo)}</td>
+            <td>${esc(item.asignacion)}</td>
+            <td>${esc(item.finalizacion)}</td>
+          </tr>
+        `).join('')
         : emptyRow(3);
   }
 
-  if (
-    incidentsHistoryBody
-  ) {
-    incidentsHistoryBody
-      .innerHTML =
-      crew.historiales
-        .incidencias.length
-        ? crew.historiales
-            .incidencias
-            .map(
-              item => `
-                <tr>
 
-                  <td>
-                    <strong>
-                      ${esc(
-                        item.codigo
-                      )}
-                    </strong>
-                  </td>
-
-                  <td>
-                    ${esc(
-                      item.tipo
-                    )}
-                  </td>
-
-                  <td>
-                    ${esc(
-                      item.estado
-                    )}
-                  </td>
-
-                  <td>
-                    ${esc(
-                      item.reporte
-                    )}
-                  </td>
-
-                  <td>
-                    ${esc(
-                      item.resolucion
-                    )}
-                  </td>
-
-                  <td>
-                    ${esc(
-                      item.descripcion
-                    )}
-                  </td>
-
-                </tr>
-              `
-            )
-            .join('')
+  if (incidentsHistoryBody) {
+    incidentsHistoryBody.innerHTML =
+      crew.historiales.incidencias.length
+        ? crew.historiales.incidencias.map(item => `
+          <tr>
+            <td><strong>${esc(item.codigo)}</strong></td>
+            <td>${esc(item.tipo)}</td>
+            <td>${esc(item.estado)}</td>
+            <td>${esc(item.reporte)}</td>
+            <td>${esc(item.resolucion)}</td>
+            <td>${esc(item.descripcion)}</td>
+          </tr>
+        `).join('')
         : emptyRow(6);
   }
 }
 
-async function fillCrew(
-  item = {}
-) {
-  if (
-    !responsables.length
-  ) {
+async function fillCrew(item = {}) {
+  if (!responsables.length) {
     await cargarResponsables();
   }
 
-  const originalInput =
-    document.getElementById(
-      'crewOriginalId'
-    );
-
-  const codeInput =
-    document.getElementById(
-      'crewCodeInput'
-    );
+  const originalInput = $('crewOriginalId');
+  const codeInput = $('crewCodeInput');
 
   if (originalInput) {
-    originalInput.value =
-      item.id || '';
+    originalInput.value = item.id || '';
   }
 
   if (codeInput) {
-    codeInput.value =
-      item.id || '';
-
-    codeInput.disabled =
-      Boolean(
-        item.id
-      );
+    codeInput.value = item.id || '';
+    codeInput.disabled = Boolean(item.id);
   }
 
-  prepararSelectorResponsable(
-    item.id_responsable ||
-    ''
-  );
+  prepararSelectorResponsable(item.id_responsable || '');
 
-  const turnInput =
-    document.getElementById(
-      'crewTurnInput'
-    );
+  const turnInput = $('crewTurnInput');
+  const stateInput = $('crewStateInput');
+  const locationInput = $('crewLocationInput');
+  const modalTitle = $('crewModalTitle');
 
   if (turnInput) {
-    turnInput.value =
-      item.turno ||
-      'Nocturno';
+    turnInput.value = item.turno || 'Nocturno';
   }
-
-  const stateInput =
-    document.getElementById(
-      'crewStateInput'
-    );
 
   if (stateInput) {
-    stateInput.value =
-      item.estado ||
-      'En base';
+    stateInput.value = item.estado || 'En base';
   }
-
-  const locationInput =
-    document.getElementById(
-      'crewLocationInput'
-    );
 
   if (locationInput) {
-    locationInput.value =
-      item.ubicacion ||
-      '';
+    locationInput.value = item.ubicacion || '';
   }
-
-  const modalTitle =
-    document.getElementById(
-      'crewModalTitle'
-    );
 
   if (modalTitle) {
-    modalTitle.textContent =
-      item.id
-        ? 'Editar cuadrilla'
-        : 'Nueva cuadrilla';
+    modalTitle.textContent = item.id
+      ? 'Editar cuadrilla'
+      : 'Nueva cuadrilla';
   }
 }
 
-const crewForm =
-  document.getElementById(
-    'crewForm'
-  );
+const crewForm = $('crewForm');
 
-if (crewForm) {
-  crewForm.addEventListener(
-    'submit',
-    async event => {
-      event.preventDefault();
+crewForm?.addEventListener('submit', async event => {
+  event.preventDefault();
 
-      const original =
-        document.getElementById(
-          'crewOriginalId'
-        )?.value || '';
+  const original = $('crewOriginalId')?.value || '';
+  const idResponsable = $('crewChiefInput')?.value || '';
+  const turno = $('crewTurnInput')?.value || '';
+  const estado = $('crewStateInput')?.value || '';
+  const ubicacion = $('crewLocationInput')?.value.trim() || '';
 
-      const idResponsable =
-        document.getElementById(
-          'crewChiefInput'
-        )?.value || '';
+  if (!idResponsable) {
+    alert('Seleccioná un barrendero responsable.');
+    return;
+  }
 
-      const turno =
-        document.getElementById(
-          'crewTurnInput'
-        )?.value || '';
+  if (!turno) {
+    alert('Seleccioná el turno.');
+    return;
+  }
 
-      const estado =
-        document.getElementById(
-          'crewStateInput'
-        )?.value || '';
+  if (!estado) {
+    alert('Ingresá el estado.');
+    return;
+  }
 
-      const ubicacion =
-        document.getElementById(
-          'crewLocationInput'
-        )?.value.trim() ||
-        '';
+  if (!ubicacion) {
+    alert('Ingresá la ubicación.');
+    return;
+  }
 
-      if (
-        !idResponsable
-      ) {
-        alert(
-          'Seleccioná un barrendero responsable.'
-        );
+  const payload = {
+    id_responsable: Number(idResponsable),
+    turno,
+    estado,
+    ubicacion_actual: ubicacion
+  };
 
-        return;
-      }
-
-      if (!turno) {
-        alert(
-          'Seleccioná el turno.'
-        );
-
-        return;
-      }
-
-      if (!estado) {
-        alert(
-          'Ingresá el estado.'
-        );
-
-        return;
-      }
-
-      if (!ubicacion) {
-        alert(
-          'Ingresá la ubicación.'
-        );
-
-        return;
-      }
-
-      const payload = {
-        id_responsable:
-          Number(
-            idResponsable
-          ),
-
-        turno,
-
-        estado,
-
-        ubicacion_actual:
-          ubicacion
-      };
-
-      try {
-        if (original) {
-          await requestGestion(
-            `/api/cuadrillas/${encodeURIComponent(
-              original
-            )}`,
-            {
-              method:
-                'PUT',
-
-              body:
-                JSON.stringify(
-                  payload
-                )
-            }
-          );
-        } else {
-          const codigo =
-            document.getElementById(
-              'crewCodeInput'
-            )?.value.trim() ||
-            '';
-
-          if (!codigo) {
-            alert(
-              'Ingresá el código de la cuadrilla.'
-            );
-
-            return;
-          }
-
-          payload.id_cuadrilla =
-            codigo;
-
-          await requestGestion(
-            '/api/cuadrillas',
-            {
-              method:
-                'POST',
-
-              body:
-                JSON.stringify(
-                  payload
-                )
-            }
-          );
-
-          crewState.selectedId =
-            codigo;
+  try {
+    if (original) {
+      await requestGestion(
+        `/api/cuadrillas/${encodeURIComponent(original)}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify(payload)
         }
-
-        crewModal.hide();
-
-        await cargarResponsables();
-
-        await cargarCuadrillas();
-      } catch (error) {
-        alert(
-          error.message
-        );
-      }
-    }
-  );
-}
-
-const memberForm =
-  document.getElementById(
-    'memberForm'
-  );
-
-if (memberForm) {
-  memberForm.addEventListener(
-    'submit',
-    async event => {
-      event.preventDefault();
-
-      const crew =
-        selectedCrew();
-
-      if (!crew) {
-        return;
-      }
-
-      const nuevoId =
-        Number(
-          document.getElementById(
-            'memberName'
-          )?.value
-        );
-
-      const idOriginal =
-        Number(
-          document.getElementById(
-            'memberIndex'
-          )?.value
-        );
-
-      if (!nuevoId) {
-        alert(
-          'Seleccioná un barrendero.'
-        );
-
-        return;
-      }
-
-      try {
-        if (idOriginal) {
-          if (
-            idOriginal !==
-            nuevoId
-          ) {
-            await requestGestion(
-              `/api/cuadrillas/${encodeURIComponent(
-                crew.id
-              )}/integrantes/${idOriginal}`,
-              {
-                method:
-                  'PUT',
-
-                body:
-                  JSON.stringify({
-                    id_usuario:
-                      nuevoId
-                  })
-              }
-            );
-          }
-        } else {
-          await requestGestion(
-            `/api/cuadrillas/${encodeURIComponent(
-              crew.id
-            )}/integrantes`,
-            {
-              method:
-                'POST',
-
-              body:
-                JSON.stringify({
-                  id_usuario:
-                    nuevoId
-                })
-            }
-          );
-        }
-
-        memberModal.hide();
-
-        await cargarCuadrillas();
-      } catch (error) {
-        alert(
-          error.message
-        );
-      }
-    }
-  );
-}
-
-const newCrewButton =
-  document.querySelector(
-    '[data-crew-new]'
-  );
-
-if (newCrewButton) {
-  newCrewButton
-    .addEventListener(
-      'click',
-      async () => {
-        try {
-          if (crewForm) {
-            crewForm.reset();
-          }
-
-          await fillCrew();
-
-          crewModal.show();
-        } catch (error) {
-          alert(
-            error.message
-          );
-        }
-      }
-    );
-}
-
-const newMemberButton =
-  document.querySelector(
-    '[data-member-new]'
-  );
-
-if (newMemberButton) {
-  newMemberButton
-    .addEventListener(
-      'click',
-      async () => {
-        const crew =
-          selectedCrew();
-
-        if (!crew) {
-          alert(
-            'Seleccioná una cuadrilla.'
-          );
-
-          return;
-        }
-
-        try {
-          if (memberForm) {
-            memberForm.reset();
-          }
-
-          const indexInput =
-            document.getElementById(
-              'memberIndex'
-            );
-
-          if (indexInput) {
-            indexInput.value =
-              '';
-          }
-
-          await prepararSelectorIntegrante();
-
-          const stateInput =
-            document.getElementById(
-              'memberState'
-            );
-
-          if (stateInput) {
-            stateInput.value =
-              'Activo';
-
-            stateInput.disabled =
-              true;
-          }
-
-          const dateInput =
-            document.getElementById(
-              'memberDate'
-            );
-
-          if (dateInput) {
-            dateInput.value =
-              new Date()
-                .toISOString()
-                .slice(0, 10);
-
-            dateInput.disabled =
-              true;
-          }
-
-          const title =
-            document.getElementById(
-              'memberModalTitle'
-            );
-
-          if (title) {
-            title.textContent =
-              'Nuevo integrante';
-          }
-
-          memberModal.show();
-        } catch (error) {
-          alert(
-            error.message
-          );
-        }
-      }
-    );
-}
-
-document.addEventListener(
-  'click',
-  async event => {
-    const row =
-      event.target.closest(
-        '[data-crew-select]'
       );
+    } else {
+      const codigo = $('crewCodeInput')?.value.trim() || '';
 
-    const action =
-      event.target.closest(
-        'button,a,input,select,textarea,label,[role="button"]'
-      );
+      if (!codigo) {
+        alert('Ingresá el código de la cuadrilla.');
+        return;
+      }
 
-    if (
-      row &&
-      !action
-    ) {
-      crewState.selectedId =
-        row.dataset
-          .crewSelect;
+      payload.id_cuadrilla = codigo;
 
-      renderCrews();
+      await requestGestion('/api/cuadrillas', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
 
-      renderDetails();
-
-      return;
+      crewState.selectedId = codigo;
     }
 
-    const edit =
-      event.target.closest(
-        '[data-crew-edit]'
-      );
+    crewModal.hide();
+    await cargarResponsables();
+    await cargarCuadrillas();
 
-    if (edit) {
-      const crew =
-        crews.find(
-          item =>
-            item.id ===
-            edit.dataset
-              .crewEdit
-        );
+  } catch (error) {
+    alert(error.message);
+  }
+});
 
-      if (!crew) {
-        return;
-      }
+const memberForm = $('memberForm');
 
-      try {
-        if (crewForm) {
-          crewForm.reset();
-        }
+memberForm?.addEventListener('submit', async event => {
+  event.preventDefault();
 
-        await fillCrew(
-          crew
-        );
+  const crew = selectedCrew();
+  if (!crew) return;
 
-        crewModal.show();
-      } catch (error) {
-        alert(
-          error.message
-        );
-      }
+  const nuevoId = Number($('memberName')?.value);
+  const idOriginal = Number($('memberIndex')?.value);
 
-      return;
-    }
+  if (!nuevoId) {
+    alert('Seleccioná un barrendero.');
+    return;
+  }
 
-    const remove =
-      event.target.closest(
-        '[data-crew-delete]'
-      );
-
-    if (remove) {
-      const id =
-        remove.dataset
-          .crewDelete;
-
-      const confirmar =
-        confirm(
-          `¿Eliminar la cuadrilla ${id}?`
-        );
-
-      if (!confirmar) {
-        return;
-      }
-
-      try {
+  try {
+    if (idOriginal) {
+      if (idOriginal !== nuevoId) {
         await requestGestion(
-          `/api/cuadrillas/${encodeURIComponent(
-            id
-          )}`,
+          `/api/cuadrillas/${encodeURIComponent(crew.id)}/integrantes/${idOriginal}`,
           {
-            method:
-              'DELETE'
+            method: 'PUT',
+            body: JSON.stringify({
+              id_usuario: nuevoId
+            })
           }
         );
-
-        if (
-          crewState.selectedId ===
-          id
-        ) {
-          crewState.selectedId =
-            null;
-        }
-
-        await cargarCuadrillas();
-      } catch (error) {
-        alert(
-          error.message
-        );
       }
+    } else {
+      await requestGestion(
+        `/api/cuadrillas/${encodeURIComponent(crew.id)}/integrantes`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            id_usuario: nuevoId
+          })
+        }
+      );
+    }
 
+    memberModal.hide();
+    await cargarCuadrillas();
+
+  } catch (error) {
+    alert(error.message);
+  }
+});
+
+
+document.querySelector('[data-crew-new]')
+  ?.addEventListener('click', async () => {
+    try {
+      crewForm?.reset();
+      await fillCrew();
+      crewModal.show();
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+
+
+document.querySelector('[data-member-new]')
+  ?.addEventListener('click', async () => {
+    const crew = selectedCrew();
+
+    if (!crew) {
+      alert('Seleccioná una cuadrilla.');
       return;
     }
 
-    const memberEdit =
-      event.target.closest(
-        '[data-member-edit]'
-      );
+    try {
+      memberForm?.reset();
 
-    if (memberEdit) {
-      const crew =
-        selectedCrew();
-
-      const member =
-        crew?.integrantes[
-          Number(
-            memberEdit.dataset
-              .memberEdit
-          )
-        ];
-
-      if (!member) {
-        return;
+      if ($('memberIndex')) {
+        $('memberIndex').value = '';
       }
 
-      try {
-        if (memberForm) {
-          memberForm.reset();
-        }
+      await prepararSelectorIntegrante();
 
-        const indexInput =
-          document.getElementById(
-            'memberIndex'
-          );
-
-        if (indexInput) {
-          indexInput.value =
-            member.id_usuario;
-        }
-
-        await prepararSelectorIntegrante(
-          member.id_usuario
-        );
-
-        const stateInput =
-          document.getElementById(
-            'memberState'
-          );
-
-        if (stateInput) {
-          stateInput.value =
-            member.estado;
-
-          stateInput.disabled =
-            true;
-        }
-
-        const dateInput =
-          document.getElementById(
-            'memberDate'
-          );
-
-        if (dateInput) {
-          dateInput.value =
-            member.fecha ===
-            '—'
-              ? ''
-              : member.fecha;
-
-          dateInput.disabled =
-            true;
-        }
-
-        const title =
-          document.getElementById(
-            'memberModalTitle'
-          );
-
-        if (title) {
-          title.textContent =
-            'Editar integrante';
-        }
-
-        memberModal.show();
-      } catch (error) {
-        alert(
-          error.message
-        );
+      if ($('memberState')) {
+        $('memberState').value = 'Activo';
+        $('memberState').disabled = true;
       }
 
+      if ($('memberDate')) {
+        $('memberDate').value = new Date()
+          .toISOString().slice(0, 10);
+        $('memberDate').disabled = true;
+      }
+
+      if ($('memberModalTitle')) {
+        $('memberModalTitle').textContent = 'Nuevo integrante';
+      }
+
+      memberModal.show();
+
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+
+document.addEventListener('click', async event => {
+  if (!(event.target instanceof Element)) return;
+
+  const row = event.target.closest('[data-crew-select]');
+
+  const action = event.target.closest(
+    'button,a,input,select,textarea,label,[role="button"]'
+  );
+
+
+  if (row && !action) {
+    crewState.selectedId = row.dataset.crewSelect;
+    renderCrews();
+    renderDetails();
+    return;
+  }
+
+
+  const edit = event.target.closest('[data-crew-edit]');
+
+  if (edit) {
+    const crew = crews.find(
+      item => item.id === edit.dataset.crewEdit
+    );
+
+    if (!crew) return;
+
+    try {
+      crewForm?.reset();
+      await fillCrew(crew);
+      crewModal.show();
+    } catch (error) {
+      alert(error.message);
+    }
+
+    return;
+  }
+
+  const remove = event.target.closest('[data-crew-delete]');
+
+  if (remove) {
+    const id = remove.dataset.crewDelete;
+
+    if (!confirm(`¿Eliminar la cuadrilla ${id}?`)) {
       return;
     }
 
-    const memberDelete =
-      event.target.closest(
-        '[data-member-delete]'
+    try {
+      await requestGestion(
+        `/api/cuadrillas/${encodeURIComponent(id)}`,
+        { method: 'DELETE' }
       );
 
-    if (memberDelete) {
-      const crew =
-        selectedCrew();
-
-      const member =
-        crew?.integrantes[
-          Number(
-            memberDelete.dataset
-              .memberDelete
-          )
-        ];
-
-      if (
-        !crew ||
-        !member
-      ) {
-        return;
+      if (crewState.selectedId === id) {
+        crewState.selectedId = null;
       }
 
-      const confirmar =
-        confirm(
-          `¿Quitar a ${member.nombre} de ${crew.id}?`
-        );
+      await cargarCuadrillas();
 
-      if (!confirmar) {
-        return;
+    } catch (error) {
+      alert(error.message);
+    }
+
+    return;
+  }
+
+
+  const memberEdit = event.target.closest('[data-member-edit]');
+
+  if (memberEdit) {
+    const crew = selectedCrew();
+
+    const member = crew?.integrantes[
+      Number(memberEdit.dataset.memberEdit)
+    ];
+
+    if (!member) return;
+
+    try {
+      memberForm?.reset();
+
+      if ($('memberIndex')) {
+        $('memberIndex').value = member.id_usuario;
       }
 
-      try {
-        await requestGestion(
-          `/api/cuadrillas/${encodeURIComponent(
-            crew.id
-          )}/integrantes/${member.id_usuario}`,
-          {
-            method:
-              'DELETE'
-          }
-        );
+      await prepararSelectorIntegrante(member.id_usuario);
 
-        await cargarCuadrillas();
-      } catch (error) {
-        alert(
-          error.message
-        );
+      if ($('memberState')) {
+        $('memberState').value = member.estado;
+        $('memberState').disabled = true;
       }
 
+      if ($('memberDate')) {
+        $('memberDate').value =
+          member.fecha === '—' ? '' : member.fecha;
+        $('memberDate').disabled = true;
+      }
+
+      if ($('memberModalTitle')) {
+        $('memberModalTitle').textContent = 'Editar integrante';
+      }
+
+      memberModal.show();
+
+    } catch (error) {
+      alert(error.message);
+    }
+
+    return;
+  }
+
+  const memberDelete = event.target.closest('[data-member-delete]');
+
+  if (memberDelete) {
+    const crew = selectedCrew();
+
+    const member = crew?.integrantes[
+      Number(memberDelete.dataset.memberDelete)
+    ];
+
+    if (!crew || !member) return;
+
+    if (!confirm(
+      `¿Quitar a ${member.nombre} de ${crew.id}?`
+    )) {
       return;
+    }
+
+    try {
+      await requestGestion(
+        `/api/cuadrillas/${encodeURIComponent(crew.id)}/integrantes/${member.id_usuario}`,
+        { method: 'DELETE' }
+      );
+
+      await cargarCuadrillas();
+
+    } catch (error) {
+      alert(error.message);
     }
   }
-);
+});
+
 
 async function iniciarCuadrillas() {
   try {
     await cargarResponsables();
-
     await cargarCuadrillas();
+
   } catch (error) {
-    console.error(
-      error
-    );
+    console.error('Error al cargar cuadrillas:', error);
 
     if (crewBody) {
-      crewBody.innerHTML =
-        emptyRow(
-          8,
-          error.message ||
-            'No se pudieron cargar las cuadrillas.'
-        );
+      crewBody.innerHTML = emptyRow(
+        8,
+        error.message || 'No se pudieron cargar las cuadrillas.'
+      );
     }
 
     if (membersBody) {
-      membersBody.innerHTML =
-        emptyRow(
-          4,
-          'No se pudieron cargar los integrantes.'
-        );
+      membersBody.innerHTML = emptyRow(
+        4,
+        'No se pudieron cargar los integrantes.'
+      );
     }
 
-    if (
-      cleaningHistoryBody
-    ) {
-      cleaningHistoryBody
-        .innerHTML =
-        emptyRow(3);
+    if (cleaningHistoryBody) {
+      cleaningHistoryBody.innerHTML = emptyRow(3);
     }
 
-    if (
-      claimsHistoryBody
-    ) {
-      claimsHistoryBody
-        .innerHTML =
-        emptyRow(3);
+    if (claimsHistoryBody) {
+      claimsHistoryBody.innerHTML = emptyRow(3);
     }
 
-    if (
-      incidentsHistoryBody
-    ) {
-      incidentsHistoryBody
-        .innerHTML =
-        emptyRow(6);
+    if (incidentsHistoryBody) {
+      incidentsHistoryBody.innerHTML = emptyRow(6);
     }
   }
 }

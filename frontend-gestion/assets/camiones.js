@@ -1,8 +1,7 @@
-
 let truckDetailMapInstance = null;
 let truckDetailMapMarker = null;
 
-function renderTruckMap(truck) {
+function renderTruckMap(truck, centrar = true) {
   const mapContainer = document.getElementById('truckDetailMap');
   if (!mapContainer || typeof window.L === 'undefined') return;
 
@@ -16,7 +15,6 @@ function renderTruckMap(truck) {
       maxZoom: 19
     }).addTo(truckDetailMapInstance);
 
-    // Polígono de la Base: Cantón del Buceo como referencia espacial
     window.L.polygon([
       [-34.897954, -56.130250],
       [-34.898171, -56.130496],
@@ -31,37 +29,32 @@ function renderTruckMap(truck) {
     }).bindPopup('<b>Base Operativa: Cantón del Buceo</b>').addTo(truckDetailMapInstance);
   }
 
-  // Determinar la posición del camión
-  let lat = -34.899286;
-  let lng = -56.129414;
-  let ubicacionNombre = truck.ubicacion || truck.gps || 'Base: Cantón del Buceo';
+  const BASE_BUCEO = [-34.899286, -56.129414];
 
-  try {
-    const gpsGlobal = JSON.parse(localStorage.getItem('sigeru_gps_camiones') || '{}');
-    const camionGps = gpsGlobal[truck.id_camion] || gpsGlobal[truck.matricula];
-    if (camionGps && camionGps.lat && camionGps.lng) {
-      lat = Number(camionGps.lat);
-      lng = Number(camionGps.lng);
-      if (camionGps.ubicacion) ubicacionNombre = camionGps.ubicacion;
-    } else if (truck.latitud && truck.longitud) {
-      lat = Number(truck.latitud);
-      lng = Number(truck.longitud);
-    } else {
-      const POSICIONES_BASE = {
-        5: [-34.899180, -56.129520],
-        6: [-34.899220, -56.129420],
-        7: [-34.899260, -56.129320],
-        8: [-34.899300, -56.129220],
-        9: [-34.899340, -56.129120]
-      };
-      if (POSICIONES_BASE[truck.id_camion]) {
-        lat = POSICIONES_BASE[truck.id_camion][0];
-        lng = POSICIONES_BASE[truck.id_camion][1];
-      }
-    }
-  } catch (_) {}
+  let lat = BASE_BUCEO[0];
+  let lng = BASE_BUCEO[1];
 
-  // Ícono circular nítido idéntico al de los contenedores
+  const apiLat = Number(truck.latitud);
+  const apiLng = Number(truck.longitud);
+
+  const gpsValido =
+    truck.latitud != null &&
+    truck.longitud != null &&
+    Number.isFinite(apiLat) &&
+    Number.isFinite(apiLng) &&
+    apiLat >= -90 &&
+    apiLat <= 90 &&
+    apiLng >= -180 &&
+    apiLng <= 180;
+
+  if (gpsValido) {
+    lat = apiLat;
+    lng = apiLng;
+  }
+
+  const ubicacionNombre = gpsValido
+    ? `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+    : 'Sin ubicación GPS registrada';
   const icono = window.L.divIcon({
     className: 'leaflet-camion-circulo-wrap',
     html: `
@@ -92,12 +85,13 @@ function renderTruckMap(truck) {
     </div>
   `);
 
-  truckDetailMapInstance.setView([lat, lng], 16);
+  if (centrar) {
+    truckDetailMapInstance.setView([lat, lng], 16);
 
-  setTimeout(() => {
-    truckDetailMapInstance?.invalidateSize();
-    truckDetailMapMarker?.openPopup();
-  }, 250);
+    setTimeout(() => {
+      truckDetailMapInstance?.invalidateSize();
+    }, 250);
+  }
 }
 
 const API_GESTION = 'http://127.0.0.1:8001';
@@ -160,9 +154,6 @@ let catalogos = {
 let selectedTruckId = null;
 let selectedTruck = null;
 let truckHistory = [];
-
-// Se eliminó la variable csrfToken porque ya no se usa CSRF.
-
 let truckBusy = false;
 let driverBusy = false;
 let companionBusy = false;
@@ -294,13 +285,13 @@ function responseError(
 ) {
   const errors =
     data?.errors &&
-    typeof data.errors === 'object'
+      typeof data.errors === 'object'
       ? Object.values(data.errors)
-          .flat()
-          .filter(
-            error =>
-              typeof error === 'string'
-          )
+        .flat()
+        .filter(
+          error =>
+            typeof error === 'string'
+        )
       : [];
 
   if (errors.length) {
@@ -329,8 +320,6 @@ function responseError(
   );
 }
 
-
-// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
 async function requestJson(
   url,
   {
@@ -362,9 +351,9 @@ async function requestJson(
         headers,
         ...(body !== undefined
           ? {
-              body:
-                JSON.stringify(body)
-            }
+            body:
+              JSON.stringify(body)
+          }
           : {})
       }
     );
@@ -521,26 +510,14 @@ function field(
 
 
 function truckVisual(truck) {
-  // 1. Si el camión tiene foto guardada en base de datos
   if (truck.foto && (truck.foto.startsWith('data:image') || truck.foto.startsWith('http') || truck.foto.startsWith('../resources'))) {
     return { imagen: truck.foto, fotoPosicion: 'center', fotoAjuste: 'cover' };
   }
 
-  // 2. Si tiene foto en localStorage subida por el usuario
-  try {
-    const fotos = JSON.parse(localStorage.getItem('sigeru_fotos_camiones') || '{}');
-    const foto = fotos[truck.matricula] || fotos[truck.id_camion];
-    if (foto) {
-      return { imagen: foto, fotoPosicion: 'center', fotoAjuste: 'cover' };
-    }
-  } catch (_) {}
-
-  // 3. Si tiene visual predefinido por matrícula
   if (TRUCK_VISUALS[truck.matricula]) {
     return TRUCK_VISUALS[truck.matricula];
   }
 
-  // 4. Alternativa inteligente según la marca para no repetir siempre la misma
   const marca = String(truck.marca || '').toLowerCase();
   const modelo = String(truck.modelo || '').toLowerCase();
 
@@ -627,11 +604,11 @@ function fillSimpleSelect(
       ${escapeHtml(emptyLabel)}
     </option>
   ` +
-  values.map(value => `
+    values.map(value => `
     <option value="${escapeHtml(value)}">
       ${escapeHtml(
-        formatType(value)
-      )}
+      formatType(value)
+    )}
     </option>
   `).join('');
 }
@@ -648,35 +625,35 @@ function fillDriverSelect(
       Sin asignar
     </option>
   ` +
-  catalogos.choferes
-    .map(driver => {
-      const name = [
-        driver.nombre,
-        driver.apellido
-      ]
-        .filter(Boolean)
-        .join(' ');
+    catalogos.choferes
+      .map(driver => {
+        const name = [
+          driver.nombre,
+          driver.apellido
+        ]
+          .filter(Boolean)
+          .join(' ');
 
-      const license =
-        driver.licencia
-          ? ` · ${driver.licencia}`
-          : '';
+        const license =
+          driver.licencia
+            ? ` · ${driver.licencia}`
+            : '';
 
-      return `
+        return `
         <option
           value="${driver.id_usuario}"
         >
           ${escapeHtml(
-            name + license
-          )}
+          name + license
+        )}
         </option>
       `;
-    })
-    .join('');
+      })
+      .join('');
 
   select.value =
     selected !== null &&
-    selected !== undefined
+      selected !== undefined
       ? String(selected)
       : '';
 }
@@ -721,19 +698,19 @@ function fillCrewSelect(
       Sin asignar
     </option>
   ` +
-  catalogos.cuadrillas
-    .map(crew => `
+    catalogos.cuadrillas
+      .map(crew => `
       <option
         value="${escapeHtml(
-          crew.id_cuadrilla
-        )}"
+        crew.id_cuadrilla
+      )}"
       >
         ${escapeHtml(
-          crewLabel(crew)
-        )}
+        crewLabel(crew)
+      )}
       </option>
     `)
-    .join('');
+      .join('');
 
   select.value =
     selected ?? '';
@@ -825,65 +802,64 @@ function renderTable() {
     trucks.length
       ? trucks.map(truck => `
         <tr
-          class="truck-row ${
-            truck.id_camion ===
-            selectedTruckId
-              ? 'active'
-              : ''
-          }"
+          class="truck-row ${truck.id_camion ===
+          selectedTruckId
+          ? 'active'
+          : ''
+        }"
         >
           <td>
             <strong>
               ${escapeHtml(
-                truck.matricula
-              )}
+          truck.matricula
+        )}
             </strong>
           </td>
 
           <td>
             ${escapeHtml(
-              formatType(
-                truck.tipo
-              )
-            )}
+          formatType(
+            truck.tipo
+          )
+        )}
           </td>
 
           <td>
             ${escapeHtml(
-              [
-                truck.marca,
-                truck.modelo
-              ]
-                .filter(Boolean)
-                .join(' ')
-            )}
+          [
+            truck.marca,
+            truck.modelo
+          ]
+            .filter(Boolean)
+            .join(' ')
+        )}
           </td>
 
           <td>
             ${escapeHtml(
-              truck.chofer ||
-              'Sin asignar'
-            )}
+          truck.chofer ||
+          'Sin asignar'
+        )}
           </td>
 
           <td>
             ${escapeHtml(
-              truck.estado || '—'
-            )}
+          truck.estado || '—'
+        )}
           </td>
 
           <td>
             ${escapeHtml(
-              truck.ubicacion || truck.gps || '—'
-            )}
+          truck.ubicacion || truck.gps || '—'
+        )}
           </td>
 
           <td>
             ${escapeHtml(
-              formatKm(
-                truck.km_en_turno
-              )
-            )}
+          formatKm(
+            truck.km_en_turno
+          )
+        )}
           </td>
 
           <td>
@@ -892,8 +868,8 @@ function renderTable() {
               type="button"
               data-open-truck="${truck.id_camion}"
               aria-label="Ver información de ${escapeHtml(
-                truck.matricula
-              )}"
+          truck.matricula
+        )}"
               title="Ver información"
             >
               <i
@@ -924,17 +900,17 @@ function renderTable() {
           value="${truck.id_camion}"
         >
           ${escapeHtml(
-            truck.matricula
-          )}
+        truck.matricula
+      )}
           ·
           ${escapeHtml(
-            [
-              truck.marca,
-              truck.modelo
-            ]
-              .filter(Boolean)
-              .join(' ')
-          )}
+        [
+          truck.marca,
+          truck.modelo
+        ]
+          .filter(Boolean)
+          .join(' ')
+      )}
         </option>
       `).join('')
       : `
@@ -982,8 +958,8 @@ async function loadTrucks() {
           class="text-center text-muted-custom py-4"
         >
           ${escapeHtml(
-            error.message
-          )}
+      error.message
+    )}
         </td>
       </tr>
     `;
@@ -1019,14 +995,12 @@ function renderTruck(truck) {
 
   renderTable();
 
-  // Abrir la ventana emergente modal con la información del camión
   const modalEl = document.getElementById('detalleCamionModal');
   if (modalEl && typeof bootstrap !== 'undefined') {
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
   }
 
-  // Renderizar la ubicación del camión en el mapa interactivo
   renderTruckMap(truck);
 
   if (title) {
@@ -1240,37 +1214,36 @@ function renderHistory() {
         <tr>
           <td>
             ${escapeHtml(
-              formatDate(
-                item.fecha
-              )
-            )}
+        formatDate(
+          item.fecha
+        )
+      )}
           </td>
 
           <td>
             ${escapeHtml(
-              item.tipo || '—'
-            )}
+        item.tipo || '—'
+      )}
           </td>
 
           <td>
             ${escapeHtml(
-              item.detalle || '—'
-            )}
+        item.detalle || '—'
+      )}
           </td>
 
           <td>
             <span
-              class="history-status ${
-                resolvedStatus(
-                  item.estado
-                )
-                  ? 'resolved'
-                  : 'open'
-              }"
+              class="history-status ${resolvedStatus(
+        item.estado
+      )
+          ? 'resolved'
+          : 'open'
+        }"
             >
               ${escapeHtml(
-                item.estado || '—'
-              )}
+          item.estado || '—'
+        )}
             </span>
           </td>
 
@@ -1279,8 +1252,8 @@ function renderHistory() {
               class="btn btn-outline btn-sm"
               type="button"
               data-open-incident="${escapeHtml(
-                item.id_historial
-              )}"
+          item.id_historial
+        )}"
               aria-label="Ver detalle del registro"
             >
               <i
@@ -1326,53 +1299,52 @@ function openIncident(id) {
       <div>
         <span class="text-muted-custom">
           ${escapeHtml(
-            selectedTruck.matricula
-          )}
+    selectedTruck.matricula
+  )}
         </span>
 
         <h3>
           ${escapeHtml(
-            item.tipo || 'Registro'
-          )}
+    item.tipo || 'Registro'
+  )}
         </h3>
       </div>
 
       <span
-        class="history-status ${
-          resolvedStatus(
-            item.estado
-          )
-            ? 'resolved'
-            : 'open'
-        }"
+        class="history-status ${resolvedStatus(
+    item.estado
+  )
+      ? 'resolved'
+      : 'open'
+    }"
       >
         ${escapeHtml(
-          item.estado || '—'
-        )}
+      item.estado || '—'
+    )}
       </span>
     </div>
 
     <div class="incident-card-grid">
       ${field(
-        'Fecha',
-        formatDate(
-          item.fecha
-        )
-      )}
+      'Fecha',
+      formatDate(
+        item.fecha
+      )
+    )}
 
       ${field(
-        'Origen',
-        item.origen ===
+      'Origen',
+      item.origen ===
         'mantenimiento'
-          ? 'Mantenimiento'
-          : 'Incidencia'
-      )}
+        ? 'Mantenimiento'
+        : 'Incidencia'
+    )}
 
       ${field(
-        'Responsable',
-        item.responsable ||
-        '—'
-      )}
+      'Responsable',
+      item.responsable ||
+      '—'
+    )}
     </div>
 
     <div class="incident-description">
@@ -1382,14 +1354,13 @@ function openIncident(id) {
 
       <p>
         ${escapeHtml(
-          item.detalle || '—'
-        )}
+      item.detalle || '—'
+    )}
       </p>
     </div>
 
-    ${
-      item.resolucion
-        ? `
+    ${item.resolucion
+      ? `
           <div class="incident-description">
             <span>
               Resolución
@@ -1397,12 +1368,12 @@ function openIncident(id) {
 
             <p>
               ${escapeHtml(
-                item.resolucion
-              )}
+        item.resolucion
+      )}
             </p>
           </div>
         `
-        : ''
+      : ''
     }
   `;
 
@@ -1468,8 +1439,8 @@ addForm?.addEventListener(
       capacidad_kg:
         data.capacidad_kg
           ? Number(
-              data.capacidad_kg
-            )
+            data.capacidad_kg
+          )
           : null,
 
       turno:
@@ -1479,8 +1450,8 @@ addForm?.addEventListener(
       id_chofer:
         data.id_chofer
           ? Number(
-              data.id_chofer
-            )
+            data.id_chofer
+          )
           : null,
 
       foto: fotoSeleccionadaDataUrl || null
@@ -1497,15 +1468,6 @@ addForm?.addEventListener(
             body
           }
         );
-
-      if (fotoSeleccionadaDataUrl) {
-        try {
-          const fotos = JSON.parse(localStorage.getItem('sigeru_fotos_camiones') || '{}');
-          fotos[body.matricula] = fotoSeleccionadaDataUrl;
-          if (result.data?.id_camion) fotos[result.data.id_camion] = fotoSeleccionadaDataUrl;
-          localStorage.setItem('sigeru_fotos_camiones', JSON.stringify(fotos));
-        } catch (_) {}
-      }
       fotoSeleccionadaDataUrl = null;
       if ($('agregarCamionPreviewWrap')) $('agregarCamionPreviewWrap').classList.add('d-none');
       addForm.reset();
@@ -1873,14 +1835,27 @@ async function init() {
 }
 
 
-window.addEventListener(
-  'resize',
-  syncTruckVisualHeight
-);
+window.addEventListener('resize', () => {
+  syncTruckVisualHeight();
+
+  if (truckDetailMapInstance) {
+    truckDetailMapInstance.invalidateSize();
+  }
+});
+
+document.getElementById('detalleCamionModal')
+  ?.addEventListener('shown.bs.modal', () => {
+    syncTruckVisualHeight();
+
+    requestAnimationFrame(() => {
+      if (truckDetailMapInstance) {
+        truckDetailMapInstance.invalidateSize();
+      }
+    });
+  });
 
 void init();
 
-// Manejo de la subida de foto en el modal Agregar Camión
 let fotoSeleccionadaDataUrl = null;
 
 const inputFotoAgregar = $('agregarCamionFoto');
@@ -1904,7 +1879,6 @@ inputFotoAgregar?.addEventListener('change', event => {
   reader.readAsDataURL(file);
 });
 
-// Limpiar campo de foto al cerrar el modal Agregar Camión
 $('agregarCamionModal')?.addEventListener('hidden.bs.modal', () => {
   fotoSeleccionadaDataUrl = null;
   if (imgPreviewFoto) imgPreviewFoto.src = '';
@@ -1912,7 +1886,6 @@ $('agregarCamionModal')?.addEventListener('hidden.bs.modal', () => {
   if (inputFotoAgregar) inputFotoAgregar.value = '';
 });
 
-// Conectar botones del pie del modal con las acciones de chofer y cuadrilla
 $('btnAsignarChoferModalFooter')?.addEventListener('click', () => {
   assignDriverBtn?.click();
 });
@@ -1921,7 +1894,6 @@ $('btnAsignarCuadrillaModalFooter')?.addEventListener('click', () => {
   assignCompanionBtn?.click();
 });
 
-// Botón "Cambiar foto de este camión" en el modal de detalles
 const btnCambiarFoto = $('btnCambiarFotoDetalle');
 const inputCambiarFoto = $('cambiarFotoDetalleInput');
 
@@ -1938,32 +1910,131 @@ inputCambiarFoto?.addEventListener('change', async event => {
     const dataUrl = e.target?.result;
     if (!dataUrl) return;
 
-    // Actualizar vista previa y modelo del camión
-    selectedTruck.foto = dataUrl;
-    const foundTruck = trucks.find(t => t.id_camion === selectedTruck.id_camion || t.matricula === selectedTruck.matricula);
-    if (foundTruck) foundTruck.foto = dataUrl;
-
-    if (truckPhoto) {
-      truckPhoto.src = dataUrl;
-    }
-
-    // Guardar en localStorage
-    try {
-      const fotos = JSON.parse(localStorage.getItem('sigeru_fotos_camiones') || '{}');
-      fotos[selectedTruck.matricula] = dataUrl;
-      fotos[selectedTruck.id_camion] = dataUrl;
-      localStorage.setItem('sigeru_fotos_camiones', JSON.stringify(fotos));
-    } catch (_) {}
-
-    // Intentar guardar en la API si está activa
     try {
       await requestJson(`${API_GESTION}/api/camiones/${selectedTruck.id_camion}/foto`, {
         method: 'PUT',
         body: { foto: dataUrl }
       });
+
+      selectedTruck.foto = dataUrl;
+      const foundTruck = trucks.find(t => t.id_camion === selectedTruck.id_camion || t.matricula === selectedTruck.matricula);
+      if (foundTruck) foundTruck.foto = dataUrl;
+      if (truckPhoto) truckPhoto.src = dataUrl;
     } catch (err) {
-      console.log('Foto guardada localmente:', err.message);
+      alert('No se pudo guardar la foto en la base de datos: ' + err.message);
     }
   };
   reader.readAsDataURL(file);
 });
+
+let actualizandoGpsCamion = false;
+let ultimoGpsCamion = null;
+
+function obtenerCoordenadasCamion(camion) {
+  if (!camion) return null;
+
+  let lat = Number(camion.latitud);
+  let lng = Number(camion.longitud);
+  if (
+    (camion.latitud == null || camion.longitud == null) &&
+    typeof camion.gps === 'string'
+  ) {
+    const partes = camion.gps.split(',');
+
+    if (partes.length === 2) {
+      lat = Number(partes[0].trim());
+      lng = Number(partes[1].trim());
+    }
+  }
+
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    lat < -90 ||
+    lat > 90 ||
+    lng < -180 ||
+    lng > 180
+  ) {
+    return null;
+  }
+
+  return [lat, lng];
+}
+
+async function actualizarGpsCamionEnMapa() {
+  const modal = document.getElementById('detalleCamionModal');
+
+  if (
+    !modal?.classList.contains('show') ||
+    !selectedTruck?.id_camion ||
+    actualizandoGpsCamion
+  ) {
+    return;
+  }
+
+  actualizandoGpsCamion = true;
+
+  const idCamion = selectedTruck.id_camion;
+
+  try {
+    const respuesta = await requestJson(
+      `${API_GESTION}/api/camiones/${idCamion}`
+    );
+
+    const camion = respuesta?.data;
+
+    if (
+      !camion ||
+      Number(camion.id_camion) !== Number(idCamion)
+    ) {
+      return;
+    }
+
+    if (
+      Number(selectedTruck?.id_camion) !== Number(idCamion)
+    ) {
+      return;
+    }
+
+    const coordenadas = obtenerCoordenadasCamion(camion);
+    selectedTruck = {
+      ...selectedTruck,
+      ...camion
+    };
+
+    if (!coordenadas) {
+      console.warn(
+        'El camión todavía no tiene GPS válido:',
+        camion.matricula
+      );
+      return;
+    }
+
+    const [lat, lng] = coordenadas;
+    const gpsActual = `${lat},${lng}`;
+    if (ultimoGpsCamion !== gpsActual) {
+      if (truckDetailMapMarker) {
+        truckDetailMapMarker.setLatLng([lat, lng]);
+
+      } else {
+        renderTruckMap(selectedTruck, false);
+      }
+
+      ultimoGpsCamion = gpsActual;
+    }
+
+  } catch (error) {
+    console.warn(
+      'Error actualizando GPS del camión:',
+      error
+    );
+  } finally {
+    actualizandoGpsCamion = false;
+  }
+}
+
+setInterval(actualizarGpsCamionEnMapa, 2000);
+document.getElementById('detalleCamionModal')
+  ?.addEventListener('hidden.bs.modal', () => {
+    ultimoGpsCamion = null;
+  });

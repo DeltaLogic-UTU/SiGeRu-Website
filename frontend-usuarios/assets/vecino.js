@@ -1,13 +1,6 @@
-/**
- * ==========================================================================
- * Lógica de la App Vecinal (Mobile-First) - SiGeRU
- * ==========================================================================
- */
-
 const API_USUARIOS = 'http://127.0.0.1:8000';
 const API_GESTION = 'http://127.0.0.1:8001';
 
-// Estado global de la aplicación
 const vecinoState = {
   usuario: null,
   contenedores: [],
@@ -21,7 +14,6 @@ const vecinoState = {
   fotoBase64: null
 };
 
-// Utilidad para escape HTML
 function escapeHtml(text) {
   return String(text ?? '')
     .replace(/&/g, '&amp;')
@@ -31,25 +23,21 @@ function escapeHtml(text) {
     .replace(/'/g, '&#039;');
 }
 
-// Calcular distancia Haversine en metros
 function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
-  const R = 6371e3; // Radio de la Tierra en metros
+  const R = 6371e3;
   const φ1 = lat1 * Math.PI / 180;
   const φ2 = lat2 * Math.PI / 180;
   const Δφ = (lat2 - lat1) * Math.PI / 180;
   const Δλ = (lon2 - lon1) * Math.PI / 180;
 
   const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    Math.cos(φ1) * Math.cos(φ2) *
+    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return Math.round(R * c);
 }
 
-// ==========================================================================
-// 1. INICIALIZACIÓN Y AUTENTICACIÓN
-// ==========================================================================
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
   setupNavTabs();
@@ -57,63 +45,81 @@ document.addEventListener('DOMContentLoaded', async () => {
   initMapa();
   await cargarContenedores();
 
-  let token = localStorage.getItem('access_token');
+  const token = localStorage.getItem('access_token');
   if (!token) {
-    // Si no hay token guardado (por abrir la página directamente), obtener sesión de demo como vecino
-    try {
-      const autoRes = await fetch(`${API_USUARIOS}/api/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ usuario: 'vecino@sigeru.uy', password: 'Sigeru123' })
-      });
-      const autoData = await autoRes.json();
-      if (autoData.success && autoData.data?.access_token) {
-        token = autoData.data.access_token;
-        localStorage.setItem('access_token', token);
-      }
-    } catch (e) {
-      console.warn('Auto-sesión demo no disponible:', e);
-    }
+    window.location.replace('../landing-page/login.html');
+    return;
   }
 
-  if (token) {
-    await cargarDatosUsuario();
-    await cargarMisReclamos();
-  }
+  await cargarDatosUsuario();
+  await cargarMisReclamos();
 
-  // Pedir permiso de geolocalización al abrir la app para situar al usuario
+  setInterval(() => cargarContenedores(), 60000);
+
   solicitarGeolocalizacion(false);
 });
 
-// Manejo del tema claro/oscuro
+
 function initTheme() {
   const root = document.documentElement;
-  const savedTheme = localStorage.getItem('sigeru-theme') || 'dark';
-  root.dataset.theme = savedTheme;
+  const savedTheme = localStorage.getItem('sigeru-theme');
+
+  const preferredTheme = window.matchMedia(
+    '(prefers-color-scheme: light)'
+  ).matches
+    ? 'light'
+    : 'dark';
+
+  root.dataset.theme = savedTheme || preferredTheme;
 
   const btnTheme = document.getElementById('btnThemeToggle');
-  if (btnTheme) {
-    btnTheme.addEventListener('click', () => {
-      root.dataset.theme = root.dataset.theme === 'light' ? 'dark' : 'light';
-      localStorage.setItem('sigeru-theme', root.dataset.theme);
-      actualizarIconoTema();
-    });
-    actualizarIconoTema();
+
+  if (!btnTheme) {
+    return;
   }
+
+  btnTheme.addEventListener('click', () => {
+    root.dataset.theme =
+      root.dataset.theme === 'light'
+        ? 'dark'
+        : 'light';
+
+    localStorage.setItem(
+      'sigeru-theme',
+      root.dataset.theme
+    );
+
+    actualizarIconoTema();
+  });
+
+  actualizarIconoTema();
 }
 
 function actualizarIconoTema() {
   const btnTheme = document.getElementById('btnThemeToggle');
+
   if (!btnTheme) return;
-  const isLight = document.documentElement.dataset.theme === 'light';
-  btnTheme.innerHTML = `<i class="bi ${isLight ? 'bi-moon' : 'bi-sun'}"></i>`;
+
+  const isLight =
+    document.documentElement.dataset.theme === 'light';
+
+  btnTheme.innerHTML = `
+        <i class="bi ${isLight ? 'bi-moon' : 'bi-sun'}"
+           aria-hidden="true"></i>
+    `;
+
+  const label = isLight
+    ? 'Activar modo oscuro'
+    : 'Activar modo claro';
+
+  btnTheme.setAttribute('aria-label', label);
+  btnTheme.setAttribute('title', label);
 }
 
-// Cargar perfil del vecino autenticado
 async function cargarDatosUsuario() {
   const token = localStorage.getItem('access_token');
   try {
-    const res = await fetch(`${API_USUARIOS}/api/auth/me`, {
+    const res = await fetch(`${API_USUARIOS}/api/perfil`, {
       headers: {
         'Accept': 'application/json',
         'Authorization': `Bearer ${token}`
@@ -143,20 +149,17 @@ function renderPerfil() {
   const nombreEl = document.getElementById('perfilNombre');
   const docEl = document.getElementById('perfilDoc');
   const telEl = document.getElementById('perfilTel');
-  const dirEl = document.getElementById('perfilDir');
+  const emailEl = document.getElementById('perfilEmail');
   const userHeaderEl = document.getElementById('headerUserName');
 
   const nombreCompleto = `${u.nombre || ''} ${u.apellido || ''}`.trim() || 'Vecino';
   if (nombreEl) nombreEl.value = nombreCompleto;
   if (docEl) docEl.value = u.documento || '—';
   if (telEl) telEl.value = u.telefono || '';
-  if (dirEl) dirEl.value = u.direccion || 'Montevideo, Uruguay';
+  if (emailEl) emailEl.value = u.email || '';
   if (userHeaderEl) userHeaderEl.textContent = nombreCompleto;
 }
 
-// ==========================================================================
-// 2. NAVEGACIÓN ENTRE PESTAÑAS (TABS)
-// ==========================================================================
 function setupNavTabs() {
   const navBtns = document.querySelectorAll('.vecino-nav-item[data-tab]');
   navBtns.forEach(btn => {
@@ -166,7 +169,6 @@ function setupNavTabs() {
     });
   });
 
-  // Botón logout
   document.getElementById('btnLogout')?.addEventListener('click', () => {
     localStorage.removeItem('access_token');
     window.location.href = '../landing-page/login.html';
@@ -174,43 +176,34 @@ function setupNavTabs() {
 }
 
 function switchTab(tabName) {
-  // Ocultar todas las páginas
   document.querySelectorAll('.vecino-tab-page').forEach(page => {
     page.classList.remove('active');
   });
 
-  // Desactivar botones de navegación
   document.querySelectorAll('.vecino-nav-item[data-tab]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tabName);
   });
 
-  // Activar la página seleccionada
   const targetPage = document.getElementById(`page${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
   if (targetPage) {
     targetPage.classList.add('active');
   }
 
-  // Si se abre el mapa, refrescar dimensiones para evitar tiles grises
   if (tabName === 'mapa' && vecinoState.map) {
     setTimeout(() => {
       vecinoState.map.invalidateSize();
     }, 200);
   }
 
-  // Si se abre reclamos, refrescar lista
   if (tabName === 'reclamos') {
     cargarMisReclamos();
   }
 }
 
-// ==========================================================================
-// 3. MAPA LEAFLET Y CONTENEDORES
-// ==========================================================================
 function initMapa() {
   const mapEl = document.getElementById('vecinoMap');
   if (!mapEl || typeof L === 'undefined') return;
 
-  // Coordenadas base (Centro de Montevideo / Zona Pocitos - Buceo)
   const defaultLat = -34.901113;
   const defaultLng = -56.164531;
 
@@ -219,41 +212,33 @@ function initMapa() {
     attributionControl: false
   }).setView([defaultLat, defaultLng], 15);
 
-  // Control de zoom en posición inferior izquierda
   L.control.zoom({ position: 'bottomleft' }).addTo(vecinoState.map);
 
-  // Capa base de mapas OpenStreetMap
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19
   }).addTo(vecinoState.map);
 
-  // Asegurar renderizado correcto de tiles en dispositivos móviles y escritorio
   setTimeout(() => { if (vecinoState.map) vecinoState.map.invalidateSize(); }, 150);
   setTimeout(() => { if (vecinoState.map) vecinoState.map.invalidateSize(); }, 600);
   window.addEventListener('resize', () => { if (vecinoState.map) vecinoState.map.invalidateSize(); });
 
-  // Botón flotante: Geolocalizar
   document.getElementById('btnGeolocalizar')?.addEventListener('click', () => {
     solicitarGeolocalizacion(true);
   });
 
-  // Botón flotante: Contenedor más cercano
   document.getElementById('btnContenedorCercano')?.addEventListener('click', () => {
     seleccionarContenedorMasCercano();
   });
 
-  // Botón cerrar Bottom Sheet
   document.getElementById('btnCerrarBottomSheet')?.addEventListener('click', () => {
     cerrarBottomSheet();
   });
 
-  // Botón reportar desde Bottom Sheet
   document.getElementById('btnReportarContenedorBS')?.addEventListener('click', () => {
     abrirModalCrearReclamoConContenedor(vecinoState.contenedorSeleccionado);
   });
 }
 
-// Solicitar geolocalización del usuario
 function solicitarGeolocalizacion(centrar = false) {
   if (!navigator.geolocation) {
     if (centrar) alert('Tu navegador no soporta geolocalización.');
@@ -272,7 +257,6 @@ function solicitarGeolocalizacion(centrar = false) {
 
       vecinoState.ubicacionUsuario = { lat, lng };
 
-      // Dibujar marcador de usuario (Punto azul con animación pulsante)
       const userHtml = `
         <div class="user-pulse-marker">
           <div class="core"></div>
@@ -296,7 +280,6 @@ function solicitarGeolocalizacion(centrar = false) {
         }).addTo(vecinoState.map);
       }
 
-      // Círculo de proximidad/precisión igual que en Figma
       if (vecinoState.userCircle) {
         vecinoState.userCircle.setLatLng([lat, lng]);
         vecinoState.userCircle.setRadius(Math.max(accuracy, 120));
@@ -314,7 +297,6 @@ function solicitarGeolocalizacion(centrar = false) {
         vecinoState.map.setView([lat, lng], 16, { animate: true });
       }
 
-      // Actualizar distancia en el bottom sheet si está abierto
       if (vecinoState.contenedorSeleccionado) {
         actualizarDistanciaBottomSheet(vecinoState.contenedorSeleccionado);
       }
@@ -330,7 +312,6 @@ function solicitarGeolocalizacion(centrar = false) {
   );
 }
 
-// Cargar contenedores desde la API
 async function cargarContenedores() {
   try {
     const res = await fetch(`${API_GESTION}/api/mapa/contenedores`);
@@ -340,45 +321,54 @@ async function cargarContenedores() {
     const data = Array.isArray(json) ? json : (json.data || []);
     vecinoState.contenedores = data.filter(c => c.latitud && c.longitud);
 
-    renderContenedoresEnMapa(vecinoState.contenedores);
+    if (typeof window.actualizarFiltroContenedoresVecino === 'function') {
+      window.actualizarFiltroContenedoresVecino();
+    } else {
+      renderContenedoresEnMapa(vecinoState.contenedores);
+    }
   } catch (err) {
     console.warn('No se pudieron cargar los contenedores:', err);
   }
 }
 
-// Renderizar marcadores de contenedores en el mapa
 function renderContenedoresEnMapa(contenedores) {
   if (!vecinoState.map) return;
 
-  // Limpiar marcadores previos
   vecinoState.containerMarkers.forEach(m => m.remove());
   vecinoState.containerMarkers = [];
 
-  // Ícono personalizado para los contenedores (estilo verde circular)
-  const containerIcon = L.divIcon({
-    className: 'custom-container-marker',
-    html: `
-      <div style="
-        width: 30px; 
-        height: 30px; 
-        border-radius: 50%; 
-        background: #15803d; 
-        border: 2px solid #ffffff; 
-        box-shadow: 0 2px 6px rgba(0,0,0,0.35); 
-        display: flex; 
-        align-items: center; 
-        justify-content: center;
-        color: #ffffff;
-        font-size: 0.85rem;
-      ">
-        <i class="bi bi-trash3-fill"></i>
-      </div>
-    `,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15]
-  });
+  const colorPrioridad = nivel => {
+    const valor = String(nivel || '').toLowerCase();
+    if (valor === 'rojo') return '#dc2626';
+    if (valor === 'amarillo') return '#ca8a04';
+    return '#15803d';
+  };
 
   contenedores.forEach(c => {
+    const color = colorPrioridad(c.nivel_recoleccion);
+    const containerIcon = L.divIcon({
+      className: 'custom-container-marker',
+      html: `
+        <div style="
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background: ${color};
+          border: 2px solid #ffffff;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #ffffff;
+          font-size: 0.85rem;
+        " title="${escapeHtml(c.etiqueta_recoleccion || '')}">
+          <i class="bi bi-trash3-fill"></i>
+        </div>
+      `,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15]
+    });
+
     const marker = L.marker([Number(c.latitud), Number(c.longitud)], {
       icon: containerIcon
     }).addTo(vecinoState.map);
@@ -391,16 +381,13 @@ function renderContenedoresEnMapa(contenedores) {
   });
 }
 
-// Seleccionar un contenedor al hacer clic o al buscar el más cercano
 function seleccionarContenedor(c) {
   vecinoState.contenedorSeleccionado = c;
 
-  // Centrar mapa
   if (vecinoState.map) {
     vecinoState.map.panTo([Number(c.latitud), Number(c.longitud)], { animate: true });
   }
 
-  // Llenar Bottom Sheet
   const bs = document.getElementById('contenedorBottomSheet');
   const codigoEl = document.getElementById('bsContenedorCodigo');
   const tipoEl = document.getElementById('bsContenedorTipo');
@@ -409,7 +396,7 @@ function seleccionarContenedor(c) {
 
   if (codigoEl) codigoEl.textContent = c.codigo || `Contenedor #${c.id_contenedor}`;
   if (tipoEl) tipoEl.textContent = `Tipo: ${c.tipo || 'General'}`;
-  
+
   const direccion = [c.calle, c.esquina ? `esq. ${c.esquina}` : ''].filter(Boolean).join(' ') || 'Ubicación registrada';
   if (dirEl) dirEl.textContent = direccion;
   if (barrioEl) barrioEl.textContent = c.barrio || 'Zona urbana';
@@ -441,11 +428,9 @@ function cerrarBottomSheet() {
   if (bs) bs.classList.remove('show');
 }
 
-// Encontrar y seleccionar el contenedor más cercano
 function seleccionarContenedorMasCercano() {
   if (!vecinoState.ubicacionUsuario) {
     solicitarGeolocalizacion(true);
-    // Esperar a que se actualice
     setTimeout(() => {
       if (vecinoState.ubicacionUsuario) {
         seleccionarContenedorMasCercano();
@@ -481,16 +466,11 @@ function seleccionarContenedorMasCercano() {
   }
 }
 
-// ==========================================================================
-// 4. CREACIÓN DE RECLAMOS / INCIDENCIAS (MODAL Y CÁMARA)
-// ==========================================================================
 function setupCrearReclamoModal() {
-  // Botón flotante central FAB (Cámara)
   document.getElementById('btnFabCrearReclamo')?.addEventListener('click', () => {
     abrirModalCrearReclamoConContenedor(vecinoState.contenedorSeleccionado);
   });
 
-  // Manejo de la subida / captura de foto
   const inputFoto = document.getElementById('inputFotoReclamo');
   const btnTomarFoto = document.getElementById('btnTomarFoto');
   const previewImg = document.getElementById('previewFotoReclamo');
@@ -521,7 +501,6 @@ function setupCrearReclamoModal() {
     if (previewImg) previewImg.src = '';
   });
 
-  // Envío del formulario de Reclamo
   const form = document.getElementById('formCrearReclamo');
   form?.addEventListener('submit', async event => {
     event.preventDefault();
@@ -543,7 +522,6 @@ function abrirModalCrearReclamoConContenedor(c) {
   const selectTipo = document.getElementById('reclamoTipo');
   const inputDesc = document.getElementById('reclamoComentario');
 
-  // Si hay un contenedor seleccionado, autocompletar barrio, calle y esquina
   if (c) {
     if (inputContenedorId) inputContenedorId.value = c.id_contenedor || '';
     if (inputContenedorCodigo) inputContenedorCodigo.value = c.codigo || `Contenedor #${c.id_contenedor}`;
@@ -580,6 +558,7 @@ async function enviarReclamo() {
   const categorias = {
     'Contenedor desbordado': 'Contenedores',
     'Contenedor roto': 'Contenedores',
+    'Contenedor incendiado': 'Contenedores',
     'Residuos fuera de lugar': 'Residuos',
     'Demora en la recolección': 'Recolección',
     'Riesgo sanitario / contaminación biológica': 'Riesgo sanitario'
@@ -622,7 +601,6 @@ async function enviarReclamo() {
 
     mostrarMensaje(msgEl, '¡Reclamo enviado con éxito! Ha sido registrado para asignación.', false);
 
-    // Resetear foto y formulario
     document.getElementById('btnQuitarFoto')?.click();
     document.getElementById('formCrearReclamo')?.reset();
 
@@ -637,7 +615,6 @@ async function enviarReclamo() {
         btnSubmit.innerHTML = '<i class="bi bi-send-fill me-2"></i> Generar reclamo';
       }
 
-      // Cambiar a la pestaña de reclamos para que el vecino vea su reporte
       switchTab('reclamos');
     }, 1200);
 
@@ -656,9 +633,6 @@ function mostrarMensaje(el, texto, esError = false) {
   el.className = `alert mt-3 ${esError ? 'alert-danger' : 'alert-success'} ${texto ? '' : 'd-none'}`;
 }
 
-// ==========================================================================
-// 5. LISTA DE RECLAMOS ("TUS RECLAMOS")
-// ==========================================================================
 async function cargarMisReclamos() {
   const token = localStorage.getItem('access_token');
   const container = document.getElementById('listaMisReclamos');
@@ -730,7 +704,7 @@ function renderListaReclamos(reclamos) {
       estadoTexto = 'Resuelto / Atendido';
     }
 
-    const fechaFormateada = r.fecha_reporte 
+    const fechaFormateada = r.fecha_reporte
       ? new Date(r.fecha_reporte).toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       : 'Fecha reciente';
 
@@ -761,8 +735,7 @@ function renderListaReclamos(reclamos) {
   }).join('');
 }
 
-// Modal Información del Reclamo (Detalles)
-window.verDetalleReclamo = function(index) {
+window.verDetalleReclamo = function (index) {
   const r = vecinoState.reclamos[index];
   if (!r) return;
 

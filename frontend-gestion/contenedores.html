@@ -1,44 +1,69 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Contenedores | SiGeRU</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link href="assets/style.css" rel="stylesheet">
+
 </head>
+
 <body>
   <header class="site-header">
-    <nav class="navbar navbar-expand-xl">
+    <nav class="navbar navbar-expand-xxl">
       <div class="container-fluid px-3">
         <a class="navbar-brand logo-link" href="administrador.html" aria-label="Inicio de Gestión SiGeRU">
           <img class="brand-logo" src="../resources/logo.png" alt="Logo de SiGeRU">
         </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#gestionNav" aria-controls="gestionNav" aria-expanded="false" aria-label="Abrir navegación">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#gestionNav"
+          aria-controls="gestionNav" aria-expanded="false" aria-label="Abrir navegación">
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="gestionNav">
           <ul class="navbar-nav ms-auto align-items-xl-center">
             <li class="nav-item"><a class="nav-link" href="administrador.html"><i class="bi bi-map"></i> Mapa</a></li>
-            <li class="nav-item"><a class="nav-link" href="incidencias.html"><i class="bi bi-bell"></i> Incidencias</a></li>
-            <li class="nav-item"><a class="nav-link" href="reclamos.html"><i class="bi bi-chat-left-text"></i> Reclamos</a></li>
-            <li class="nav-item"><button class="nav-link" type="button"><i class="bi bi-graph-up-arrow"></i> Estadísticas</button></li>
+            <li class="nav-item">
+              <button class="nav-link" type="button" data-bs-toggle="modal" data-bs-target="#mensajesAdminModal">
+
+                <i class="bi bi-chat-dots"></i>
+                Mensajes
+
+                <span id="mensajesAdminTotalPendientes" class="badge rounded-pill bg-success ms-1" hidden>0</span>
+              </button>
+            </li>
+            <li class="nav-item"><a class="nav-link" href="incidencias.html"><i class="bi bi-bell"></i> Incidencias</a>
+            </li>
+            <li class="nav-item"><a class="nav-link" href="reclamos.html"><i class="bi bi-chat-left-text"></i>
+                Reclamos</a></li>
+            <li class="nav-item"><a class="nav-link" href="estadisticas.html"><i class="bi bi-graph-up-arrow"></i>
+                Estadísticas</a></li>
             <li class="nav-item"><a class="nav-link" href="camiones.html"><i class="bi bi-truck"></i> Camiones</a></li>
-            <li class="nav-item"><a class="nav-link" href="cuadrillas.html"><i class="bi bi-people-fill"></i> Cuadrillas</a></li>
-            <li class="nav-item"><button class="nav-link" type="button"><i class="bi bi-signpost-split"></i> Rutas</button></li>
+            <li class="nav-item"><a class="nav-link" href="cuadrillas.html"><i class="bi bi-people-fill"></i>
+                Cuadrillas</a></li>
+            <li class="nav-item"><a class="nav-link" href="rutas.html"><i class="bi bi-signpost-split"></i> Rutas</a>
+            </li>
             <li class="nav-item"><a class="nav-link" href="personal.html"><i class="bi bi-person"></i> Personal</a></li>
-            <li class="nav-item"><a class="nav-link active" href="contenedores.html" aria-current="page"><i class="bi bi-trash3"></i> Contenedores</a></li>
-            <li class="nav-item"><a class="nav-link" href="instalaciones.html"><i class="bi bi-buildings"></i> Instalaciones</a></li>
-            <li class="nav-item"><button class="nav-link" data-open-requests type="button"><i class="bi bi-person-check"></i> Solicitudes</button></li><li class="nav-item ms-xl-2">
-        <a class="nav-link profile-nav-link" href="perfil.html" aria-label="Editar mi usuario" title="Mi usuario">
-         <i class="bi bi-person-circle"></i><span class="visually-hidden">Mi usuario</span>
-        </a>
-       </li>
-       <li class="nav-item ms-xl-2 mt-2 mt-xl-0"><button class="theme-toggle" data-theme-toggle type="button" aria-label="Cambiar tema"></button></li>
+            <li class="nav-item"><a class="nav-link active" href="contenedores.html" aria-current="page"><i
+                  class="bi bi-trash3"></i> Contenedores</a></li>
+            <li class="nav-item"><a class="nav-link" href="instalaciones.html"><i class="bi bi-buildings"></i>
+                Instalaciones</a></li>
+            <li class="nav-item"><button class="nav-link" data-open-requests type="button"><i
+                  class="bi bi-person-check"></i> Solicitudes</button></li>
+            <li class="nav-item ms-xl-2">
+              <a class="nav-link profile-nav-link" href="perfil.html" aria-label="Editar mi usuario" title="Mi usuario">
+                <i class="bi bi-person-circle"></i><span class="visually-hidden">Mi usuario</span>
+              </a>
+            </li>
+            <li class="nav-item ms-xl-2 mt-2 mt-xl-0"><button class="theme-toggle" data-theme-toggle type="button"
+                aria-label="Cambiar tema"></button></li>
             <li class="nav-item mt-2 mt-xl-0 logout-item">
-        <a class="nav-link logout-link" data-logout href="../landing-page/login.html"><i class="bi bi-box-arrow-right"></i><span>Cerrar sesión</span></a>
-       </li>
+              <a class="nav-link logout-link" data-logout href="../landing-page/login.html"><i
+                  class="bi bi-box-arrow-right"></i><span class="visually-hidden">Cerrar sesión</span></a>
+            </li>
           </ul>
         </div>
       </div>
@@ -52,7 +77,8 @@
         <h1>Contenedores</h1>
         <p>Administrá los contenedores registrados y consultá su ubicación.</p>
       </div>
-      <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#containerModal" id="addContainerBtn">
+      <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#containerModal"
+        id="addContainerBtn">
         <i class="bi bi-plus-lg"></i> Agregar contenedor
       </button>
     </div>
@@ -61,7 +87,8 @@
       <div class="truck-panel-head">
         <div>
           <h2>Estado de circuitos</h2>
-          <span class="text-muted-custom">Cada circuito representa 10 contenedores: verde 2 días, amarillo 4 días y rojo 6 o más días sin recolección.</span>
+          <span class="text-muted-custom">Cada circuito representa 10 contenedores: verde 0–2 días, amarillo 3–5 días y
+            rojo 6 o más días sin recolección.</span>
         </div>
       </div>
       <div class="circuit-overview-grid" id="circuitOverview"></div>
@@ -76,7 +103,15 @@
         <table class="table truck-table align-middle mb-0">
           <thead>
             <tr>
-              <th>Código</th><th>Municipio</th><th>Barrio</th><th>Calle</th><th>Tipo</th><th>Estado</th><th>Sin recolectar</th><th>Último registro</th><th>Detalle</th>
+              <th>Código</th>
+              <th>Municipio</th>
+              <th>Barrio</th>
+              <th>Calle</th>
+              <th>Tipo</th>
+              <th>Estado</th>
+              <th>Sin recolectar</th>
+              <th>Último registro</th>
+              <th>Detalle</th>
             </tr>
           </thead>
           <tbody id="containerTableBody"></tbody>
@@ -92,17 +127,20 @@
         </div>
         <div class="d-flex gap-2 flex-wrap">
           <span class="truck-status" id="containerStatus"></span>
-          <button class="btn btn-outline btn-sm" type="button" id="editContainerBtn"><i class="bi bi-pencil"></i> Editar</button>
-          <button class="btn btn-primary btn-sm d-none" type="button" id="replaceContainerBtn"><i class="bi bi-arrow-repeat"></i> Reemplazar contenedor</button>
-          <button class="btn btn-outline btn-sm" type="button" id="removeContainerBtn"><i class="bi bi-trash3"></i> Quitar</button>
+          <button class="btn btn-outline btn-sm" type="button" id="editContainerBtn"><i class="bi bi-pencil"></i>
+            Editar</button>
+          <button class="btn btn-primary btn-sm d-none" type="button" id="replaceContainerBtn"><i
+              class="bi bi-arrow-repeat"></i> Reemplazar contenedor</button>
+          <button class="btn btn-outline btn-sm" type="button" id="removeContainerBtn"><i class="bi bi-trash3"></i>
+            Quitar</button>
         </div>
       </div>
 
       <div class="container-detail-layout">
         <div class="container-data-grid" id="containerDataGrid"></div>
         <div class="container-visual-grid">
-          <figure class="container-image-card">
-            <img id="containerMap" alt="Mapa del contenedor">
+          <figure class="container-image-card container-map-card">
+            <div id="containerMap" class="container-leaflet-map" aria-label="Ubicación del contenedor"></div>
           </figure>
           <figure class="container-image-card">
             <img id="containerPhoto" alt="Fotografía del contenedor">
@@ -121,7 +159,13 @@
       <div class="table-responsive">
         <table class="table truck-table align-middle mb-0">
           <thead>
-            <tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Estado</th><th>Ver</th></tr>
+            <tr>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Detalle</th>
+              <th>Estado</th>
+              <th>Ver</th>
+            </tr>
           </thead>
           <tbody id="containerHistoryBody"></tbody>
         </table>
@@ -141,37 +185,122 @@
             <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="Cerrar"></button>
           </div>
           <div class="modal-body">
-            <div class="truck-form-grid">
-              <label>Código<input class="form-control" name="codigo" required></label>
-              <label>Modelo<input class="form-control" name="modelo" required></label>
-              <label>Tipo
-                <select class="form-select" name="tipo" required>
-                  <option value="general">General</option>
-                  <option value="reciclaje">Reciclaje</option>
-                  <option value="mixto">Mixto</option>
-                </select>
-              </label>
-              <label>Estado
-                <select class="form-select" name="estado" required>
-                  <option value="funcional">Funcional</option>
-                  <option value="roto">Roto</option>
-                  <option value="desbordado">Desbordado</option>
-                </select>
-              </label>
-              <label>Capacidad (m³)<input class="form-control" name="capacidad" type="number" min="0" step="0.25" required></label>
-               <label>
-              Municipio
-              <select class="form-select" name="municipio" required><option value="">Seleccionar municipio</option>
-               </select>
-              </label>
-              <label>Barrio<input class="form-control" name="barrio" required></label>
-              <label>Calle<input class="form-control" name="calle" required></label>
-              <label>Esquina<input class="form-control" name="esquina"></label>
-              <label>Circuito<select class="form-select" name="circuito" required disabled><option value="">Seleccionar municipio primero</option>
-                </select>
-              </label>
-              <label>Días sin recolectar<input class="form-control" name="dias_sin_recoleccion" type="number" min="0" max="30" required></label>
-              <label>Último registro<input class="form-control" name="ultimo_registro" type="date" required></label>
+            <div class="container-form-layout">
+
+              <section class="container-form-section">
+                <h3>Datos del contenedor</h3>
+
+                <div class="container-form-grid">
+                  <label>
+                    Código
+                    <input class="form-control" name="codigo" required>
+                  </label>
+
+                  <label>
+                    Modelo
+                    <input class="form-control" name="modelo" required>
+                  </label>
+
+                  <label>
+                    Tipo
+                    <select class="form-select" name="tipo" required>
+                      <option value="general">General</option>
+                      <option value="reciclaje">Reciclaje</option>
+                      <option value="mixto">Mixto</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Estado
+                    <select class="form-select" name="estado" required>
+                      <option value="funcional">Funcional</option>
+                      <option value="roto">Roto</option>
+                      <option value="desbordado">Desbordado</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Capacidad (m³)
+                    <input class="form-control" name="capacidad" type="number" min="0" step="0.25" required>
+                  </label>
+
+                  <label>
+                    Último registro
+                    <input class="form-control" name="ultimo_registro" type="date" required>
+                  </label>
+                </div>
+              </section>
+
+
+              <section class="container-form-section">
+                <h3>Ubicación</h3>
+
+                <div class="container-form-grid">
+                  <label>
+                    Municipio
+                    <select class="form-select" name="municipio" required>
+                      <option value="">
+                        Seleccionar municipio
+                      </option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Barrio
+                    <select class="form-select" name="barrio" required disabled>
+                      <option value="">
+                        Seleccionar municipio primero
+                      </option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Calle
+                    <input class="form-control" name="calle" required>
+                  </label>
+
+                  <label>
+                    Esquina
+                    <input class="form-control" name="esquina">
+                  </label>
+
+                  <label>
+                    Circuito
+                    <select class="form-select" name="circuito" required disabled>
+                      <option value="">
+                        Seleccionar municipio primero
+                      </option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Días sin recolectar
+                    <input class="form-control" name="dias_sin_recoleccion" type="number" min="0" readonly
+                      aria-readonly="true">
+
+                    <small class="text-muted-custom">
+                      Se calcula automáticamente desde la última recolección.
+                    </small>
+                  </label>
+                </div>
+              </section>
+
+
+              <section class="container-form-section">
+                <h3>Fotografía</h3>
+
+                <label class="container-file-field">
+                  <span>Foto del contenedor</span>
+
+                  <input class="form-control container-file-input" type="file" name="foto"
+                    accept="image/jpeg,image/png,image/webp">
+
+                  <small class="text-muted-custom">
+                    Formatos admitidos: JPG, PNG o WEBP.
+                  </small>
+                </label>
+              </section>
+
             </div>
             <div class="form-message mt-3" id="containerFormMessage" role="status"></div>
           </div>
@@ -184,88 +313,83 @@
     </div>
   </div>
 
-  <div class="modal fade" id="replaceContainerModal"
-     tabindex="-1" aria-labelledby="replaceContainerModalTitle"
-     aria-hidden="true">
+  <div class="modal fade" id="replaceContainerModal" tabindex="-1" aria-labelledby="replaceContainerModalTitle"
+    aria-hidden="true">
 
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content admin-modal">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content admin-modal">
 
-      <form id="replaceContainerForm">
+        <form id="replaceContainerForm">
 
-        <div class="modal-header">
-          <div>
-            <span class="modal-kicker">Gestión de contenedores</span>
-            <h2 class="modal-title fs-5" id="replaceContainerModalTitle">
-              Reemplazar contenedor incendiado
-            </h2>
+          <div class="modal-header">
+            <div>
+              <span class="modal-kicker">Gestión de contenedores</span>
+              <h2 class="modal-title fs-5" id="replaceContainerModalTitle">
+                Reemplazar contenedor
+              </h2>
+            </div>
+
+            <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Cerrar"></button>
           </div>
 
-          <button class="btn-close" type="button"
-                  data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
+          <div class="modal-body">
 
-        <div class="modal-body">
+            <p>
+              Se reemplazará el contenedor
+              <strong id="replaceOriginalCode"></strong>.
+            </p>
 
-          <p>
-            Se reemplazará el contenedor
-            <strong id="replaceOriginalCode"></strong>.
-          </p>
+            <p class="text-muted-custom">
+              El nuevo contenedor conservará la ubicación y el circuito
+              del anterior. El contenedor roto o incendiado será dado de baja.
+            </p>
 
-          <p class="text-muted-custom">
-            El nuevo contenedor conservará la ubicación y el circuito
-            del anterior. El contenedor incendiado será dado de baja.
-          </p>
+            <div class="truck-form-grid">
 
-          <div class="truck-form-grid">
+              <label>
+                Código del nuevo contenedor
+                <input class="form-control" name="codigo" maxlength="50" required>
+              </label>
 
-            <label>
-              Código del nuevo contenedor
-              <input class="form-control" name="codigo"
-                     maxlength="50" required>
-            </label>
+              <label>
+                Modelo
+                <input class="form-control" name="modelo" maxlength="100" required>
+              </label>
 
-            <label>
-              Modelo
-              <input class="form-control" name="modelo" maxlength="100" required>
-            </label>
+              <label>
+                Tipo
+                <select class="form-select" name="tipo" required></select>
+              </label>
 
-            <label>
-              Tipo
-              <select class="form-select" name="tipo" required></select>
-            </label>
+              <label>
+                Capacidad (m³)
+                <input class="form-control" name="capacidad" type="number" min="0" step="0.25" required>
+              </label>
 
-            <label>
-              Capacidad (m³)
-              <input class="form-control" name="capacidad"
-                     type="number" min="0" step="0.25" required>
-            </label>
+            </div>
+
+            <div class="form-message mt-3 d-none" id="replaceContainerMessage" role="alert"></div>
 
           </div>
 
-          <div class="form-message mt-3 d-none"
-               id="replaceContainerMessage" role="alert"></div>
+          <div class="modal-footer">
+            <button class="btn btn-outline" type="button" data-bs-dismiss="modal">
+              Cancelar
+            </button>
 
-        </div>
+            <button class="btn btn-primary" type="submit">
+              Confirmar reemplazo
+            </button>
+          </div>
 
-        <div class="modal-footer">
-          <button class="btn btn-outline" type="button"
-                  data-bs-dismiss="modal">
-            Cancelar
-          </button>
+        </form>
 
-          <button class="btn btn-primary" type="submit">
-            Confirmar reemplazo
-          </button>
-        </div>
-
-      </form>
-
+      </div>
     </div>
   </div>
-</div>
 
-  <div class="modal fade" id="removeContainerModal" tabindex="-1" aria-labelledby="removeContainerTitle" aria-hidden="true">
+  <div class="modal fade" id="removeContainerModal" tabindex="-1" aria-labelledby="removeContainerTitle"
+    aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content admin-modal">
         <div class="modal-header">
@@ -275,7 +399,9 @@
           </div>
           <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="Cerrar"></button>
         </div>
-        <div class="modal-body"><p class="mb-0" id="removeContainerText"></p></div>
+        <div class="modal-body">
+          <p class="mb-0" id="removeContainerText"></p>
+        </div>
         <div class="modal-footer">
           <button class="btn btn-outline" type="button" data-bs-dismiss="modal">Cancelar</button>
           <button class="btn btn-primary" type="button" id="confirmRemoveContainer">Confirmar baja</button>
@@ -284,9 +410,10 @@
     </div>
   </div>
 
-  
 
-  <div class="modal fade" id="containerHistoryModal" tabindex="-1" aria-labelledby="containerHistoryModalTitle" aria-hidden="true">
+
+  <div class="modal fade" id="containerHistoryModal" tabindex="-1" aria-labelledby="containerHistoryModalTitle"
+    aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content incident-modal">
         <div class="modal-header">
@@ -303,7 +430,8 @@
     </div>
   </div>
 
-  <div class="modal fade" id="solicitudesModal" tabindex="-1" aria-labelledby="solicitudesModalTitulo" aria-hidden="true">
+  <div class="modal fade" id="solicitudesModal" tabindex="-1" aria-labelledby="solicitudesModalTitulo"
+    aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content admin-modal">
         <div class="modal-header">
@@ -315,13 +443,22 @@
         </div>
         <div class="modal-body">
           <div class="request-functions">
-            <div><i class="bi bi-check-circle"></i><span><strong>Aprobar</strong> habilita el acceso y registra al trabajador cuando corresponde.</span></div>
-            <div><i class="bi bi-x-circle"></i><span><strong>Rechazar</strong> cierra la solicitud sin crear una cuenta.</span></div>
+            <div><i class="bi bi-check-circle"></i><span><strong>Aprobar</strong> habilita el acceso y registra al
+                trabajador cuando corresponde.</span></div>
+            <div><i class="bi bi-x-circle"></i><span><strong>Rechazar</strong> cierra la solicitud sin crear una
+                cuenta.</span></div>
           </div>
-                    <div class="table-responsive">
+          <div class="table-responsive">
             <table class="table truck-table align-middle mb-0">
               <thead>
-                <tr><th>Persona</th><th>Perfil</th><th>Documento</th><th>Correo</th><th>Fecha</th><th>Acciones</th></tr>
+                <tr>
+                  <th>Persona</th>
+                  <th>Perfil</th>
+                  <th>Documento</th>
+                  <th>Correo</th>
+                  <th>Fecha</th>
+                  <th>Acciones</th>
+                </tr>
               </thead>
               <tbody id="solicitudesTableBody"></tbody>
             </table>
@@ -332,9 +469,61 @@
     </div>
   </div>
 
+  <div aria-hidden="true" aria-labelledby="mensajesAdminTitulo" class="modal fade" id="mensajesAdminModal"
+    tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content admin-modal">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="mensajesAdminTitulo">
+            <i class="bi bi-chat-dots"></i>
+            Comunicación con cuadrillas y operarios
+          </h2>
+          <button aria-label="Cerrar" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" for="mensajesAdminBuscar">
+                Integrantes
+              </label>
+              <input class="form-control form-control-sm mb-2" id="mensajesAdminBuscar"
+                placeholder="Buscar integrante..." type="search" />
+              <div class="list-group" id="mensajesAdminContactos" style="max-height:380px;overflow-y:auto">
+                <p class="text-muted small">Cargando contactos...</p>
+              </div>
+            </div>
+            <div class="col-md-8">
+              <h3 class="fs-6 fw-bold" id="mensajesAdminContactoActual">
+                Seleccioná un integrante
+              </h3>
+              <div aria-label="Historial de conversación" class="border rounded-3 p-3 mb-3" id="mensajesAdminHistorial"
+                style="height:320px;overflow-y:auto">
+                Seleccioná una conversación.
+              </div>
+              <p aria-live="polite" class="small" id="mensajesAdminEstado" role="status"></p>
+              <form id="mensajesAdminForm">
+                <label class="form-label" for="mensajesAdminTexto">
+                  Respuesta
+                </label>
+                <textarea class="form-control mb-2" disabled="" id="mensajesAdminTexto" maxlength="2000"
+                  placeholder="Escribí un mensaje..." required="" rows="3"></textarea>
+                <button class="btn btn-success btn-sm" disabled="" id="mensajesAdminEnviar" type="submit">
+                  <i class="bi bi-send"></i>
+                  Enviar mensaje
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="assets/base.js"></script>
   <script src="assets/contenedores.js"></script>
   <script src="assets/solicitudes.js"></script>
+  <script src="assets/mensajeria-admin.js"></script>
 </body>
+
 </html>

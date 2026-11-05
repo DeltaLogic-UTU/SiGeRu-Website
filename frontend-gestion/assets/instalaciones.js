@@ -40,7 +40,6 @@ let workerFacilityId = null;
 let editWorkerId = null;
 let availableUsers = [];
 
-// Se eliminó la variable csrfToken porque ya no se usa CSRF.
 
 const ui = {};
 const modals = {};
@@ -151,8 +150,8 @@ function responseError(data, status) {
   const errors =
     data?.errors && typeof data.errors === 'object'
       ? Object.values(data.errors)
-          .flat()
-          .filter(error => typeof error === 'string')
+        .flat()
+        .filter(error => typeof error === 'string')
       : [];
 
   if (errors.length) return errors.join('\n');
@@ -164,7 +163,6 @@ function responseError(data, status) {
   return `No se pudo completar la solicitud (HTTP ${status}).`;
 }
 
-// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
 async function requestJson(
   url,
   { method = 'GET', body } = {}
@@ -280,11 +278,10 @@ function renderFacilities() {
   ui.facilityBody.innerHTML = rows.length
     ? rows.map(item => `
       <tr
-        class="${
-          selectedId === item.id_instalacion
-            ? 'table-active'
-            : ''
-        }"
+        class="${selectedId === item.id_instalacion
+        ? 'table-active'
+        : ''
+      }"
         data-facility-select="${item.id_instalacion}"
       >
         <td>
@@ -295,8 +292,8 @@ function renderFacilities() {
 
         <td>
           ${escapeHtml(
-            wasteTypeLabel(item.tipo_residuo)
-          )}
+        wasteTypeLabel(item.tipo_residuo)
+      )}
         </td>
 
         <td>${escapeHtml(item.estado)}</td>
@@ -317,25 +314,25 @@ function renderFacilities() {
         <td>
           <div class="d-flex gap-2">
             ${actionButton(
-              'data-facility-workers',
-              item.id_instalacion,
-              'people',
-              'Ver operarios'
-            )}
+        'data-facility-workers',
+        item.id_instalacion,
+        'people',
+        'Ver operarios'
+      )}
 
             ${actionButton(
-              'data-facility-edit',
-              item.id_instalacion,
-              'pencil',
-              'Editar instalación'
-            )}
+        'data-facility-edit',
+        item.id_instalacion,
+        'pencil',
+        'Editar instalación'
+      )}
 
             ${actionButton(
-              'data-facility-delete',
-              item.id_instalacion,
-              'trash',
-              'Eliminar instalación'
-            )}
+        'data-facility-delete',
+        item.id_instalacion,
+        'trash',
+        'Eliminar instalación'
+      )}
           </div>
         </td>
       </tr>
@@ -636,18 +633,18 @@ function renderInventory() {
           <td>
             <div class="d-flex gap-2">
               ${actionButton(
-                'data-item-edit',
-                item.id_inventario,
-                'pencil',
-                'Editar artículo'
-              )}
+        'data-item-edit',
+        item.id_inventario,
+        'pencil',
+        'Editar artículo'
+      )}
 
               ${actionButton(
-                'data-item-delete',
-                item.id_inventario,
-                'trash',
-                'Eliminar artículo'
-              )}
+        'data-item-delete',
+        item.id_inventario,
+        'trash',
+        'Eliminar artículo'
+      )}
             </div>
           </td>
         </tr>
@@ -655,11 +652,10 @@ function renderInventory() {
       : `
         <tr>
           <td colspan="5" class="text-center py-4">
-            ${
-              inventoryType
-                ? 'No hay artículos de este tipo.'
-                : 'No hay artículos registrados.'
-            }
+            ${inventoryType
+        ? 'No hay artículos de este tipo.'
+        : 'No hay artículos registrados.'
+      }
           </td>
         </tr>
       `;
@@ -903,18 +899,18 @@ function renderWorkers() {
           <td>
             <div class="d-flex gap-2">
               ${actionButton(
-                'data-worker-edit',
-                worker.id_usuario,
-                'pencil',
-                'Cambiar operario'
-              )}
+        'data-worker-edit',
+        worker.id_usuario,
+        'pencil',
+        'Cambiar operario'
+      )}
 
               ${actionButton(
-                'data-worker-remove',
-                worker.id_usuario,
-                'trash',
-                'Quitar operario'
-              )}
+        'data-worker-remove',
+        worker.id_usuario,
+        'trash',
+        'Quitar operario'
+      )}
             </div>
           </td>
         </tr>
@@ -1004,9 +1000,9 @@ async function openWorkerForm(id = null) {
   const current =
     id
       ? workers.find(
-          worker =>
-            worker.id_usuario === id
-        )
+        worker =>
+          worker.id_usuario === id
+      )
       : null;
 
   if (id && !current) return;
@@ -1050,13 +1046,12 @@ async function openWorkerForm(id = null) {
         Selecciona un operario
       </option>
     ` +
-    availableUsers.map(worker => `
+      availableUsers.map(worker => `
       <option value="${worker.id_usuario}">
         ${escapeHtml(workerName(worker))}
-        ${
-          worker.documento
-            ? ` — ${escapeHtml(worker.documento)}`
-            : ''
+        ${worker.documento
+          ? ` — ${escapeHtml(worker.documento)}`
+          : ''
         }
       </option>
     `).join('');

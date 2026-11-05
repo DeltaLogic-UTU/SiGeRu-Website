@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>En curso | Cuadrillas | SiGeRu</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+  <link href="assets/style.css" rel="stylesheet">
+  <link href="assets/cuadrilla-panel.css" rel="stylesheet">
+  <link href="assets/cuadrilla-en-curso.css" rel="stylesheet">
+</head>
+
+<body>
+  <header class="site-header cq-header">
+    <div class="container-fluid cq-header-container">
+      <nav class="navbar cq-navbar" aria-label="Navegación de Cuadrillas">
+        <a class="navbar-brand logo-link cq-brand" href="cuadrilla-usuario.html">
+          <img src="../resources/logo.png" alt="SiGeRu" class="brand-logo">
+        </a>
+        <div class="cq-header-navigation">
+          <a class="cq-nav-link" href="cuadrilla-usuario.html#cqTasksSection"><i class="bi bi-list-check"></i>
+            Tareas</a>
+          <a class="cq-nav-link" href="cuadrilla-usuario.html#cqMapSection"><i class="bi bi-map"></i> Mapa</a>
+          <a class="cq-nav-link" href="cuadrilla-usuario.html#cqRoutesSection"><i class="bi bi-signpost-split"></i>
+            Rutas</a>
+          <a class="cq-nav-link" href="cuadrilla-en-curso.html" aria-current="page"><i class="bi bi-play-circle"></i> En
+            curso</a>
+          <a class="cq-nav-link" href="cuadrilla-usuario.html#cqHistorySection"><i class="bi bi-clock-history"></i>
+            Historial</a>
+        </div>
+        <div class="cq-header-actions">
+          <button type="button" class="theme-toggle cq-theme-button" data-theme-toggle
+            aria-label="Cambiar tema"></button>
+          <a href="../landing-page/login.html" class="logout-link cq-logout-button" data-logout title="Cerrar sesión"
+            aria-label="Cerrar sesión"><i class="bi bi-box-arrow-right"></i></a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main class="cq-main cq-rec-main">
+    <div class="cq-rec-heading">
+      <div>
+        <p class="cq-small mb-1">Operaciones de cuadrilla</p>
+        <h1>Recorridos en curso</h1>
+        <p class="cq-small mb-0">Marcá cada contenedor recolectado. El avance se guarda en Gestión.</p>
+      </div>
+      <a class="btn btn-outline-success btn-sm" href="cuadrilla-usuario.html#cqRoutesSection"><i
+          class="bi bi-arrow-left"></i> Volver a rutas</a>
+    </div>
+
+    <div id="recAviso" class="alert d-none" role="status" aria-live="polite"></div>
+
+    <section class="cq-card cq-section" aria-label="Mis recorridos">
+      <div class="cq-card-head">
+        <h2><i class="bi bi-signpost-split"></i> Mis rutas asignadas</h2><button id="recActualizar"
+          class="btn btn-outline-success btn-sm" type="button"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
+      </div>
+      <div id="recRutas" class="cq-rec-routes"></div>
+    </section>
+
+    <section id="recDetalle" class="d-none" aria-label="Recorrido seleccionado">
+      <div class="cq-card cq-section">
+        <div class="cq-card-head">
+          <h2 id="recNombre">Recorrido</h2><span class="cq-rec-state" id="recEstado">—</span>
+        </div>
+        <p class="cq-small mb-2" id="recDescripcion"></p>
+        <div class="cq-rec-metrics">
+          <div><strong id="recTotal">0</strong><span>Asignados</span></div>
+          <div><strong id="recHechos">0</strong><span>Recolectados</span></div>
+          <div><strong id="recPendientes">0</strong><span>Pendientes</span></div>
+        </div>
+        <div class="cq-rec-progress" role="progressbar" aria-label="Avance de recolección" aria-valuemin="0"
+          aria-valuemax="100" aria-valuenow="0" id="recBarra">
+          <div id="recBarraInterior"></div>
+        </div>
+      </div>
+      <div class="cq-rec-grid">
+        <section class="cq-card cq-section">
+          <div class="cq-card-head">
+            <h2><i class="bi bi-geo-alt"></i> Contenedores del circuito</h2>
+          </div>
+          <div id="recContenedores" class="cq-rec-containers"></div>
+          <div class="cq-rec-footer">
+            <button id="recFinalizar" class="btn btn-success" type="button"><i class="bi bi-check2-circle"></i>
+              Finalizar recorrido</button>
+          </div>
+        </section>
+        <section class="cq-card cq-section">
+          <div class="cq-card-head">
+            <h2><i class="bi bi-map"></i> Mapa del recorrido</h2>
+          </div>
+          <div id="recMapa" aria-label="Ubicación de los contenedores asignados"></div>
+          <p class="cq-small mt-2 mb-0">Verde: recolectado. Naranja: pendiente.</p>
+        </section>
+      </div>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/cuadrilla-en-curso.js"></script>
+</body>
+
+</html>

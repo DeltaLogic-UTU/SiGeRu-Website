@@ -5,14 +5,19 @@ const $ =
   id =>
     document.getElementById(id);
 
+
 let claims = [];
 let cuadrillas = [];
-// Se eliminó la variable csrfToken porque ya no se usa CSRF.
 let busy = false;
+
+let claimMap = null;
+let claimMapMarker = null;
+
 
 const state = {
   selectedId: null
 };
+
 
 const lists = {
   sin_asignar:
@@ -24,6 +29,7 @@ const lists = {
   completado:
     $('claimsCompleted')
 };
+
 
 const counters = {
   sin_asignar: [
@@ -42,11 +48,23 @@ const counters = {
   ]
 };
 
+
+const historyList =
+  $('claimsHistory');
+
+const historyCount =
+  $('countHistory');
+
+
+const modalElement =
+  $('claimModal');
+
 const modal =
   bootstrap.Modal
     .getOrCreateInstance(
-      $('claimModal')
+      modalElement
     );
+
 
 const esc = value =>
   String(value ?? '')
@@ -61,10 +79,14 @@ const esc = value =>
       })[c]
     );
 
+
 const field =
   (label, value) => `
     <div class="truck-field">
-      <span>${esc(label)}</span>
+      <span>
+        ${esc(label)}
+      </span>
+
       <strong>
         ${esc(value || '—')}
       </strong>
@@ -73,7 +95,9 @@ const field =
 
 
 function formatDate(value) {
-  if (!value) return '—';
+  if (!value) {
+    return '—';
+  }
 
   const match =
     String(value).match(
@@ -86,7 +110,232 @@ function formatDate(value) {
 }
 
 
-// Se envía el token JWT en el header Authorization: Bearer en cada petición a la API.
+function coordenadasContenedor(
+  claim
+) {
+  const lat =
+    Number(
+      claim.latitud
+    );
+
+  const lng =
+    Number(
+      claim.longitud
+    );
+
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    lat < -90 ||
+    lat > 90 ||
+    lng < -180 ||
+    lng > 180
+  ) {
+    return null;
+  }
+
+  return {
+    lat,
+    lng
+  };
+}
+
+
+function ubicacionContenedorTexto(
+  claim
+) {
+  const partes = [];
+
+  if (claim.calle) {
+    partes.push(
+      claim.calle
+    );
+  }
+
+  if (claim.esquina) {
+    partes.push(
+      `esq. ${claim.esquina}`
+    );
+  }
+
+  if (
+    !claim.calle &&
+    claim.ubicacion
+  ) {
+    partes.push(
+      claim.ubicacion
+    );
+  }
+
+  if (
+    !partes.length &&
+    claim.zona
+  ) {
+    partes.push(
+      claim.zona
+    );
+  }
+
+  if (claim.barrio) {
+    partes.push(
+      claim.barrio
+    );
+  }
+
+  const coords =
+    coordenadasContenedor(
+      claim
+    );
+
+  if (coords) {
+    partes.push(
+      `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`
+    );
+  }
+
+  return partes.length
+    ? partes.join(' · ')
+    : 'Sin ubicación';
+}
+
+
+function renderClaimMap(
+  claim
+) {
+  const mapElement =
+    $('claimMap');
+
+  const emptyElement =
+    $('claimMapEmpty');
+
+  if (
+    !mapElement ||
+    typeof L ===
+    'undefined'
+  ) {
+    return;
+  }
+
+  const coords =
+    coordenadasContenedor(
+      claim
+    );
+
+
+  if (!coords) {
+    mapElement.classList.add(
+      'd-none'
+    );
+
+    if (emptyElement) {
+      emptyElement
+        .classList
+        .remove(
+          'd-none'
+        );
+    }
+
+    return;
+  }
+
+  mapElement.classList.remove(
+    'd-none'
+  );
+
+  if (emptyElement) {
+    emptyElement
+      .classList
+      .add(
+        'd-none'
+      );
+  }
+
+
+
+  if (!claimMap) {
+    claimMap =
+      L.map(
+        mapElement,
+        {
+          zoomControl:
+            true
+        }
+      );
+
+    L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom: 19,
+
+        attribution:
+          '&copy; OpenStreetMap contributors'
+      }
+    ).addTo(
+      claimMap
+    );
+  }
+
+
+
+  if (!claimMapMarker) {
+    claimMapMarker =
+      L.marker([
+        coords.lat,
+        coords.lng
+      ])
+        .addTo(
+          claimMap
+        );
+
+  } else {
+    claimMapMarker
+      .setLatLng([
+        coords.lat,
+        coords.lng
+      ]);
+  }
+
+
+
+  claimMap.setView(
+    [
+      coords.lat,
+      coords.lng
+    ],
+    18
+  );
+
+
+  claimMapMarker
+    .bindPopup(`
+      <strong>
+        ${esc(
+      claim.contenedor ||
+      'Contenedor'
+    )}
+      </strong>
+
+      <br>
+
+      ${esc(
+      ubicacionContenedorTexto(
+        claim
+      )
+    )}
+    `);
+
+  setTimeout(
+    () => {
+      if (claimMap) {
+        claimMap
+          .invalidateSize();
+      }
+    },
+    200
+  );
+}
+
+
 async function requestJson(
   url,
   options = {}
@@ -97,24 +346,40 @@ async function requestJson(
       'GET'
     ).toUpperCase();
 
+
   const headers = {
     Accept:
       'application/json'
   };
 
-  const token = localStorage.getItem('access_token');
+
+  const token =
+    localStorage.getItem(
+      'access_token'
+    );
+
+
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers[
+      'Authorization'
+    ] =
+      `Bearer ${token}`;
   }
 
-  if (method !== 'GET') {
+
+  if (
+    method !==
+    'GET'
+  ) {
     headers[
       'Content-Type'
     ] =
       'application/json';
   }
 
+
   let response;
+
 
   try {
     response =
@@ -126,20 +391,25 @@ async function requestJson(
           headers
         }
       );
+
   } catch {
     throw new Error(
       'No se pudo conectar con Laravel.'
     );
   }
 
+
   let data = {};
+
 
   try {
     data =
       await response.json();
+
   } catch {
     data = {};
   }
+
 
   if (
     !response.ok ||
@@ -148,9 +418,10 @@ async function requestJson(
     const errores =
       data?.errors
         ? Object.values(
-            data.errors
-          ).flat()
+          data.errors
+        ).flat()
         : [];
+
 
     throw new Error(
       errores[0] ||
@@ -159,11 +430,15 @@ async function requestJson(
     );
   }
 
+
   return data;
 }
 
 
-function convertirReclamo(item) {
+
+function convertirReclamo(
+  item
+) {
   return {
     ...item,
 
@@ -198,14 +473,16 @@ async function cargarReclamos() {
       '/api/reclamos'
     );
 
+
   claims =
     Array.isArray(
       result?.data
     )
       ? result.data.map(
-          convertirReclamo
-        )
+        convertirReclamo
+      )
       : [];
+
 
   render();
 }
@@ -217,24 +494,29 @@ async function cargarCuadrillas() {
       '/api/cuadrillas'
     );
 
+
   cuadrillas =
     Array.isArray(result)
       ? result
+
       : Array.isArray(
-          result?.data
-        )
+        result?.data
+      )
         ? result.data
         : [];
 }
 
 
-function statusLabel(claim) {
+function statusLabel(
+  claim
+) {
   if (
     claim.estado ===
     'sin_asignar'
   ) {
     return 'Sin asignar';
   }
+
 
   if (
     claim.estado ===
@@ -245,85 +527,177 @@ function statusLabel(claim) {
       : 'Asignado';
   }
 
+
+  if (
+    claim.estado ===
+    'completado' &&
+    claim.notificado
+  ) {
+    return 'Finalizado';
+  }
+
+
   return claim.cuadrilla
     ? `Completado por ${claim.cuadrilla}`
     : 'Completado';
 }
 
 
-function claimCard(claim) {
+
+function claimCard(
+  claim
+) {
   const priority =
     claim.prioridad
       ? ` priority-${String(
-          claim.prioridad
-        ).toLowerCase()}`
+        claim.prioridad
+      ).toLowerCase()}`
       : '';
+
 
   return `
     <button
       class="claim-card${esc(priority)}"
       data-claim-id="${esc(
-        claim.id
-      )}"
+    claim.id
+  )}"
       type="button"
     >
+
       <div class="claim-card-top">
+
         <strong>
-          ${esc(claim.id)}
+          ${esc(
+    claim.id
+  )}
         </strong>
 
         <span>
           ${esc(
-            statusLabel(claim)
-          )}
+    statusLabel(
+      claim
+    )
+  )}
         </span>
+
       </div>
+
 
       <p>
         ${esc(
-          claim.categoria ||
-          claim.tipo ||
-          'Reclamo'
-        )}
+    claim.categoria ||
+    claim.tipo ||
+    'Reclamo'
+  )}
       </p>
+
 
       <small>
         <i class="bi bi-geo-alt"></i>
 
         ${esc(
-          claim.ubicacion ||
-          claim.zona ||
-          'Sin ubicación'
-        )}
+    ubicacionContenedorTexto(
+      claim
+    )
+  )}
       </small>
+
     </button>
   `;
 }
 
 
 function render() {
-  Object.entries(
-    lists
-  ).forEach(
-    ([status, container]) => {
-      if (!container) return;
+  const sinAsignar =
+    claims.filter(
+      claim =>
+        claim.estado ===
+        'sin_asignar'
+    );
 
-      const rows =
-        claims.filter(
-          item =>
-            item.estado === status
-        );
+
+  const asignados =
+    claims.filter(
+      claim =>
+        claim.estado ===
+        'asignado'
+    );
+
+
+  const completados =
+    claims.filter(
+      claim =>
+        claim.estado ===
+        'completado' &&
+        !Boolean(
+          claim.notificado
+        )
+    );
+
+  const historial =
+    claims
+      .filter(
+        claim =>
+          claim.estado ===
+          'completado' &&
+          Boolean(
+            claim.notificado
+          )
+      )
+      .sort(
+        (a, b) =>
+          new Date(
+            b.fechaResolucion ||
+            b.fecha ||
+            0
+          ) -
+          new Date(
+            a.fechaResolucion ||
+            a.fecha ||
+            0
+          )
+      );
+
+
+  const grupos = {
+    sin_asignar:
+      sinAsignar,
+
+    asignado:
+      asignados,
+
+    completado:
+      completados
+  };
+
+
+  Object.entries(
+    grupos
+  ).forEach(
+    ([status, rows]) => {
+      const container =
+        lists[status];
+
+
+      if (!container) {
+        return;
+      }
+
 
       container.innerHTML =
         rows.length
           ? rows
-              .map(claimCard)
-              .join('')
+            .map(
+              claimCard
+            )
+            .join('')
+
           : `
               <div class="claims-empty">
                 No hay reclamos en esta etapa.
               </div>
             `;
+
 
       counters[status]
         .forEach(
@@ -337,12 +711,35 @@ function render() {
     }
   );
 
+
+  if (historyList) {
+    historyList.innerHTML =
+      historial.length
+        ? historial
+          .map(
+            claimCard
+          )
+          .join('')
+
+        : `
+            <div class="claims-empty">
+              No hay reclamos en el historial.
+            </div>
+          `;
+  }
+
+
+  if (historyCount) {
+    historyCount.textContent =
+      historial.length;
+  }
+
+
   if ($('claimsStatus')) {
     $('claimsStatus')
       .textContent = '';
   }
 }
-
 
 function reclamosAsignados(
   idCuadrilla
@@ -350,21 +747,24 @@ function reclamosAsignados(
   return claims.filter(
     claim =>
       claim.estado ===
-        'asignado' &&
+      'asignado' &&
       claim.cuadrilla ===
-        idCuadrilla
+      idCuadrilla
   ).length;
 }
 
 
 function availableCrews() {
-  if (!cuadrillas.length) {
+  if (
+    !cuadrillas.length
+  ) {
     return `
       <div class="claims-empty">
         No hay cuadrillas disponibles.
       </div>
     `;
   }
+
 
   return `
     <div class="claim-operation-card">
@@ -375,10 +775,13 @@ function availableCrews() {
         </h3>
       </div>
 
+
       <div class="table-responsive">
+
         <table
           class="table truck-table align-middle mb-0"
         >
+
           <thead>
             <tr>
               <th>Cuadrilla</th>
@@ -389,178 +792,314 @@ function availableCrews() {
             </tr>
           </thead>
 
+
           <tbody>
+
             ${cuadrillas
-              .map(
-                item => `
+      .map(
+        item => `
                   <tr>
+
                     <td>
                       <strong>
                         ${esc(
-                          item.id_cuadrilla
-                        )}
+          item.id_cuadrilla
+        )}
                       </strong>
                     </td>
 
-                    <td>
-                      ${esc(
-                        item.estado ||
-                        '—'
-                      )}
-                    </td>
 
                     <td>
                       ${esc(
-                        item.turno ||
-                        '—'
-                      )}
+          item.estado ||
+          '—'
+        )}
                     </td>
+
+
+                    <td>
+                      ${esc(
+          item.turno ||
+          '—'
+        )}
+                    </td>
+
 
                     <td>
                       ${reclamosAsignados(
-                        item.id_cuadrilla
-                      )}
+          item.id_cuadrilla
+        )}
                     </td>
+
 
                     <td>
                       <button
                         class="btn btn-primary btn-sm"
                         data-assign-crew="${esc(
-                          item.id_cuadrilla
-                        )}"
+          item.id_cuadrilla
+        )}"
                         type="button"
                       >
                         Asignar
                       </button>
                     </td>
+
                   </tr>
                 `
-              )
-              .join('')}
+      )
+      .join('')}
+
           </tbody>
+
         </table>
+
       </div>
+
     </div>
   `;
 }
 
 
-function assignedCrew(claim) {
+function assignedCrew(
+  claim
+) {
   return `
     <div class="claim-operation-card">
 
       <div class="claim-operation-head">
+
         <h3>
           Cuadrilla ${esc(
-            claim.cuadrilla ||
-            '—'
-          )}
+    claim.cuadrilla ||
+    '—'
+  )}
         </h3>
 
         <span>
           Turno:
           ${esc(
-            claim.turno ||
-            '—'
-          )}
+    claim.turno ||
+    '—'
+  )}
         </span>
+
       </div>
 
+
       <div class="claim-assigned-list">
+
         <div>
+
           <span>
+
             <strong>
-              ${esc(claim.id)}
+              ${esc(
+    claim.id
+  )}
             </strong>
 
             <small>
               ${esc(
-                formatDate(
-                  claim.fecha
-                )
-              )}
+    formatDate(
+      claim.fecha
+    )
+  )}
             </small>
+
           </span>
 
           <span>
             Asignado
           </span>
+
         </div>
+
       </div>
 
     </div>
   `;
 }
 
-function completedResult(claim) {
+
+
+function completedResult(
+  claim
+) {
   const resultado =
-    claim.resultado || '';
+    String(
+      claim.resultado ||
+      ''
+    ).trim();
+
+
+  const fotoResultado =
+    String(
+      claim.foto_resultado ||
+      ''
+    ).trim();
+
+
+  const resultadoEsFoto =
+    resultado.startsWith(
+      'data:image/'
+    ) ||
+    resultado.startsWith(
+      'blob:'
+    ) ||
+    resultado.includes(
+      '/storage/'
+    ) ||
+    /\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i
+      .test(
+        resultado
+      );
+
+
+  const foto =
+    fotoResultado ||
+    (
+      resultadoEsFoto
+        ? resultado
+        : ''
+    );
+
+
+  const texto =
+    resultadoEsFoto
+      ? ''
+      : resultado;
+
+
+  const tieneResultado =
+    Boolean(
+      texto ||
+      foto
+    );
+
 
   return `
     <div
       class="claim-operation-card claim-result-card"
     >
+
       <div class="claim-operation-head">
+
         <h3>
-          Cuadrilla ${esc(
-            claim.cuadrilla ||
-            '—'
-          )}
+          Resultado del reclamo
         </h3>
 
         <span>
           ${esc(
-            formatDate(
-              claim.fechaResolucion
-            )
-          )}
+    formatDate(
+      claim.fechaResolucion
+    )
+  )}
         </span>
+
       </div>
 
-      ${
-        resultado
-          ? `
+
+      <div class="truck-field">
+
+        <span>
+          Cuadrilla responsable
+        </span>
+
+        <strong>
+          ${esc(
+    claim.cuadrilla ||
+    '—'
+  )}
+        </strong>
+
+      </div>
+
+
+      ${texto
+      ? `
+              <div class="truck-field mt-2">
+
+                <span>
+                  Resolución
+                </span>
+
+                <strong>
+                  ${esc(
+        texto
+      )}
+                </strong>
+
+              </div>
+            `
+      : ''
+    }
+
+
+      ${foto
+      ? `
               <img
-                src="${esc(resultado)}"
-                alt="Resultado del reclamo completado"
+                src="${esc(
+        foto
+      )}"
+                alt="Foto del resultado del reclamo"
               >
             `
-          : `
+      : ''
+    }
+
+
+      ${!tieneResultado
+      ? `
               <div class="claims-empty">
                 Resultado pendiente.
               </div>
             `
-      }
+      : ''
+    }
+
 
       <button
-        class="btn btn-primary w-100"
+        class="btn btn-primary w-100 mt-3"
         data-send-result
         type="button"
-        ${
-          claim.notificado ||
-          !resultado
-            ? 'disabled'
-            : ''
-        }
+
+        ${claim.notificado ||
+      !tieneResultado
+      ? 'disabled'
+      : ''
+    }
       >
-        ${
-          claim.notificado
-            ? 'Resultado enviado'
-            : resultado
-              ? `Enviar resultado a ${esc(
-                  claim.reclamante
-                )}`
-              : 'Resultado pendiente'
-        }
+
+        ${claim.notificado
+      ? 'Resultado enviado'
+
+      : tieneResultado
+        ? `Enviar resultado a ${esc(
+          claim.reclamante ||
+          'vecino'
+        )}`
+
+        : 'Resultado pendiente'
+    }
+
       </button>
+
     </div>
   `;
 }
 
-function imageForClaim(claim) {
-  if (claim.foto) {
+
+
+function imageForClaim(
+  claim
+) {
+
+  if (
+    claim.foto
+  ) {
     return claim.foto;
   }
+
 
   if (
     claim.estado ===
@@ -569,6 +1108,7 @@ function imageForClaim(claim) {
     return '../resources/Contenedor_Asignado.png';
   }
 
+
   if (
     claim.estado ===
     'completado'
@@ -576,37 +1116,25 @@ function imageForClaim(claim) {
     return '../resources/Contenedor_Reclamo.png';
   }
 
+
   return '../resources/Contenedor_Sin_Asignar.png';
 }
 
 
-function mapForClaim(claim) {
-  if (
-    claim.estado ===
-    'asignado'
-  ) {
-    return '../resources/Reclamo_Asignado.png';
-  }
-
-  if (
-    claim.estado ===
-    'completado'
-  ) {
-    return '../resources/Reclamo_Completado.png';
-  }
-
-  return '../resources/Reclamo_Sin_Asignar.png';
-}
-
-
-function openClaim(id) {
+function openClaim(
+  id
+) {
   const claim =
     claims.find(
       item =>
         item.id === id
     );
 
-  if (!claim) return;
+
+  if (!claim) {
+    return;
+  }
+
 
   state.selectedId =
     id;
@@ -615,12 +1143,18 @@ function openClaim(id) {
     .textContent =
     claim.id;
 
+
   $('claimModalKicker')
     .textContent =
-    statusLabel(claim);
+    statusLabel(
+      claim
+    );
+
+
 
   $('claimDetail')
     .innerHTML = [
+
       field(
         'Reclamante',
         claim.reclamante
@@ -643,8 +1177,10 @@ function openClaim(id) {
       ),
 
       field(
-        'Ubicación',
-        claim.ubicacion
+        'Ubicación del contenedor',
+        ubicacionContenedorTexto(
+          claim
+        )
       ),
 
       field(
@@ -654,45 +1190,51 @@ function openClaim(id) {
 
       field(
         'Estado',
-        statusLabel(claim)
+        statusLabel(
+          claim
+        )
       )
+
     ].join('');
+
+
 
   $('claimDescription')
     .innerHTML = `
-      <span>Descripción</span>
+      <span>
+        Descripción
+      </span>
 
       <p>
         ${esc(
-          claim.descripcion ||
-          'Sin descripción.'
-        )}
+      claim.descripcion ||
+      'Sin descripción.'
+    )}
       </p>
     `;
+
+
 
   const containerImage =
     $('claimContainerImage');
 
-  containerImage.src =
-    imageForClaim(claim);
 
-  containerImage.alt =
-    `Estado del contenedor ${
-      claim.contenedor ||
+  if (containerImage) {
+    containerImage.src =
+      imageForClaim(
+        claim
+      );
+
+    containerImage.alt =
+      `Estado del contenedor ${claim.contenedor ||
       ''
-    }`;
+      }`;
+  }
 
-  const mapImage =
-    $('claimMapImage');
-
-  mapImage.src =
-    mapForClaim(claim);
-
-  mapImage.alt =
-    `Ubicación del reclamo ${claim.id}`;
 
   const operational =
     $('claimOperationalPanel');
+
 
   if (
     claim.estado ===
@@ -706,15 +1248,20 @@ function openClaim(id) {
     'asignado'
   ) {
     operational.innerHTML =
-      assignedCrew(claim);
+      assignedCrew(
+        claim
+      );
 
   } else {
     operational.innerHTML =
-      completedResult(claim);
+      completedResult(
+        claim
+      );
   }
 
   const actions =
     $('claimActions');
+
 
   if (
     claim.estado ===
@@ -732,8 +1279,11 @@ function openClaim(id) {
 
   } else if (
     claim.estado ===
-    'completado'
+    'completado' &&
+    !claim.notificado
   ) {
+
+
     actions.innerHTML = `
       <button
         class="btn btn-outline"
@@ -745,12 +1295,26 @@ function openClaim(id) {
     `;
 
   } else {
-    actions.innerHTML = '';
+    actions.innerHTML =
+      '';
   }
+
+  modalElement
+    .addEventListener(
+      'shown.bs.modal',
+      () => {
+        renderClaimMap(
+          claim
+        );
+      },
+      {
+        once: true
+      }
+    );
+
 
   modal.show();
 }
-
 
 function selectedClaim() {
   return claims.find(
@@ -765,28 +1329,42 @@ async function ejecutarAccion(
   url,
   body
 ) {
-  if (busy) return;
+  if (busy) {
+    return null;
+  }
+
 
   try {
     busy = true;
 
-    await requestJson(
-      url,
-      {
-        method: 'PUT',
 
-        ...(body !== undefined
-          ? {
-              body:
-                JSON.stringify(
-                  body
-                )
-            }
-          : {})
-      }
-    );
+    const result =
+      await requestJson(
+        url,
+        {
+          method:
+            'PUT',
+
+          ...(
+            body !==
+              undefined
+              ? {
+                body:
+                  JSON.stringify(
+                    body
+                  )
+              }
+
+              : {}
+          )
+        }
+      );
+
 
     await cargarReclamos();
+
+
+    return result;
 
   } finally {
     busy = false;
@@ -800,6 +1378,7 @@ document.addEventListener(
     const target =
       event.target;
 
+
     if (
       !(
         target instanceof
@@ -809,29 +1388,40 @@ document.addEventListener(
       return;
     }
 
+
     const card =
       target.closest(
         '[data-claim-id]'
       );
 
+
     if (card) {
       openClaim(
-        card.dataset.claimId
+        card.dataset
+          .claimId
       );
 
       return;
     }
 
+
     const claim =
       selectedClaim();
 
-    if (!claim) return;
+
+    if (!claim) {
+      return;
+    }
+
 
     try {
+
+
       const assign =
         target.closest(
           '[data-assign-crew]'
         );
+
 
       if (assign) {
         await ejecutarAccion(
@@ -849,9 +1439,12 @@ document.addEventListener(
           }
         );
 
+
         modal.hide();
+
         return;
       }
+
 
       if (
         target.closest(
@@ -864,7 +1457,9 @@ document.addEventListener(
           )}/quitar-asignacion`
         );
 
+
         modal.hide();
+
         return;
       }
 
@@ -879,7 +1474,9 @@ document.addEventListener(
           )}/reabrir`
         );
 
+
         modal.hide();
+
         return;
       }
 
@@ -894,10 +1491,22 @@ document.addEventListener(
           )}/notificar`
         );
 
-        openClaim(
-          claim.id
-        );
+
+        modal.hide();
+
+
+        if (
+          $('claimsStatus')
+        ) {
+          $('claimsStatus')
+            .textContent =
+            'Resultado enviado. El reclamo pasó al historial.';
+        }
+
+
+        return;
       }
+
 
     } catch (error) {
       console.error(
@@ -905,10 +1514,14 @@ document.addEventListener(
         error
       );
 
-      if ($('claimsStatus')) {
+
+      if (
+        $('claimsStatus')
+      ) {
         $('claimsStatus')
           .textContent =
           error.message;
+
       } else {
         alert(
           error.message
@@ -921,10 +1534,12 @@ document.addEventListener(
 
 async function iniciarReclamos() {
   try {
+
     await Promise.all([
       cargarCuadrillas(),
       cargarReclamos()
     ]);
+
 
   } catch (error) {
     console.error(
@@ -932,7 +1547,10 @@ async function iniciarReclamos() {
       error
     );
 
-    if ($('claimsStatus')) {
+
+    if (
+      $('claimsStatus')
+    ) {
       $('claimsStatus')
         .textContent =
         error.message ||
