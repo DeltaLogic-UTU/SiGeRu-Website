@@ -629,22 +629,7 @@ El proyecto contempla pruebas funcionales y de integración para comprobar sus p
 
 Los resultados de pruebas deben documentarse por separado antes de considerar una versión validada para producción.
 
-## 21. Mejoras futuras
-
-Entre las posibles mejoras y tareas de mantenimiento se encuentran:
-
-- Ampliar las pruebas automatizadas.
-- Reforzar las políticas de autorización en todos los endpoints.
-- Mejorar el monitoreo y registro de errores.
-- Continuar optimizando el rendimiento de los mapas.
-- Mejorar la precisión y disponibilidad del seguimiento GPS.
-- Ampliar los informes estadísticos.
-- Optimizar las consultas a la base de datos.
-- Fortalecer la seguridad de los formularios públicos.
-- Preparar un entorno de despliegue de producción.
-- Completar la documentación técnica y de usuario.
-
-## 22. Consideraciones de seguridad
+## 21. Consideraciones de seguridad
 
 Este repositorio es parte de un proyecto académico.
 
@@ -656,8 +641,6 @@ Antes de publicar versiones o respaldos:
 - Utilizar datos de prueba para demostraciones públicas.
 - Mantener las credenciales fuera del README.
 - Revisar los permisos de acceso de cada endpoint.
-
-Las cuentas de prueba, cuando estén disponibles, deben documentarse mediante un procedimiento seguro y no mediante contraseñas públicas.
 
 ---
 
