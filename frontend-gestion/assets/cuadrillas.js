@@ -37,6 +37,26 @@ function obtenerData(result) {
   return [];
 }
 
+function mostrarAvisoCuadrilla(mensaje) {
+  let aviso = document.getElementById('avisoCuadrilla');
+
+  if (!aviso) {
+    aviso = document.createElement('div');
+    aviso.id = 'avisoCuadrilla';
+    aviso.setAttribute('role', 'alert');
+
+    document.body.appendChild(aviso);
+  }
+
+  aviso.textContent = mensaje;
+
+  clearTimeout(mostrarAvisoCuadrilla.timer);
+
+  mostrarAvisoCuadrilla.timer = setTimeout(() => {
+    aviso.remove();
+  }, 3500);
+}
+
 async function requestGestion(url, options = {}) {
   const token = typeof getToken === 'function'
     ? getToken()
@@ -618,10 +638,9 @@ document.querySelector('[data-member-new]')
     const crew = selectedCrew();
 
     if (!crew) {
-      alert('Seleccioná una cuadrilla.');
+      mostrarAvisoCuadrilla('Primero seleccioná una cuadrilla.');
       return;
     }
-
     try {
       memberForm?.reset();
 
