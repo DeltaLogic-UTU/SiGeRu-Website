@@ -1828,3 +1828,48 @@ html[data-theme="dark"] #cqUser {
     font-size: .75rem;
   }
 }
+
+.cq-window {
+  max-height: 90dvh;
+  overflow: hidden;
+}
+
+.cq-window-content {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cq-window-content>.cq-card {
+  min-width: 0;
+  max-height: none;
+}
+
+.cq-window .cq-scroll {
+  max-height: min(55dvh, 500px);
+  overflow-y: auto;
+}
+
+.cq-window-backdrop[hidden],
+.cq-window[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 767px) {
+  .cq-window {
+    width: calc(100vw - 16px);
+    max-height: 94dvh;
+  }
+
+  .cq-window-content {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .cq-window-content>.cq-card {
+    grid-column: 1 / -1 !important;
+  }
+}
