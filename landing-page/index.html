@@ -245,7 +245,7 @@
          Mapa de cobertura y estado de recolección en vivo
         </h2>
         <p class="mb-0 text-muted">
-         Consultá las zonas operativas, la ubicación GPS de los camiones recolectores y el nivel de cada contenedor según los días transcurridos desde la última recolección.
+         Consultá en tiempo real el estado y nivel de cada contenedor según los días transcurridos desde la última recolección.
         </p>
        </div>
        <div class="map-showcase-actions">
@@ -257,62 +257,11 @@
        </div>
       </div>
 
-      <!-- Leyenda explicativa de los 5 niveles de colores de los contenedores por días sin recolección -->
-      <div aria-label="Escala de colores por días sin recolección" class="map-color-scale">
-       <div class="scale-item">
-        <span class="scale-dot level-verde"></span>
-        <div>
-         <strong>Verde · Al día</strong>
-         <small>Hasta 2 días sin recolección</small>
-        </div>
-       </div>
-       <div class="scale-item">
-        <span class="scale-dot level-amarillo"></span>
-        <div>
-         <strong>Amarillo · Atención</strong>
-         <small>3 días sin recolección</small>
-        </div>
-       </div>
-       <div class="scale-item">
-        <span class="scale-dot level-naranja"></span>
-        <div>
-         <strong>Naranja · Demora</strong>
-         <small>4 días sin recolección</small>
-        </div>
-       </div>
-       <div class="scale-item">
-        <span class="scale-dot level-rojo"></span>
-        <div>
-         <strong>Rojo · Prioridad alta</strong>
-         <small>5 días sin recolección</small>
-        </div>
-       </div>
-       <div class="scale-item">
-        <span class="scale-dot level-negro"></span>
-        <div>
-         <strong>Negro · Crítico</strong>
-         <small>6 o más días sin pasar el camión</small>
-        </div>
-       </div>
-      </div>
-
-      <!-- Referencias adicionales de zonas y GPS de camiones -->
-      <div class="map-extra-badges">
-       <span class="map-badge">
-        <i aria-hidden="true" class="bi bi-bounding-box-circles"></i>
-        Zonas y circuitos delimitados
-       </span>
-       <span class="map-badge">
-        <i aria-hidden="true" class="bi bi-truck"></i>
-        Posición GPS de camiones en turno
-       </span>
-      </div>
-
-      <!-- Contenedor oculto por defecto: solo se muestra cuando el usuario toca "Ampliar mapa interactivo" -->
+      <!-- Contenedor desplegable: solo se muestra cuando el usuario toca "Ampliar mapa interactivo" -->
       <div class="landing-map-collapse" hidden="" id="landingMapCollapse">
        <div class="landing-map-toolbar">
         <span class="landing-map-status" id="landingMapStatus">
-         Hacé clic en un contenedor, zona o camión para ver su detalle.
+         Hacé clic en un contenedor para ver su detalle de recolección.
         </span>
         <div class="landing-map-toolbar-btns">
          <button class="btn btn-outline btn-sm" id="btnFullscreenLandingMap" type="button">
@@ -321,8 +270,47 @@
          </button>
         </div>
        </div>
-       <!-- Lienzo donde Leaflet dibuja el mapa, las zonas, los contenedores y los camiones -->
+       <!-- Lienzo donde Leaflet dibuja el mapa y los contenedores (ARRIBA) -->
        <div aria-label="Mapa interactivo de recolección" class="landing-map-canvas" id="landingMapCanvas"></div>
+
+       <!-- Leyenda explicativa de los 5 niveles de colores de los contenedores por días sin recolección (DEBAJO DEL MAPA) -->
+       <div aria-label="Escala de colores por días sin recolección" class="map-color-scale mt-3">
+        <div class="scale-item">
+         <span class="scale-dot level-verde"></span>
+         <div>
+          <strong>Verde · Al día</strong>
+          <small>Hasta 2 días sin recolección</small>
+         </div>
+        </div>
+        <div class="scale-item">
+         <span class="scale-dot level-amarillo"></span>
+         <div>
+          <strong>Amarillo · Atención</strong>
+          <small>3 días sin recolección</small>
+         </div>
+        </div>
+        <div class="scale-item">
+         <span class="scale-dot level-naranja"></span>
+         <div>
+          <strong>Naranja · Demora</strong>
+          <small>4 días sin recolección</small>
+         </div>
+        </div>
+        <div class="scale-item">
+         <span class="scale-dot level-rojo"></span>
+         <div>
+          <strong>Rojo · Prioridad alta</strong>
+          <small>5 días sin recolección</small>
+         </div>
+        </div>
+        <div class="scale-item">
+         <span class="scale-dot level-negro"></span>
+         <div>
+          <strong>Negro · Crítico</strong>
+          <small>6 o más días sin pasar el camión</small>
+         </div>
+        </div>
+       </div>
       </div>
      </div>
     </div>

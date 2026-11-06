@@ -642,7 +642,7 @@ function inicializarMapaChofer() {
   // Vista más cercana enfocada en el camión del chofer (zoom 16)
   mapaChofer = window.L.map('choferMapCanvas').setView(COORD_BASE_BUCEO, 16);
 
-  window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  window.L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(mapaChofer);
